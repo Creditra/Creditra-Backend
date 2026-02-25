@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1772061781940" clover="3.2.0">
+  <project timestamp="1772061781940" name="All files">
+    <metrics statements="65" coveredstatements="62" conditionals="30" coveredconditionals="28" methods="17" coveredmethods="15" elements="112" coveredelements="105" complexity="0" loc="65" ncloc="65" packages="4" files="5" classes="5"/>
+    <package name="src">
+      <metrics statements="11" coveredstatements="8" conditionals="4" coveredconditionals="3" methods="2" coveredmethods="0"/>
+      <file name="index.ts" path="/home/sayae/Desktop/SHITTY_CODES/DRIPS/Creditra-Backend/src/index.ts">
+        <metrics statements="11" coveredstatements="8" conditionals="4" coveredconditionals="3" methods="2" coveredmethods="0"/>
+        <line num="6" count="2" type="stmt"/>
+        <line num="7" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="9" count="2" type="stmt"/>
+        <line num="10" count="2" type="stmt"/>
+        <line num="12" count="2" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="16" count="2" type="stmt"/>
+        <line num="17" count="2" type="stmt"/>
+        <line num="20" count="2" type="cond" truecount="1" falsecount="1"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.lib">
+      <metrics statements="21" coveredstatements="21" conditionals="14" coveredconditionals="14" methods="8" coveredmethods="8"/>
+      <file name="logger.ts" path="/home/sayae/Desktop/SHITTY_CODES/DRIPS/Creditra-Backend/src/lib/logger.ts">
+        <metrics statements="21" coveredstatements="21" conditionals="14" coveredconditionals="14" methods="8" coveredmethods="8"/>
+        <line num="17" count="4" type="stmt"/>
+        <line num="44" count="105" type="cond" truecount="4" falsecount="0"/>
+        <line num="46" count="103" type="cond" truecount="2" falsecount="0"/>
+        <line num="47" count="2" type="stmt"/>
+        <line num="50" count="101" type="cond" truecount="2" falsecount="0"/>
+        <line num="51" count="64" type="stmt"/>
+        <line num="52" count="64" type="stmt"/>
+        <line num="53" count="395" type="cond" truecount="2" falsecount="0"/>
+        <line num="54" count="23" type="stmt"/>
+        <line num="56" count="35" type="stmt"/>
+        <line num="59" count="64" type="stmt"/>
+        <line num="62" count="37" type="stmt"/>
+        <line num="97" count="57" type="stmt"/>
+        <line num="105" count="57" type="stmt"/>
+        <line num="107" count="57" type="cond" truecount="2" falsecount="0"/>
+        <line num="108" count="1" type="stmt"/>
+        <line num="110" count="56" type="stmt"/>
+        <line num="114" count="11" type="stmt"/>
+        <line num="115" count="46" type="stmt"/>
+        <line num="116" count="10" type="stmt"/>
+        <line num="117" count="1" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.middleware">
+      <metrics statements="18" coveredstatements="18" conditionals="8" coveredconditionals="8" methods="4" coveredmethods="4"/>
+      <file name="requestLogger.ts" path="/home/sayae/Desktop/SHITTY_CODES/DRIPS/Creditra-Backend/src/middleware/requestLogger.ts">
+        <metrics statements="18" coveredstatements="18" conditionals="8" coveredconditionals="8" methods="4" coveredmethods="4"/>
+        <line num="32" count="17" type="stmt"/>
+        <line num="38" count="39" type="stmt"/>
+        <line num="39" count="39" type="stmt"/>
+        <line num="42" count="39" type="stmt"/>
+        <line num="52" count="39" type="stmt"/>
+        <line num="54" count="39" type="stmt"/>
+        <line num="55" count="29" type="stmt"/>
+        <line num="56" count="29" type="stmt"/>
+        <line num="60" count="39" type="stmt"/>
+        <line num="61" count="31" type="stmt"/>
+        <line num="62" count="31" type="cond" truecount="2" falsecount="0"/>
+        <line num="64" count="31" type="stmt"/>
+        <line num="72" count="31" type="cond" truecount="4" falsecount="0"/>
+        <line num="73" count="12" type="stmt"/>
+        <line num="76" count="31" type="cond" truecount="2" falsecount="0"/>
+        <line num="77" count="12" type="stmt"/>
+        <line num="79" count="19" type="stmt"/>
+        <line num="83" count="39" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.routes">
+      <metrics statements="15" coveredstatements="15" conditionals="4" coveredconditionals="3" methods="3" coveredmethods="3"/>
+      <file name="credit.ts" path="/home/sayae/Desktop/SHITTY_CODES/DRIPS/Creditra-Backend/src/routes/credit.ts">
+        <metrics statements="7" coveredstatements="7" conditionals="0" coveredconditionals="0" methods="2" coveredmethods="2"/>
+        <line num="5" count="2" type="stmt"/>
+        <line num="7" count="2" type="stmt"/>
+        <line num="8" count="2" type="stmt"/>
+        <line num="10" count="2" type="stmt"/>
+        <line num="11" count="7" type="stmt"/>
+        <line num="14" count="2" type="stmt"/>
+        <line num="15" count="5" type="stmt"/>
+      </file>
+      <file name="risk.ts" path="/home/sayae/Desktop/SHITTY_CODES/DRIPS/Creditra-Backend/src/routes/risk.ts">
+        <metrics statements="8" coveredstatements="8" conditionals="4" coveredconditionals="3" methods="1" coveredmethods="1"/>
+        <line num="5" count="2" type="stmt"/>
+        <line num="7" count="2" type="stmt"/>
+        <line num="8" count="2" type="stmt"/>
+        <line num="10" count="2" type="stmt"/>
+        <line num="11" count="13" type="cond" truecount="1" falsecount="1"/>
+        <line num="12" count="13" type="cond" truecount="2" falsecount="0"/>
+        <line num="13" count="4" type="stmt"/>
+        <line num="15" count="9" type="stmt"/>
+      </file>
+    </package>
+  </project>
+</coverage>

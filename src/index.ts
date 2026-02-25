@@ -3,7 +3,7 @@ import cors from 'cors';
 import { creditRouter } from './routes/credit.js';
 import { riskRouter } from './routes/risk.js';
 
-const app = express();
+export const app = express();
 const port = process.env.PORT ?? 3000;
 
 app.use(cors());
@@ -16,6 +16,9 @@ app.get('/health', (_req, res) => {
 app.use('/api/credit', creditRouter);
 app.use('/api/risk', riskRouter);
 
-app.listen(port, () => {
-  console.log(`Creditra API listening on http://localhost:${port}`);
-});
+// Only bind to a port when this file is run directly – not during tests.
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    console.log(`Creditra API listening on http://localhost:${port}`);
+  });
+}

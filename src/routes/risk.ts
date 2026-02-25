@@ -1,6 +1,11 @@
 import { Router } from 'express';
+import { createLogger } from '../lib/logger.js';
+import { createRequestLogger } from '../middleware/requestLogger.js';
 
 export const riskRouter = Router();
+
+const logger = createLogger('risk-router');
+riskRouter.use(createRequestLogger(logger));
 
 riskRouter.post('/evaluate', (req, res) => {
   const { walletAddress } = req.body ?? {};

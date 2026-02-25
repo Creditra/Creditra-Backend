@@ -1,6 +1,11 @@
 import { Router } from 'express';
+import { createLogger } from '../lib/logger.js';
+import { createRequestLogger } from '../middleware/requestLogger.js';
 
 export const creditRouter = Router();
+
+const logger = createLogger('credit-router');
+creditRouter.use(createRequestLogger(logger));
 
 creditRouter.get('/lines', (_req, res) => {
   res.json({ creditLines: [] });
