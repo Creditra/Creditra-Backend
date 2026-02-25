@@ -1,11 +1,12 @@
 import { Router } from 'express';
+import { validationError } from '../errors/index.js';
 
 export const riskRouter = Router();
 
-riskRouter.post('/evaluate', (req, res) => {
+riskRouter.post('/evaluate', (req, res, next) => {
   const { walletAddress } = req.body ?? {};
   if (!walletAddress) {
-    return res.status(400).json({ error: 'walletAddress required' });
+    return next(validationError('walletAddress is required', { field: 'walletAddress' }));
   }
   res.json({
     walletAddress,

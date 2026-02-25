@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { notFoundError } from '../errors/index.js';
 
 export const creditRouter = Router();
 
@@ -6,6 +7,6 @@ creditRouter.get('/lines', (_req, res) => {
   res.json({ creditLines: [] });
 });
 
-creditRouter.get('/lines/:id', (req, res) => {
-  res.status(404).json({ error: 'Credit line not found', id: req.params.id });
+creditRouter.get('/lines/:id', (req, _res, next) => {
+  next(notFoundError('Credit line', req.params.id));
 });
