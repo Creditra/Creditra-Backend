@@ -16,6 +16,11 @@ app.get('/health', (_req, res) => {
 app.use('/api/credit', creditRouter);
 app.use('/api/risk', riskRouter);
 
-app.listen(port, () => {
-  console.log(`Creditra API listening on http://localhost:${port}`);
-});
+// Only start server if this file is run directly (not imported for testing)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  app.listen(port, () => {
+    console.log(`Creditra API listening on http://localhost:${port}`);
+  });
+}
+
+export default app;
