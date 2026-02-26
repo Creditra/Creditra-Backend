@@ -1,0 +1,186 @@
+openapi: 3.0.3
+info:
+  title: Creditra API
+  version: 0.1.0
+  description: |
+    Backend API for Creditra – on-chain credit scoring and risk evaluation.
+
+    ## Keeping the spec in sync
+    - Every new route **must** have a corresponding entry here before merging.
+    - Run `npm run validate:spec` in CI to catch YAML/structural errors early.
+    - Use path-level `operationId` values as the source of truth for client generation.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+tags:
+  - name: Health
+    description: Service liveness check
+  - name: Credit
+    description: Credit line management
+  - name: Risk
+    description: On-chain risk evaluation
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Liveness check
+      responses:
+        "200":
+          description: Service is running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                service: creditra-backend
+
+  /api/credit/lines:
+    get:
+      tags: [Credit]
+      operationId: listCreditLines
+      summary: List all credit lines
+      responses:
+        "200":
+          description: Array of credit lines (may be empty)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditLinesResponse"
+              example:
+                creditLines: []
+
+  /api/credit/lines/{id}:
+    get:
+      tags: [Credit]
+      operationId: getCreditLineById
+      summary: Get a credit line by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Credit line identifier
+      responses:
+        "200":
+          description: Credit line found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditLine"
+        "404":
+          description: Credit line not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Credit line not found
+                id: "abc123"
+
+  /api/risk/evaluate:
+    post:
+      tags: [Risk]
+      operationId: evaluateRisk
+      summary: Evaluate on-chain risk for a wallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RiskEvaluateRequest"
+            example:
+              walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
+      responses:
+        "200":
+          description: Risk evaluation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskEvaluateResponse"
+              example:
+                walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
+                riskScore: 0
+                creditLimit: "0"
+                interestRateBps: 0
+                message: Risk engine not yet connected; placeholder response.
+        "400":
+          description: Missing required field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: walletAddress required
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service]
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: creditra-backend
+
+    CreditLine:
+      type: object
+      description: Placeholder – expand as the credit engine is built out
+      properties:
+        id:
+          type: string
+        owner:
+          type: string
+        limit:
+          type: string
+
+    CreditLinesResponse:
+      type: object
+      required: [creditLines]
+      properties:
+        creditLines:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreditLine"
+
+    RiskEvaluateRequest:
+      type: object
+      required: [walletAddress]
+      properties:
+        walletAddress:
+          type: string
+          description: EVM-compatible wallet address
+          example: "0xAbC1234567890abcdef1234567890abcdef123456"
+
+    RiskEvaluateResponse:
+      type: object
+      required: [walletAddress, riskScore, creditLimit, interestRateBps, message]
+      properties:
+        walletAddress:
+          type: string
+        riskScore:
+          type: number
+        creditLimit:
+          type: string
+        interestRateBps:
+          type: number
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        id:
+          type: string
+          description: Present on 404 responses that reference a specific resource
