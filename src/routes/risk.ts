@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import { evaluateWallet } from "../services/riskService.js";
 import { ok, fail } from "../utils/response.js";
 
+const router = Router();
+export const riskRouter = router;
 export const riskRouter = Router();
 
 riskRouter.post(
@@ -23,3 +25,5 @@ riskRouter.post(
     }
   },
 );
+
+export default riskRouter;

@@ -10,6 +10,8 @@ import {
   InvalidTransitionError,
 } from "../services/creditService.js";
 
+const router = Router();
+export const creditRouter = router;
 export const creditRouter = Router();
 
 function handleServiceError(err: unknown, res: Response): void {
@@ -61,4 +63,7 @@ creditRouter.post(
       handleServiceError(err, res);
     }
   },
+);
+
+export default creditRouter;
 );
