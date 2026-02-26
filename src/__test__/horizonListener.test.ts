@@ -73,10 +73,10 @@ afterEach(() => {
 
 describe("resolveConfig()", () => {
   it("returns sensible defaults when no env vars are set", () => {
-    delete process.env["HORIZON_URL"];
-    delete process.env["CONTRACT_IDS"];
-    delete process.env["POLL_INTERVAL_MS"];
-    delete process.env["HORIZON_START_LEDGER"];
+    delete process.env.HORIZON_URL;
+    delete process.env.CONTRACT_IDS;
+    delete process.env.POLL_INTERVAL_MS;
+    delete process.env.HORIZON_START_LEDGER;
 
     const config = resolveConfig();
 
@@ -178,7 +178,8 @@ describe("start()", () => {
 
   it("executes an immediate first poll on start", async () => {
     jest.useFakeTimers();
-    const pollSpy = jest.fn<Promise<void>, [HorizonListenerConfig]>();
+    // pollSpy is unused but kept for future assertions
+    const _pollSpy = jest.fn<Promise<void>, [HorizonListenerConfig]>();
 
     withEnv({ CONTRACT_IDS: "MY_CONTRACT" }, async () => {
       const received: HorizonEvent[] = [];
