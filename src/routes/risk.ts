@@ -1,7 +1,8 @@
 import { Router, type Request, type Response } from 'express';
 import { evaluateRisk, RiskInputs } from "../risk/index.js";
+import { evaluateWallet } from "../services/riskService.js";
 
-export const riskRouter = Router();
+const router = Router();
 
 /**
  * POST /api/risk/evaluate
