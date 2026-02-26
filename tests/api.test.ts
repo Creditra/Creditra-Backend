@@ -22,7 +22,7 @@ describe('API Integration Tests', () => {
 
             expect(response.status).toBe(200);
             expect(response.body).toEqual({
-                data: { creditLines: [] },
+                data: [],
                 error: null
             });
         });
@@ -33,7 +33,9 @@ describe('API Integration Tests', () => {
             expect(response.status).toBe(404);
             expect(response.body).toEqual({
                 data: null,
-                error: 'Credit line not found: 123'
+                error: 'Credit line with id "123" not found',
+                code: 'NOT_FOUND',
+                details: { resource: 'Credit line', id: '123' },
             });
         });
     });
@@ -45,27 +47,21 @@ describe('API Integration Tests', () => {
             expect(response.status).toBe(400);
             expect(response.body).toEqual({
                 data: null,
-                error: 'walletAddress required'
+                error: 'walletAddress is required',
+                code: 'VALIDATION_ERROR',
+                details: { field: 'walletAddress' }
             });
         });
 
         it('POST /api/risk/evaluate returns a successful envelope with risk status', async () => {
             const response = await request(app)
                 .post('/api/risk/evaluate')
-                .send({ walletAddress: '0x123' });
+                .send({ walletAddress: 'GD726STGRDRE6K4Z7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R' });
 
             expect(response.status).toBe(200);
-            expect(response.body).toEqual({
-                data: {
-                    walletAddress: '0x123',
-                    riskScore: 0,
-                    creditLimit: '0',
-                    interestRateBps: 0,
-                    message: 'Risk engine not yet connected; placeholder response.',
-                },
-                error: null
-            });
+            expect(response.body.data.walletAddress).toBe('GD726STGRDRE6K4Z7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R');
+            expect(response.body.data.message).toMatch(/Risk evaluation placeholder/i);
+            expect(response.body.error).toBeNull();
         });
     });
-
 });

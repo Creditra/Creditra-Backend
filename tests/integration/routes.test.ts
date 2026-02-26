@@ -13,7 +13,7 @@ describe('Integration – error handling across real routes', () => {
         const res = await request(app).get('/api/credit/lines');
         expect(res.status).toBe(200);
         expect(res.body).toEqual({
-            data: { creditLines: [] },
+            data: [],
             error: null
         });
     });
@@ -48,10 +48,10 @@ describe('Integration – error handling across real routes', () => {
     it('POST /api/risk/evaluate with walletAddress should return 200', async () => {
         const res = await request(app)
             .post('/api/risk/evaluate')
-            .send({ walletAddress: '0xabc' });
+            .send({ walletAddress: 'GD726STGRDRE6K4Z7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R' });
 
         expect(res.status).toBe(200);
-        expect(res.body.data.walletAddress).toBe('0xabc');
+        expect(res.body.data.walletAddress).toBe('GD726STGRDRE6K4Z7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R7R');
         expect(res.body.error).toBeNull();
     });
 
