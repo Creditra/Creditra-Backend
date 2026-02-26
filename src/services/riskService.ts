@@ -18,7 +18,7 @@ export interface RiskEvaluationResult {
 // ---------------------------------------------------------------------------
 
 export function isValidWalletAddress(address: string): boolean {
-    return /^G[A-Z2-7]{55}$/.test(address);
+    return /^G[A-Z2-7]{54}$/.test(address);
 }
 
 

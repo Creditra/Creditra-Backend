@@ -1,15 +1,19 @@
-
 export type CreditLineStatus = "active" | "suspended" | "closed";
 
 export interface CreditLineEvent {
-    action: "created" | "suspended" | "closed";
+    action: "created" | "suspended" | "closed" | "repayment";
     timestamp: string;
     actor?: string;
+    amount?: number;
+    transactionReference?: string;
 }
 
 export interface CreditLine {
     id: string;
     status: CreditLineStatus;
+    creditLimit: number;
+    utilizedAmount: number;
+    currency: string;
     createdAt: string;
     updatedAt: string;
     events: CreditLineEvent[];
@@ -34,6 +38,24 @@ export class CreditLineNotFoundError extends Error {
     }
 }
 
+export class InvalidRepaymentError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "InvalidRepaymentError";
+    }
+}
+
+export interface RepaymentRequest {
+    amount: number;
+    transactionReference?: string;
+}
+
+export interface RepaymentResult {
+    creditLine: CreditLine;
+    repaymentAmount: number;
+    newUtilizedAmount: number;
+}
+
 export const _store = new Map<string, CreditLine>();
 
 export function _resetStore(): void {
@@ -47,11 +69,16 @@ function now(): string {
 export function createCreditLine(
     id: string,
     status: CreditLineStatus = "active",
+    creditLimit: number = 1000,
+    currency: string = "USDC",
     ): CreditLine {
     const ts = now();
     const line: CreditLine = {
         id,
         status,
+        creditLimit,
+        utilizedAmount: 0,
+        currency,
         createdAt: ts,
         updatedAt: ts,
         events: [{ action: "created", timestamp: ts }],
@@ -98,4 +125,41 @@ export function closeCreditLine(id: string): CreditLine {
     line.events.push({ action: "closed", timestamp: ts });
 
     return line;
+}
+
+export function repayCreditLine(id: string, request: RepaymentRequest): RepaymentResult {
+    const line = _store.get(id);
+    if (!line) throw new CreditLineNotFoundError(id);
+
+    if (line.status !== "active") {
+        throw new InvalidTransitionError(line.status, "repay");
+    }
+
+    if (request.amount <= 0) {
+        throw new InvalidRepaymentError("Repayment amount must be positive");
+    }
+
+    if (request.amount > line.utilizedAmount) {
+        throw new InvalidRepaymentError(
+            `Repayment amount (${request.amount}) cannot exceed utilized amount (${line.utilizedAmount})`
+        );
+    }
+
+    const ts = now();
+    const newUtilizedAmount = line.utilizedAmount - request.amount;
+    
+    line.utilizedAmount = newUtilizedAmount;
+    line.updatedAt = ts;
+    line.events.push({ 
+        action: "repayment", 
+        timestamp: ts,
+        amount: request.amount,
+        transactionReference: request.transactionReference
+    });
+
+    return {
+        creditLine: line,
+        repaymentAmount: request.amount,
+        newUtilizedAmount
+    };
 }

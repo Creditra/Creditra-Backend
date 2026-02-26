@@ -1,18 +1,16 @@
 
 import express, { Express } from "express";
 import request from "supertest";
-import { jest } from "@jest/globals";
+import { vi } from "vitest";
 
-jest.mock("../../services/riskService.js", () => ({
-    evaluateWallet: jest.fn(),
+vi.mock("../services/riskService.js", () => ({
+    evaluateWallet: vi.fn(),
 }));
 
-import riskRouter from "../../routes/risk.js";
-import { evaluateWallet } from "../../services/riskService.js";
+import riskRouter from "../routes/risk.js";
+import { evaluateWallet } from "../services/riskService.js";
 
-const mockEvaluateWallet = evaluateWallet as jest.MockedFunction<
-    typeof evaluateWallet
->;
+const mockEvaluateWallet = evaluateWallet as ReturnType<typeof vi.fn>;
 
 function buildApp(): Express {
     const app = express();

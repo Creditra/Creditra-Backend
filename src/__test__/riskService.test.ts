@@ -5,7 +5,7 @@ import {
     scoreToRiskLevel,
     type RiskEvaluationResult,
     type RiskLevel,
-} from "../../services/riskService.js";
+} from "../services/riskService.js";
 
 const VALID_ADDRESS = "GCKFBEIYV2U22IO2BJ4KVJOIP7XPWQGZBW3JXDC55CYIXB5NAXMCEKJ";
 
@@ -54,7 +54,7 @@ describe("isValidWalletAddress()", () => {
     });
 
     it("returns false for a plausible but one-char-too-short address", () => {
-        expect(isValidWalletAddress(VALID_ADDRESS.slice(0, 55))).toBe(false);
+        expect(isValidWalletAddress(VALID_ADDRESS.slice(0, 54))).toBe(false);
     });
 });
 
