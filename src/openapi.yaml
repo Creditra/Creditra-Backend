@@ -16,7 +16,7 @@ servers:
 
 tags:
   - name: Health
-    description: Service liveness check
+    description: Service liveness and dependency health check
   - name: Credit
     description: Credit line management
   - name: Risk
@@ -27,17 +27,70 @@ paths:
     get:
       tags: [Health]
       operationId: getHealth
-      summary: Liveness check
+      summary: Dependency health check
+      description: |
+        Returns the health status of the service and its key dependencies
+        (database, Horizon listener, Redis, risk engine).
+
+        **HTTP status mapping**
+        - `200` – service is `ok` or `degraded` (partially operational)
+        - `503` – service is `down` (one or more critical dependencies unreachable)
       responses:
         "200":
-          description: Service is running
+          description: Service is ok or degraded
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthResponse"
+                $ref: "#/components/schemas/HealthEnvelope"
               example:
-                status: ok
-                service: creditra-backend
+                data:
+                  status: ok
+                  service: creditra-backend
+                  checkedAt: "2026-02-26T12:00:00.000Z"
+                  dependencies:
+                    database: { status: ok }
+                    horizon: { status: ok }
+                    redis:
+                      {
+                        status: ok,
+                        note: Redis not yet integrated; check skipped.,
+                      }
+                    riskEngine:
+                      {
+                        status: ok,
+                        note: Risk engine not yet integrated; check skipped.,
+                      }
+                error: null
+        "503":
+          description: One or more dependencies are down
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthEnvelope"
+              example:
+                data:
+                  status: down
+                  service: creditra-backend
+                  checkedAt: "2026-02-26T12:00:00.000Z"
+                  dependencies:
+                    database:
+                      { status: down, error: DATABASE_URL is not configured }
+                    horizon:
+                      {
+                        status: down,
+                        error: Horizon listener has not been started,
+                      }
+                    redis:
+                      {
+                        status: ok,
+                        note: Redis not yet integrated; check skipped.,
+                      }
+                    riskEngine:
+                      {
+                        status: ok,
+                        note: Risk engine not yet integrated; check skipped.,
+                      }
+                error: null
 
   /api/credit/lines:
     get:
@@ -120,16 +173,59 @@ paths:
 
 components:
   schemas:
-    HealthResponse:
+    DependencyStatus:
       type: object
-      required: [status, service]
+      required: [status]
       properties:
         status:
           type: string
-          example: ok
+          enum: [ok, degraded, down]
+          description: Reachability status of this dependency
+        error:
+          type: string
+          description: Present when status is degraded or down
+        note:
+          type: string
+          description: Informational message (e.g. for stubbed checks)
+
+    HealthReport:
+      type: object
+      required: [status, service, checkedAt, dependencies]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, down]
+          description: Rolled-up status across all dependencies
         service:
           type: string
           example: creditra-backend
+        checkedAt:
+          type: string
+          format: date-time
+          description: ISO-8601 timestamp of when checks were run
+        dependencies:
+          type: object
+          required: [database, horizon, redis, riskEngine]
+          properties:
+            database:
+              $ref: "#/components/schemas/DependencyStatus"
+            horizon:
+              $ref: "#/components/schemas/DependencyStatus"
+            redis:
+              $ref: "#/components/schemas/DependencyStatus"
+            riskEngine:
+              $ref: "#/components/schemas/DependencyStatus"
+
+    HealthEnvelope:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          $ref: "#/components/schemas/HealthReport"
+        error:
+          type: string
+          nullable: true
+          example: null
 
     CreditLine:
       type: object
@@ -162,7 +258,8 @@ components:
 
     RiskEvaluateResponse:
       type: object
-      required: [walletAddress, riskScore, creditLimit, interestRateBps, message]
+      required:
+        [walletAddress, riskScore, creditLimit, interestRateBps, message]
       properties:
         walletAddress:
           type: string
