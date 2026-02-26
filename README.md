@@ -71,6 +71,10 @@ The PostgreSQL schema is designed and documented in **[docs/data-model.md](docs/
 - `GET /api/credit/lines/:id` — Get credit line by id (placeholder)
 - `POST /api/risk/evaluate` — Request risk evaluation; body: `{ "walletAddress": "..." }`
 
+## Testing
+
+- Run credit lines endpoint tests: `npm test -- src/__test__/creditLinesEndpoints.test.ts`
+
 ## Project layout
 
 - `src/index.ts` — App entry, middleware, route mounting
