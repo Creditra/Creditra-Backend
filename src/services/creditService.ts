@@ -34,10 +34,19 @@ export class CreditLineNotFoundError extends Error {
     }
 }
 
-export const _store = new Map<string, CreditLine>();
+export const _store = new Map<string, Map<string, CreditLine>>();
 
 export function _resetStore(): void {
     _store.clear();
+}
+
+function getTenantStore(tenantId: string): Map<string, CreditLine> {
+    let tenantStore = _store.get(tenantId);
+    if (!tenantStore) {
+        tenantStore = new Map<string, CreditLine>();
+        _store.set(tenantId, tenantStore);
+    }
+    return tenantStore;
 }
 
 function now(): string {
@@ -45,6 +54,7 @@ function now(): string {
 }
 
 export function createCreditLine(
+    tenantId: string,
     id: string,
     status: CreditLineStatus = "active",
     ): CreditLine {
@@ -56,20 +66,23 @@ export function createCreditLine(
         updatedAt: ts,
         events: [{ action: "created", timestamp: ts }],
     };
-    _store.set(id, line);
+    getTenantStore(tenantId).set(id, line);
     return line;
 }
 
-export function getCreditLine(id: string): CreditLine | undefined {
-    return _store.get(id);
+export function getCreditLine(
+    tenantId: string,
+    id: string,
+): CreditLine | undefined {
+    return _store.get(tenantId)?.get(id);
 }
 
-export function listCreditLines(): CreditLine[] {
-    return Array.from(_store.values());
+export function listCreditLines(tenantId: string): CreditLine[] {
+    return Array.from(_store.get(tenantId)?.values() ?? []);
 }
 
-export function suspendCreditLine(id: string): CreditLine {
-    const line = _store.get(id);
+export function suspendCreditLine(tenantId: string, id: string): CreditLine {
+    const line = _store.get(tenantId)?.get(id);
     if (!line) throw new CreditLineNotFoundError(id);
 
     if (line.status !== "active") {
@@ -84,8 +97,8 @@ export function suspendCreditLine(id: string): CreditLine {
     return line;
 }
 
-export function closeCreditLine(id: string): CreditLine {
-    const line = _store.get(id);
+export function closeCreditLine(tenantId: string, id: string): CreditLine {
+    const line = _store.get(tenantId)?.get(id);
     if (!line) throw new CreditLineNotFoundError(id);
 
     if (line.status === "closed") {

@@ -27,6 +27,8 @@ paths:
     get:
       summary: Get Credit Lines
       description: Returns all available credit lines.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
       responses:
         '200':
           description: OK
@@ -40,6 +42,7 @@ paths:
       summary: Get Credit Line by ID
       description: Returns details of a specific credit line.
       parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
         - name: id
           in: path
           required: true
@@ -84,6 +87,14 @@ paths:
                 $ref: '#/components/schemas/FailureResponse'
 
 components:
+  parameters:
+    TenantIdHeader:
+      name: x-tenant-id
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Tenant identifier used for data isolation.
   schemas:
     SuccessResponse:
       type: object
