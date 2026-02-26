@@ -1,6 +1,6 @@
 import express, { type Express } from "express";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import creditRouter from "../routes/credit.js";
+import { creditRouter } from "../routes/credit.js";
 import { _resetStore, createCreditLine } from "../services/creditService.js";
 import { requestJson } from "./testHttp.js";
 

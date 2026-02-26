@@ -44,6 +44,8 @@ paths:
       tags: [Credit]
       operationId: listCreditLines
       summary: List all credit lines
+      parameters:
+        - $ref: "#/components/parameters/TenantIdHeader"
       responses:
         "200":
           description: Array of credit lines (may be empty)
@@ -60,6 +62,7 @@ paths:
       operationId: getCreditLineById
       summary: Get a credit line by ID
       parameters:
+        - $ref: "#/components/parameters/TenantIdHeader"
         - name: id
           in: path
           required: true
@@ -119,6 +122,14 @@ paths:
                 error: walletAddress required
 
 components:
+  parameters:
+    TenantIdHeader:
+      name: x-tenant-id
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Tenant identifier used for data isolation.
   schemas:
     HealthResponse:
       type: object

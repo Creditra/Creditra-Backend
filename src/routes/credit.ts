@@ -27,7 +27,6 @@ function handleServiceError(err: unknown, res: Response): void {
   fail(res, err, 500);
 }
 
-<<<<<<< HEAD
 creditRouter.get("/lines", (_req: Request, res: Response): void => {
   ok(res, listCreditLines(getTenantId(res)));
 });

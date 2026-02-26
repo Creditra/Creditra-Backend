@@ -5,7 +5,7 @@ vi.mock("../services/riskService.js", () => ({
   evaluateWallet: vi.fn(),
 }));
 
-import riskRouter from "../routes/risk.js";
+import { riskRouter } from "../routes/risk.js";
 import { evaluateWallet } from "../services/riskService.js";
 import { requestJson } from "./testHttp.js";
 
