@@ -1,15 +1,17 @@
 
+import { beforeEach, describe, expect, it } from "vitest";
+
 import {
     evaluateWallet,
     isValidWalletAddress,
     scoreToRiskLevel,
     type RiskEvaluationResult,
     type RiskLevel,
-} from "../../services/riskService.js";
+} from "../services/riskService.js";
 
-const VALID_ADDRESS = "GCKFBEIYV2U22IO2BJ4KVJOIP7XPWQGZBW3JXDC55CYIXB5NAXMCEKJ";
+const VALID_ADDRESS = "GCKFBEIYV2U22IO2BJ4KVJOIP7XPWQGZBW3JXDC55CYIXB5NAXMCEKJA";
 
-const VALID_ADDRESS_2 = "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN";
+const VALID_ADDRESS_2 = "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA";
 
 
 describe("isValidWalletAddress()", () => {

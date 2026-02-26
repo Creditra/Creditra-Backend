@@ -106,6 +106,10 @@ npm run test:watch
 - `GET /api/credit/lines/:id` — Get credit line by id (placeholder)
 - `POST /api/risk/evaluate` — Request risk evaluation; body: `{ "walletAddress": "..." }`
 
+### Tenant context
+
+Credit line endpoints are tenant-scoped. Include `x-tenant-id: <tenant-id>` on requests to `/api/credit/*`.
+
 ## Project layout
 
 ```

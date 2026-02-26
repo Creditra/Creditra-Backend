@@ -9,8 +9,11 @@ import {
   CreditLineNotFoundError,
   InvalidTransitionError,
 } from "../services/creditService.js";
+import { getTenantId, requireTenant } from "../middleware/tenantContext.js";
 
 export const creditRouter = Router();
+
+creditRouter.use(requireTenant);
 
 function handleServiceError(err: unknown, res: Response): void {
   if (err instanceof CreditLineNotFoundError) {
@@ -24,12 +27,13 @@ function handleServiceError(err: unknown, res: Response): void {
   fail(res, err, 500);
 }
 
+<<<<<<< HEAD
 creditRouter.get("/lines", (_req: Request, res: Response): void => {
-  ok(res, listCreditLines());
+  ok(res, listCreditLines(getTenantId(res)));
 });
 
 creditRouter.get("/lines/:id", (req: Request, res: Response): void => {
-  const line = getCreditLine(req.params["id"] as string);
+  const line = getCreditLine(getTenantId(res), req.params["id"] as string);
   if (!line) {
     fail(res, `Credit line "${req.params["id"]}" not found.`, 404);
     return;
@@ -42,7 +46,7 @@ creditRouter.post(
   adminAuth,
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const line = suspendCreditLine(req.params["id"] as string);
+      const line = suspendCreditLine(getTenantId(res), req.params["id"] as string);
       ok(res, { line, message: "Credit line suspended." });
     } catch (err) {
       handleServiceError(err, res);
@@ -55,7 +59,7 @@ creditRouter.post(
   adminAuth,
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const line = closeCreditLine(req.params["id"] as string);
+      const line = closeCreditLine(getTenantId(res), req.params["id"] as string);
       ok(res, { line, message: "Credit line closed." });
     } catch (err) {
       handleServiceError(err, res);
