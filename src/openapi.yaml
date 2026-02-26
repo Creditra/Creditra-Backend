@@ -95,7 +95,7 @@ paths:
             schema:
               $ref: "#/components/schemas/RiskEvaluateRequest"
             example:
-              walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
+              walletAddress: "GCKFBEIYV2U22IO2BJ4KVJOIP7XPWQGZBW3JXDC55CYIXB5NAXMCEKJ"
       responses:
         "200":
           description: Risk evaluation result
@@ -104,7 +104,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/RiskEvaluateResponse"
               example:
-                walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
+                walletAddress: "GCKFBEIYV2U22IO2BJ4KVJOIP7XPWQGZBW3JXDC55CYIXB5NAXMCEKJ"
                 riskScore: 0
                 creditLimit: "0"
                 interestRateBps: 0
@@ -117,6 +117,61 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: walletAddress required
+
+  /api/risk/history/{walletAddress}:
+    get:
+      tags: [Risk]
+      operationId: getRiskHistory
+      summary: Get risk evaluation history for a wallet
+      description: Retrieves the history of risk evaluations for a given wallet address, including risk scores, credit limits, and timestamps.
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^G[A-Z2-7]{55}$'
+          description: Stellar wallet address (56 characters starting with 'G')
+          example: 'GCKFBEIYV2U22IO2BJ4KVJOIP7XPWQGZBW3JXDC55CYIXB5NAXMCEKJ'
+      responses:
+        "200":
+          description: Risk evaluation history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskHistoryResponse"
+              examples:
+                withHistory:
+                  summary: Wallet with evaluation history
+                  value:
+                    data:
+                      walletAddress: 'GCKFBEIYV2U22IO2BJ4KVJOIP7XPWQGZBW3JXDC55CYIXB5NAXMCEKJ'
+                      evaluations:
+                        - id: '123e4567-e89b-12d3-a456-426614174001'
+                          riskScore: 45
+                          riskLevel: 'medium'
+                          suggestedLimit: '10000.00'
+                          interestRateBps: 500
+                          inputs:
+                            transactionCount: 100
+                            avgBalance: 5000
+                          evaluatedAt: '2026-02-26T10:00:00.000Z'
+                    error: null
+                noHistory:
+                  summary: Wallet with no evaluation history
+                  value:
+                    data:
+                      walletAddress: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'
+                      evaluations: []
+                    error: null
+        "400":
+          description: Invalid wallet address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: 'Invalid wallet address: "BAD". Must start with ''G'' and be 56 alphanumeric characters.'
 
 components:
   schemas:
@@ -157,8 +212,9 @@ components:
       properties:
         walletAddress:
           type: string
-          description: EVM-compatible wallet address
-          example: "0xAbC1234567890abcdef1234567890abcdef123456"
+          description: Stellar wallet address
+          pattern: '^G[A-Z2-7]{55}$'
+          example: "GCKFBEIYV2U22IO2BJ4KVJOIP7XPWQGZBW3JXDC55CYIXB5NAXMCEKJ"
 
     RiskEvaluateResponse:
       type: object
@@ -174,6 +230,67 @@ components:
           type: number
         message:
           type: string
+
+    RiskHistoryResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          type: object
+          properties:
+            walletAddress:
+              type: string
+              description: The wallet address queried
+            evaluations:
+              type: array
+              description: Array of risk evaluations ordered by date (newest first)
+              items:
+                $ref: '#/components/schemas/RiskEvaluation'
+        error:
+          type: string
+          nullable: true
+
+    RiskEvaluation:
+      type: object
+      description: A single risk evaluation record
+      required: [id, riskScore, riskLevel, suggestedLimit, interestRateBps, inputs, evaluatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for this evaluation
+          example: '123e4567-e89b-12d3-a456-426614174001'
+        riskScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Numeric risk score (0-100)
+          example: 45
+        riskLevel:
+          type: string
+          enum: [low, medium, high]
+          description: Risk level derived from score (low < 40, medium 40-69, high >= 70)
+          example: 'medium'
+        suggestedLimit:
+          type: string
+          description: Suggested credit limit as a decimal string
+          example: '10000.00'
+        interestRateBps:
+          type: integer
+          description: Suggested interest rate in basis points (1 bps = 0.01%)
+          example: 500
+        inputs:
+          type: object
+          nullable: true
+          description: Optional snapshot of inputs used for this evaluation (supports future risk engine outputs)
+          example:
+            transactionCount: 100
+            avgBalance: 5000
+        evaluatedAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the evaluation was performed
+          example: '2026-02-26T10:00:00.000Z'
 
     ErrorResponse:
       type: object
