@@ -9,6 +9,8 @@ import swaggerUi from 'swagger-ui-express';
 import { creditRouter } from './routes/credit.js';
 import { riskRouter } from './routes/risk.js';
 import { ok } from './utils/response.js';
+import * as horizonListener from './services/horizonListener.js';
+import { processEvent } from './services/eventHandler.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const openapiSpec = yaml.parse(
@@ -16,7 +18,6 @@ const openapiSpec = yaml.parse(
 );
 
 const app = express();
-export const app = express();
 const port = process.env.PORT ?? 3000;
 
 app.use(cors());
@@ -24,10 +25,10 @@ app.use(express.json());
 
 // ── Docs ────────────────────────────────────────────────────────────────────
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
-app.get('/docs.json', (_req, res) => res.json(openapiSpec));
+app.get('/docs.json', (_req: express.Request, res: express.Response) => res.json(openapiSpec));
 
 // ── Routes ───────────────────────────────────────────────────────────────────
-app.get('/health', (_req, res) => {
+app.get('/health', (_req: express.Request, res: express.Response) => {
   ok(res, { status: 'ok', service: 'creditra-backend' });
 });
 
@@ -45,4 +46,8 @@ if (process.env.NODE_ENV !== 'test') {
   app.listen(port, () => {
     console.log(`Creditra API listening on http://localhost:${port}`);
   });
+
+  // Start Horizon Listener
+  horizonListener.onEvent(processEvent);
+  void horizonListener.start();
 }

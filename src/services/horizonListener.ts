@@ -52,7 +52,7 @@ export function resolveConfig(): HorizonListenerConfig {
 
     const contractIdsRaw = process.env["CONTRACT_IDS"] ?? "";
     const contractIds = contractIdsRaw
-        ? contractIdsRaw.split(",").map((id) => id.trim()).filter(Boolean)
+        ? contractIdsRaw.split(",").map((id: string) => id.trim()).filter(Boolean)
         : [];
 
     const pollIntervalMs = parseInt(
@@ -81,12 +81,12 @@ export function clearEventHandlers(): void {
 async function dispatchEvent(event: HorizonEvent): Promise<void> {
     for (const handler of eventHandlers) {
         try {
-        await handler(event);
+            await handler(event);
         } catch (err) {
-        console.error(
-            "[HorizonListener] Event handler threw an error:",
-            err,
-        );
+            console.error(
+                "[HorizonListener] Event handler threw an error:",
+                err,
+            );
         }
     }
 }
@@ -104,17 +104,31 @@ export async function pollOnce(config: HorizonListenerConfig): Promise<void> {
     );
 
     if (config.contractIds.length > 0) {
+        const eventTypes = ["credit_line_created", "draw", "repay", "status_change"];
+        const topic = eventTypes[Math.floor(Math.random() * eventTypes.length)]!;
+
+        let data = {};
+        const walletAddress = "GXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+
+        if (topic === "credit_line_created") {
+            data = { walletAddress };
+        } else if (topic === "draw" || topic === "repay") {
+            data = { walletAddress, amount: "100.00" };
+        } else if (topic === "status_change") {
+            data = { walletAddress, newStatus: "suspended" };
+        }
+
         const simulatedEvent: HorizonEvent = {
-        ledger: 1000,
-        timestamp: new Date().toISOString(),
-        contractId: config.contractIds[0]!,
-        topics: ["credit_line_created"],
-        data: JSON.stringify({ walletAddress: "GXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" }),
+            ledger: 1000 + Math.floor(Math.random() * 100),
+            timestamp: new Date().toISOString(),
+            contractId: config.contractIds[0]!,
+            topics: [topic],
+            data: JSON.stringify(data),
         };
 
         console.log(
-        "[HorizonListener] Simulated event received:",
-        JSON.stringify(simulatedEvent),
+            `[HorizonListener] Simulated event received (${topic}):`,
+            JSON.stringify(simulatedEvent),
         );
 
         await dispatchEvent(simulatedEvent);

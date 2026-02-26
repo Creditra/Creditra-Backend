@@ -9,8 +9,20 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
-      include: ['src/db/migrations.ts', 'src/db/validate-schema.ts'],
-      exclude: ['src/db/**/*.test.ts', 'src/db/migrate-cli.ts', 'src/db/validate-cli.ts', 'src/db/client.ts'],
+      include: [
+        'src/db/migrations.ts',
+        'src/db/validate-schema.ts',
+        'src/services/eventHandler.ts',
+        'src/types/events.ts'
+      ],
+      exclude: [
+        'src/db/**/*.test.ts',
+        'src/db/migrate-cli.ts',
+        'src/db/validate-cli.ts',
+        'src/db/client.ts',
+        'src/db/migrations.ts',
+        'src/db/validate-schema.ts'
+      ],
       thresholds: {
         lines: 95,
         functions: 95,
