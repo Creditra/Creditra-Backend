@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1772074005800" clover="3.2.0">
+  <project timestamp="1772074005800" name="All files">
+    <metrics statements="34" coveredstatements="34" conditionals="34" coveredconditionals="34" methods="6" coveredmethods="6" elements="74" coveredelements="74" complexity="0" loc="34" ncloc="34" packages="3" files="3" classes="3"/>
+    <package name="data">
+      <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+      <file name="creditLines.ts" path="/Users/mac/Desktop/Creditra-Backend/src/data/creditLines.ts">
+        <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+        <line num="10" count="1" type="stmt"/>
+      </file>
+    </package>
+    <package name="routes">
+      <metrics statements="12" coveredstatements="12" conditionals="2" coveredconditionals="2" methods="3" coveredmethods="3"/>
+      <file name="credit.ts" path="/Users/mac/Desktop/Creditra-Backend/src/routes/credit.ts">
+        <metrics statements="12" coveredstatements="12" conditionals="2" coveredconditionals="2" methods="3" coveredmethods="3"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="8" count="18" type="stmt"/>
+        <line num="9" count="18" type="stmt"/>
+        <line num="12" count="1" type="stmt"/>
+        <line num="13" count="9" type="stmt"/>
+        <line num="14" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="15" count="1" type="stmt"/>
+        <line num="17" count="1" type="stmt"/>
+      </file>
+    </package>
+    <package name="utils">
+      <metrics statements="21" coveredstatements="21" conditionals="32" coveredconditionals="32" methods="3" coveredmethods="3"/>
+      <file name="paginate.ts" path="/Users/mac/Desktop/Creditra-Backend/src/utils/paginate.ts">
+        <metrics statements="21" coveredstatements="21" conditionals="32" coveredconditionals="32" methods="3" coveredmethods="3"/>
+        <line num="19" count="1" type="stmt"/>
+        <line num="23" count="24" type="cond" truecount="2" falsecount="0"/>
+        <line num="24" count="24" type="cond" truecount="2" falsecount="0"/>
+        <line num="25" count="24" type="cond" truecount="2" falsecount="0"/>
+        <line num="26" count="24" type="cond" truecount="2" falsecount="0"/>
+        <line num="27" count="24" type="cond" truecount="2" falsecount="0"/>
+        <line num="28" count="24" type="cond" truecount="2" falsecount="0"/>
+        <line num="31" count="24" type="stmt"/>
+        <line num="32" count="184" type="cond" truecount="4" falsecount="0"/>
+        <line num="33" count="156" type="cond" truecount="4" falsecount="0"/>
+        <line num="34" count="138" type="stmt"/>
+        <line num="38" count="24" type="stmt"/>
+        <line num="39" count="144" type="cond" truecount="2" falsecount="0"/>
+        <line num="40" count="144" type="cond" truecount="2" falsecount="0"/>
+        <line num="41" count="144" type="cond" truecount="4" falsecount="0"/>
+        <line num="42" count="122" type="cond" truecount="4" falsecount="0"/>
+        <line num="43" count="12" type="stmt"/>
+        <line num="47" count="24" type="stmt"/>
+        <line num="48" count="24" type="stmt"/>
+        <line num="49" count="24" type="stmt"/>
+        <line num="51" count="24" type="stmt"/>
+      </file>
+    </package>
+  </project>
+</coverage>
