@@ -2,30 +2,29 @@ import { Router, Request, Response } from "express";
 import { createLogger } from '../lib/logger.js';
 import { createRequestLogger } from '../middleware/requestLogger.js';
 import { evaluateWallet } from "../services/riskService.js";
+import { ok, fail } from "../utils/response.js";
 
-const router = Router();
+export const riskRouter = Router();
 
 const logger = createLogger('risk-router');
-router.use(createRequestLogger(logger));
+riskRouter.use(createRequestLogger(logger));
 
-router.post(
+riskRouter.post(
   "/evaluate",
   async (req: Request, res: Response): Promise<void> => {
     const { walletAddress } = req.body as { walletAddress?: string };
 
     if (!walletAddress) {
-      res.status(400).json({ error: "walletAddress is required" });
+      fail(res, "walletAddress is required", 400);
       return;
     }
 
     try {
       const result = await evaluateWallet(walletAddress);
-      res.json(result);
+      ok(res, result);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
-      res.status(400).json({ error: message });
+      fail(res, message, 400);
     }
   },
 );
-
-export default router;
