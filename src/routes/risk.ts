@@ -1,25 +1,26 @@
-import { Router, Request, Response } from "express";
-import { evaluateWallet } from "../services/riskService.js";
-import { ok, fail } from "../utils/response.js";
+import { Router, Request, Response, NextFunction } from 'express';
+import { evaluateWallet } from '../services/riskService.js';
+import { ok } from '../utils/response.js';
+import { validationError } from '../errors/index.js';
 
 export const riskRouter = Router();
 
 riskRouter.post(
-  "/evaluate",
-  async (req: Request, res: Response): Promise<void> => {
+  '/evaluate',
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { walletAddress } = req.body as { walletAddress?: string };
 
     if (!walletAddress) {
-      fail(res, "walletAddress is required", 400);
-      return;
+      return next(validationError('walletAddress is required', { field: 'walletAddress' }));
     }
 
     try {
       const result = await evaluateWallet(walletAddress);
       ok(res, result);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      fail(res, message, 400);
+      // Upstream treats evaluation failures as 400.
+      const message = err instanceof Error ? err.message : 'Unknown evaluation error';
+      next(validationError(message));
     }
   },
 );

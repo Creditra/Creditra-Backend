@@ -5,12 +5,22 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['tests/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
-      include: ['src/db/migrations.ts', 'src/db/validate-schema.ts'],
-      exclude: ['src/db/**/*.test.ts', 'src/db/migrate-cli.ts', 'src/db/validate-cli.ts', 'src/db/client.ts'],
+      include: [
+        'src/errors/**',
+        'src/middleware/**',
+        'src/db/migrations.ts',
+        'src/db/validate-schema.ts'
+      ],
+      exclude: [
+        'src/db/**/*.test.ts',
+        'src/db/migrate-cli.ts',
+        'src/db/validate-cli.ts',
+        'src/db/client.ts'
+      ],
       thresholds: {
         lines: 95,
         functions: 95,
@@ -21,7 +31,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
+      '@': resolve(__dirname, './src'),
     },
   },
 });

@@ -14,6 +14,11 @@ export interface ApiResponse<T = unknown> {
  * @param statusCode The HTTP status code (defaults to 200)
  */
 export const ok = <T>(res: Response, data: T, statusCode = 200): Response => {
+    // If data is already an envelope (wrapped by another call), don't double wrap
+    if (data && typeof data === 'object' && 'data' in data && 'error' in data) {
+        return res.status(statusCode).json(data);
+    }
+
     const payload: ApiResponse<T> = {
         data,
         error: null,

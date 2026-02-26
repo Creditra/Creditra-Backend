@@ -9,6 +9,7 @@ import swaggerUi from 'swagger-ui-express';
 import { creditRouter } from './routes/credit.js';
 import { riskRouter } from './routes/risk.js';
 import { ok } from './utils/response.js';
+import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const openapiSpec = yaml.parse(
@@ -16,7 +17,6 @@ const openapiSpec = yaml.parse(
 );
 
 const app = express();
-export const app = express();
 const port = process.env.PORT ?? 3000;
 
 app.use(cors());
@@ -34,15 +34,17 @@ app.get('/health', (_req, res) => {
 app.use('/api/credit', creditRouter);
 app.use('/api/risk', riskRouter);
 
-app.listen(port, () => {
-  console.log(`Creditra API listening on http://localhost:${port}`);
-  console.log(`Swagger UI available at  http://localhost:${port}/docs`);
-});
+// ── Global error handling ────────────────────────────────────────────
+app.use(notFoundHandler); // catch unmatched routes → 404
+app.use(errorHandler);    // centralised error serialisation
 
-export { app };  // exported for tests
+// ── Export for testing ───────────────────────────────────────────────
+export { app };
+
 // Only start the server if not imported by tests setup
 if (process.env.NODE_ENV !== 'test') {
   app.listen(port, () => {
     console.log(`Creditra API listening on http://localhost:${port}`);
+    console.log(`Swagger UI available at  http://localhost:${port}/docs`);
   });
 }
