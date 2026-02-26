@@ -1,0 +1,112 @@
+openapi: 3.0.3
+info:
+  title: Creditra Backend API
+  version: 0.1.0
+  description: >
+    API Documentation for the Creditra Backend. All responses follow a unified envelope format:
+    `{ data: any | null, error: string | null }`.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      summary: Health Check
+      description: Returns the health status of the application.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/credit/lines:
+    get:
+      summary: Get Credit Lines
+      description: Returns all available credit lines.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/credit/lines/{id}:
+    get:
+      summary: Get Credit Line by ID
+      description: Returns details of a specific credit line.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '404':
+          description: Credit Line Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FailureResponse'
+
+  /api/risk/evaluate:
+    post:
+      summary: Evaluate Risk
+      description: Evaluates risk for a given wallet address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - walletAddress
+              properties:
+                walletAddress:
+                  type: string
+                  example: '0x1234567890abcdef'
+      responses:
+        '200':
+          description: Risk Evaluation Result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Bad Request (Missing walletAddress)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FailureResponse'
+
+components:
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        data:
+          description: The payload of the successful response. Varies by endpoint.
+          type: object
+        error:
+          description: Error message. Always null for successful responses.
+          type: "null"
+      required:
+        - data
+        - error
+
+    FailureResponse:
+      type: object
+      properties:
+        data:
+          description: Data payload. Always null for failed responses.
+          type: "null"
+        error:
+          description: The error message detailing what went wrong.
+          type: string
+      required:
+        - data
+        - error
