@@ -12,7 +12,10 @@ describe('Integration – error handling across real routes', () => {
     it('GET /api/credit/lines should return 200 with creditLines', async () => {
         const res = await request(app).get('/api/credit/lines');
         expect(res.status).toBe(200);
-        expect(res.body).toEqual({ creditLines: [] });
+        expect(res.body).toEqual({
+            data: { creditLines: [] },
+            error: null
+        });
     });
 
     it('GET /api/credit/lines/:id should return a standard 404 error envelope', async () => {
@@ -20,6 +23,7 @@ describe('Integration – error handling across real routes', () => {
 
         expect(res.status).toBe(404);
         expect(res.body).toEqual({
+            data: null,
             error: 'Credit line with id "abc" not found',
             code: 'NOT_FOUND',
             details: { resource: 'Credit line', id: 'abc' },
@@ -34,6 +38,7 @@ describe('Integration – error handling across real routes', () => {
 
         expect(res.status).toBe(400);
         expect(res.body).toEqual({
+            data: null,
             error: 'walletAddress is required',
             code: 'VALIDATION_ERROR',
             details: { field: 'walletAddress' },
@@ -46,7 +51,8 @@ describe('Integration – error handling across real routes', () => {
             .send({ walletAddress: '0xabc' });
 
         expect(res.status).toBe(200);
-        expect(res.body.walletAddress).toBe('0xabc');
+        expect(res.body.data.walletAddress).toBe('0xabc');
+        expect(res.body.error).toBeNull();
     });
 
     /* ---- 404 catch-all --------------------------------------------- */
@@ -62,6 +68,9 @@ describe('Integration – error handling across real routes', () => {
     it('GET /health should return 200', async () => {
         const res = await request(app).get('/health');
         expect(res.status).toBe(200);
-        expect(res.body).toEqual({ status: 'ok', service: 'creditra-backend' });
+        expect(res.body).toEqual({
+            data: { status: 'ok', service: 'creditra-backend' },
+            error: null
+        });
     });
 });

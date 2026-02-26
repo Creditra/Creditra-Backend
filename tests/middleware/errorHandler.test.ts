@@ -51,6 +51,7 @@ describe('errorHandler middleware', () => {
 
         expect(res.status).toBe(400);
         expect(res.body).toEqual({
+            data: null,
             error: 'bad input',
             code: 'VALIDATION_ERROR',
             details: { field: 'email' },
@@ -66,6 +67,7 @@ describe('errorHandler middleware', () => {
 
         expect(res.status).toBe(404);
         expect(res.body).toEqual({
+            data: null,
             error: 'Widget with id "7" not found',
             code: 'NOT_FOUND',
             details: { resource: 'Widget', id: '7' },
@@ -81,6 +83,7 @@ describe('errorHandler middleware', () => {
 
         expect(res.status).toBe(401);
         expect(res.body).toEqual({
+            data: null,
             error: 'Invalid token',
             code: 'AUTHENTICATION_ERROR',
         });
@@ -95,6 +98,7 @@ describe('errorHandler middleware', () => {
 
         expect(res.status).toBe(403);
         expect(res.body).toEqual({
+            data: null,
             error: 'Admin only',
             code: 'AUTHORIZATION_ERROR',
         });
@@ -157,6 +161,7 @@ describe('errorHandler middleware', () => {
         const res = await request(app).get('/test');
 
         expect(res.body).toEqual({
+            data: null,
             error: 'Authentication required',
             code: 'AUTHENTICATION_ERROR',
         });

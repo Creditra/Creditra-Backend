@@ -9,6 +9,15 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "src/__test__",
+    "src/__tests__",
+    "tests"
+  ]
 }
