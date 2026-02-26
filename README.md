@@ -75,6 +75,16 @@ The PostgreSQL schema is designed and documented in **[docs/data-model.md](docs/
 
 - `src/index.ts` — App entry, middleware, route mounting
 - `src/routes/` — credit and risk route handlers
+- `docs/` — Documentation and guidelines
+
+## Security
+
+Security is a priority for Creditra. Before deploying or contributing:
+
+- Review the [Backend Security Checklist](docs/security-checklist-backend.md)
+- Ensure all security requirements are met
+- Run `npm audit` to check for vulnerabilities
+- Maintain minimum 95% test coverage
 - `src/db/` — migration and schema validation helpers
 - `docs/data-model.md` — PostgreSQL data model documentation
 - `migrations/` — SQL migration files
