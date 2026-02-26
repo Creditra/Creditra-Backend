@@ -1,5 +1,7 @@
 # Creditra Backend
 
+![CI](https://github.com/Creditra/Creditra-Backend/actions/workflows/ci.yml/badge.svg)
+
 API and services for the Creditra adaptive credit protocol: credit lines, risk evaluation, and (future) Horizon listener and interest accrual.
 
 ## About
@@ -17,13 +19,15 @@ Stack: **Node.js**, **Express**, **TypeScript**.
 - **Express** — HTTP API
 - **TypeScript** — ESM, strict mode
 - **tsx** — dev run with watch
+- **Jest + ts-jest** — unit & integration tests
+- **ESLint + @typescript-eslint** — linting
 
 ## Setup
 
 ### Prerequisites
 
-- Node.js 18+
-- npm or yarn
+- Node.js 20+
+- npm
 
 ### Install and run
 
@@ -121,6 +125,37 @@ Use a **rolling rotation** to avoid downtime:
 
 This ensures no requests are rejected during the transition window.
 
+## CI / Quality Gates
+
+The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push and pull request:
+
+| Step | Command | Fails build on… |
+|------|---------|-----------------|
+| TypeScript typecheck | `npm run typecheck` | Any type error |
+| Lint | `npm run lint` | Any ESLint warning or error |
+| Tests + Coverage | `npm test` | Failing test OR coverage < 95% |
+
+### Run locally
+
+```bash
+# Typecheck
+npm run typecheck
+
+# Lint
+npm run lint
+
+# Lint with auto-fix
+npm run lint:fix
+
+# Tests (single run + coverage report)
+npm test
+
+# Tests in watch mode
+npm run test:watch
+```
+
+**Coverage threshold:** 95% lines, branches, functions, and statements (enforced by Jest).
+
 ## API (current)
 
 ### Public
@@ -166,6 +201,10 @@ docs/
   data-model.md        # PostgreSQL data model documentation
   security-checklist-backend.md
 migrations/            # SQL migration files
+.github/workflows/
+  ci.yml               # CI pipeline
+.eslintrc.cjs          # ESLint config
+tsconfig.json          # TypeScript config
 ```
 
 ## Security
@@ -178,8 +217,6 @@ Security is a priority for Creditra. Before deploying or contributing:
 - Maintain minimum 95% test coverage
 
 ## Merging to remote
-
-This repo is a standalone git repository. After adding your remote:
 
 ```bash
 git remote add origin <your-creditra-backend-repo-url>

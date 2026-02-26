@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { createApiKeyMiddleware } from '../middleware/auth.js';
 import { loadApiKeys } from '../config/apiKeys.js';
+import { ok, fail } from "../utils/response.js";
 import {
   listCreditLines,
   getCreditLine,
@@ -10,7 +11,7 @@ import {
   InvalidTransitionError,
 } from "../services/creditService.js";
 
-const router = Router();
+export const creditRouter = Router();
 
 // Use a resolver function so API_KEYS is read lazily per-request,
 // allowing the env var to be set after module import (e.g. in tests).
@@ -18,32 +19,31 @@ const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
 
 function handleServiceError(err: unknown, res: Response): void {
   if (err instanceof CreditLineNotFoundError) {
-    res.status(404).json({ error: err.message });
+    fail(res, err.message, 404);
     return;
   }
   if (err instanceof InvalidTransitionError) {
-    res.status(409).json({ error: err.message });
+    fail(res, err.message, 409);
     return;
   }
-  const message = err instanceof Error ? err.message : "Internal server error";
-  res.status(500).json({ error: message });
+  fail(res, err, 500);
 }
 
 // ---------------------------------------------------------------------------
 // Public endpoints – no API key required
 // ---------------------------------------------------------------------------
 
-router.get("/lines", (_req: Request, res: Response): void => {
-  res.json({ data: listCreditLines() });
+creditRouter.get("/lines", (_req: Request, res: Response): void => {
+  ok(res, listCreditLines());
 });
 
-router.get("/lines/:id", (req: Request, res: Response): void => {
+creditRouter.get("/lines/:id", (req: Request, res: Response): void => {
   const line = getCreditLine(req.params["id"] as string);
   if (!line) {
-    res.status(404).json({ error: `Credit line "${req.params["id"]}" not found.` });
+    fail(res, `Credit line "${req.params["id"]}" not found.`, 404);
     return;
   }
-  res.json({ data: line });
+  ok(res, line);
 });
 
 // ---------------------------------------------------------------------------
@@ -54,13 +54,13 @@ router.get("/lines/:id", (req: Request, res: Response): void => {
  * POST /api/credit/lines/:id/suspend
  * Suspend an active credit line.  Requires admin API key.
  */
-router.post(
+creditRouter.post(
   "/lines/:id/suspend",
   requireApiKey,
   async (req: Request, res: Response): Promise<void> => {
     try {
       const line = suspendCreditLine(req.params["id"] as string);
-      res.json({ data: line, message: "Credit line suspended." });
+      ok(res, { line, message: "Credit line suspended." });
     } catch (err) {
       handleServiceError(err, res);
     }
@@ -71,17 +71,15 @@ router.post(
  * POST /api/credit/lines/:id/close
  * Permanently close a credit line.  Requires admin API key.
  */
-router.post(
+creditRouter.post(
   "/lines/:id/close",
   requireApiKey,
   async (req: Request, res: Response): Promise<void> => {
     try {
       const line = closeCreditLine(req.params["id"] as string);
-      res.json({ data: line, message: "Credit line closed." });
+      ok(res, { line, message: "Credit line closed." });
     } catch (err) {
       handleServiceError(err, res);
     }
   },
 );
-
-export default router;
