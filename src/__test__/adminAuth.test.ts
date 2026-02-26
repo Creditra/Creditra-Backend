@@ -1,7 +1,7 @@
 import express from "express";
 import request from "supertest";
-import { adminAuth, ADMIN_KEY_HEADER } from "../../middleware/adminAuth.js";
-import { afterEach, afterEach, beforeEach } from "node:test";
+import { adminAuth, ADMIN_KEY_HEADER } from "../middleware/adminAuth.js";
+import { afterEach, beforeEach } from "node:test";
 
 const SECRET = "test-admin-secret-key";
 
