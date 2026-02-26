@@ -1,22 +1,31 @@
-import { Router } from 'express';
+import { Router, Request, Response } from "express";
 import { createLogger } from '../lib/logger.js';
 import { createRequestLogger } from '../middleware/requestLogger.js';
+import { evaluateWallet } from "../services/riskService.js";
 
-export const riskRouter = Router();
+const router = Router();
 
 const logger = createLogger('risk-router');
-riskRouter.use(createRequestLogger(logger));
+router.use(createRequestLogger(logger));
 
-riskRouter.post('/evaluate', (req, res) => {
-  const { walletAddress } = req.body ?? {};
-  if (!walletAddress) {
-    return res.status(400).json({ error: 'walletAddress required' });
-  }
-  res.json({
-    walletAddress,
-    riskScore: 0,
-    creditLimit: '0',
-    interestRateBps: 0,
-    message: 'Risk engine not yet connected; placeholder response.',
-  });
-});
+router.post(
+  "/evaluate",
+  async (req: Request, res: Response): Promise<void> => {
+    const { walletAddress } = req.body as { walletAddress?: string };
+
+    if (!walletAddress) {
+      res.status(400).json({ error: "walletAddress is required" });
+      return;
+    }
+
+    try {
+      const result = await evaluateWallet(walletAddress);
+      res.json(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      res.status(400).json({ error: message });
+    }
+  },
+);
+
+export default router;

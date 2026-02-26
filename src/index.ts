@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import { creditRouter } from './routes/credit.js';
-import { riskRouter } from './routes/risk.js';
+import creditRouter from './routes/credit.js';
+import riskRouter from './routes/risk.js';
 
 export const app = express();
 const port = process.env.PORT ?? 3000;
