@@ -1,20 +1,18 @@
-
 import express, { Express } from "express";
 import request from "supertest";
-import { jest } from "@jest/globals";
-import { _resetStore, createCreditLine } from "../../services/creditService.js";
+import { vi } from "vitest";
+import { _resetStore, createCreditLine } from "../services/creditService.js";
 
 // Mock adminAuth so we can control auth pass/fail from within tests
-jest.mock("../../middleware/adminAuth.js", () => ({
-  adminAuth: jest.fn((_req: unknown, _res: unknown, next: () => void) => next()),
+vi.mock("../middleware/adminAuth.js", () => ({
+  adminAuth: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
   ADMIN_KEY_HEADER: "x-admin-api-key",
 }));
 
-import creditRouter from "../../routes/credit.js";
-import { adminAuth } from "../../middleware/adminAuth.js";
-import { afterEach, beforeEach } from "node:test";
+import creditRouter from "../routes/credit.js";
+import { adminAuth } from "../middleware/adminAuth.js";
 
-const mockAdminAuth = adminAuth as jest.MockedFunction<typeof adminAuth>;
+const mockAdminAuth = adminAuth as ReturnType<typeof vi.fn>;
 
 function buildApp(): Express {
   const app = express();
@@ -33,10 +31,11 @@ function allowAdmin() {
 
 function denyAdmin() {
   mockAdminAuth.mockImplementation((_req, res: any, _next) => {
-    res.status(401).json({ error: "Unauthorized: valid X-Admin-Api-Key header is required." });
+    res.status(401).json({
+      error: "Unauthorized: valid X-Admin-Api-Key header is required.",
+    });
   });
 }
-
 
 beforeEach(() => {
   _resetStore();
@@ -46,7 +45,6 @@ beforeEach(() => {
 afterEach(() => {
   mockAdminAuth.mockReset();
 });
-
 
 describe("GET /api/credit/lines", () => {
   it("returns 200 with an empty array when store is empty", async () => {
@@ -68,6 +66,156 @@ describe("GET /api/credit/lines", () => {
   });
 });
 
+describe("POST /api/credit/lines", () => {
+  const validBody = {
+    borrowerId: "borrower-123",
+    initialLimit: 1000,
+    interestRateBps: 500,
+  };
+
+  describe("successful creation", () => {
+    it("returns 201 with the created credit line", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send(validBody);
+      expect(res.status).toBe(201);
+      expect(res.body.data).toBeDefined();
+      expect(res.body.data.borrowerId).toBe("borrower-123");
+      expect(res.body.data.creditLimit).toBe(1000);
+      expect(res.body.data.interestRateBps).toBe(500);
+    });
+
+    it("returns a UUID id", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send(validBody);
+      expect(res.body.data.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      );
+    });
+
+    it("defaults currency to USDC", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send(validBody);
+      expect(res.body.data.currency).toBe("USDC");
+    });
+
+    it("accepts custom currency", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send({ ...validBody, currency: "XLM" });
+      expect(res.body.data.currency).toBe("XLM");
+    });
+
+    it("accepts optional riskScore", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send({ ...validBody, riskScore: 45 });
+      expect(res.body.data.riskScore).toBe(45);
+    });
+
+    it("accepts optional evaluationId", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send({ ...validBody, evaluationId: "eval-abc" });
+      expect(res.body.data.evaluationId).toBe("eval-abc");
+    });
+
+    it("sets status to active", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send(validBody);
+      expect(res.body.data.status).toBe("active");
+    });
+
+    it("includes events array with created event", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send(validBody);
+      expect(res.body.data.events).toHaveLength(1);
+      expect(res.body.data.events[0].action).toBe("created");
+    });
+
+    it("returns JSON content-type", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send(validBody);
+      expect(res.headers["content-type"]).toMatch(/application\/json/);
+    });
+  });
+
+  describe("validation errors", () => {
+    it("returns 400 when borrowerId is missing", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send({ initialLimit: 1000, interestRateBps: 500 });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("borrowerId");
+    });
+
+    it("returns 400 when initialLimit is missing", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send({ borrowerId: "borrower-123", interestRateBps: 500 });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("initialLimit");
+    });
+
+    it("returns 400 when interestRateBps is missing", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send({ borrowerId: "borrower-123", initialLimit: 1000 });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("interestRateBps");
+    });
+
+    it("returns 400 when initialLimit is zero", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send({ ...validBody, initialLimit: 0 });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("initialLimit");
+    });
+
+    it("returns 400 when initialLimit is negative", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send({ ...validBody, initialLimit: -100 });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("initialLimit");
+    });
+
+    it("returns 400 when interestRateBps is negative", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send({ ...validBody, interestRateBps: -1 });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("interestRateBps");
+    });
+
+    it("returns 400 when riskScore is out of range", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send({ ...validBody, riskScore: 101 });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("riskScore");
+    });
+
+    it("returns 400 when borrowerId is empty string", async () => {
+      const res = await request(buildApp())
+        .post("/api/credit/lines")
+        .send({ ...validBody, borrowerId: "" });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("borrowerId");
+    });
+
+    it("returns JSON content-type on error", async () => {
+      const res = await request(buildApp()).post("/api/credit/lines").send({});
+      expect(res.headers["content-type"]).toMatch(/application\/json/);
+    });
+  });
+});
 
 describe("GET /api/credit/lines/:id", () => {
   it("returns 200 with the credit line for a known id", async () => {
@@ -78,13 +226,17 @@ describe("GET /api/credit/lines/:id", () => {
   });
 
   it("returns 404 for an unknown id", async () => {
-    const res = await request(buildApp()).get(`/api/credit/lines/${MISSING_ID}`);
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${MISSING_ID}`,
+    );
     expect(res.status).toBe(404);
     expect(res.body.error).toContain(MISSING_ID);
   });
 
   it("returns JSON content-type on 404", async () => {
-    const res = await request(buildApp()).get(`/api/credit/lines/${MISSING_ID}`);
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${MISSING_ID}`,
+    );
     expect(res.headers["content-type"]).toMatch(/application\/json/);
   });
 });
@@ -93,8 +245,9 @@ describe("POST /api/credit/lines/:id/suspend — authorization", () => {
   it("returns 401 when admin auth is denied", async () => {
     denyAdmin();
     createCreditLine(VALID_ID);
-    const res = await request(buildApp())
-      .post(`/api/credit/lines/${VALID_ID}/suspend`);
+    const res = await request(buildApp()).post(
+      `/api/credit/lines/${VALID_ID}/suspend`,
+    );
     expect(res.status).toBe(401);
   });
 
@@ -102,7 +255,7 @@ describe("POST /api/credit/lines/:id/suspend — authorization", () => {
     denyAdmin();
     createCreditLine(VALID_ID);
     await request(buildApp()).post(`/api/credit/lines/${VALID_ID}/suspend`);
-    const { _store } = await import("../../services/creditService.js");
+    const { _store } = await import("../services/creditService.js");
     expect(_store.get(VALID_ID)?.status).toBe("active");
   });
 });
@@ -165,8 +318,9 @@ describe("POST /api/credit/lines/:id/close — authorization", () => {
   it("returns 401 when admin auth is denied", async () => {
     denyAdmin();
     createCreditLine(VALID_ID);
-    const res = await request(buildApp())
-      .post(`/api/credit/lines/${VALID_ID}/close`);
+    const res = await request(buildApp()).post(
+      `/api/credit/lines/${VALID_ID}/close`,
+    );
     expect(res.status).toBe(401);
   });
 
@@ -174,7 +328,7 @@ describe("POST /api/credit/lines/:id/close — authorization", () => {
     denyAdmin();
     createCreditLine(VALID_ID);
     await request(buildApp()).post(`/api/credit/lines/${VALID_ID}/close`);
-    const { _store } = await import("../../services/creditService.js");
+    const { _store } = await import("../services/creditService.js");
     expect(_store.get(VALID_ID)?.status).toBe("active");
   });
 });
@@ -244,6 +398,8 @@ describe("POST /api/credit/lines/:id/close — business logic", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe("closed");
-    expect(res.body.data.events.map((e: { action: string }) => e.action)).toContain("suspended");
+    expect(
+      res.body.data.events.map((e: { action: string }) => e.action),
+    ).toContain("suspended");
   });
 });
