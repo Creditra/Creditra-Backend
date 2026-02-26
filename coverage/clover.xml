@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1772068170452" clover="3.2.0">
+  <project timestamp="1772068170452" name="All files">
+    <metrics statements="25" coveredstatements="25" conditionals="6" coveredconditionals="6" methods="6" coveredmethods="6" elements="37" coveredelements="37" complexity="0" loc="25" ncloc="25" packages="3" files="3" classes="3"/>
+    <package name="models">
+      <metrics statements="4" coveredstatements="4" conditionals="2" coveredconditionals="2" methods="1" coveredmethods="1"/>
+      <file name="creditLine.ts" path="C:\Users\machintosh\.gemini\antigravity\playground\Creditra-Backend\src\models\creditLine.ts">
+        <metrics statements="4" coveredstatements="4" conditionals="2" coveredconditionals="2" methods="1" coveredmethods="1"/>
+        <line num="1" count="1" type="cond" truecount="2" falsecount="0"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+      </file>
+    </package>
+    <package name="repositories">
+      <metrics statements="4" coveredstatements="4" conditionals="2" coveredconditionals="2" methods="3" coveredmethods="3"/>
+      <file name="creditLineRepository.ts" path="C:\Users\machintosh\.gemini\antigravity\playground\Creditra-Backend\src\repositories\creditLineRepository.ts">
+        <metrics statements="4" coveredstatements="4" conditionals="2" coveredconditionals="2" methods="3" coveredmethods="3"/>
+        <line num="9" count="4" type="stmt"/>
+        <line num="35" count="2" type="stmt"/>
+        <line num="39" count="7" type="stmt"/>
+        <line num="40" count="4" type="cond" truecount="2" falsecount="0"/>
+      </file>
+    </package>
+    <package name="routes">
+      <metrics statements="17" coveredstatements="17" conditionals="2" coveredconditionals="2" methods="2" coveredmethods="2"/>
+      <file name="credit.ts" path="C:\Users\machintosh\.gemini\antigravity\playground\Creditra-Backend\src\routes\credit.ts">
+        <metrics statements="17" coveredstatements="17" conditionals="2" coveredconditionals="2" methods="2" coveredmethods="2"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="56" count="1" type="stmt"/>
+        <line num="57" count="2" type="stmt"/>
+        <line num="58" count="2" type="stmt"/>
+        <line num="59" count="1" type="stmt"/>
+        <line num="61" count="1" type="stmt"/>
+        <line num="62" count="1" type="stmt"/>
+        <line num="85" count="1" type="stmt"/>
+        <line num="86" count="3" type="stmt"/>
+        <line num="87" count="3" type="stmt"/>
+        <line num="88" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="89" count="1" type="stmt"/>
+        <line num="90" count="1" type="stmt"/>
+        <line num="92" count="1" type="stmt"/>
+        <line num="94" count="1" type="stmt"/>
+        <line num="95" count="1" type="stmt"/>
+      </file>
+    </package>
+  </project>
+</coverage>
