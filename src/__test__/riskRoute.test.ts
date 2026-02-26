@@ -1,5 +1,5 @@
 /// <reference types="vitest/globals" />
-import express, { Express } from "express";
+import express, { type Express } from "express";
 import request from "supertest";
 import { vi } from "vitest";
 
@@ -7,7 +7,7 @@ vi.mock("../services/riskService.js", () => ({
   evaluateWallet: vi.fn(),
 }));
 
-import riskRouter from "../routes/risk.js";
+import { riskRouter } from "../routes/risk.js";
 import { evaluateWallet } from "../services/riskService.js";
 
 const mockEvaluateWallet = evaluateWallet as ReturnType<typeof vi.fn>;
@@ -44,7 +44,7 @@ describe("POST /api/risk/evaluate", () => {
       .send({});
 
     expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: "walletAddress is required" });
+    expect(res.body.error).toEqual("walletAddress is required");
   });
 
   it("returns 400 when walletAddress is missing from body", async () => {
@@ -69,7 +69,7 @@ describe("POST /api/risk/evaluate", () => {
       .send({ walletAddress: VALID_ADDRESS });
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual(MOCK_RESULT);
+    expect(res.body.data).toEqual(MOCK_RESULT);
   });
 
   it("calls evaluateWallet with the exact walletAddress from the body", async () => {
@@ -90,11 +90,11 @@ describe("POST /api/risk/evaluate", () => {
       .post("/api/risk/evaluate")
       .send({ walletAddress: VALID_ADDRESS });
 
-    expect(res.body).toHaveProperty("walletAddress");
-    expect(res.body).toHaveProperty("score");
-    expect(res.body).toHaveProperty("riskLevel");
-    expect(res.body).toHaveProperty("message");
-    expect(res.body).toHaveProperty("evaluatedAt");
+    expect(res.body.data).toHaveProperty("walletAddress");
+    expect(res.body.data).toHaveProperty("score");
+    expect(res.body.data).toHaveProperty("riskLevel");
+    expect(res.body.data).toHaveProperty("message");
+    expect(res.body.data).toHaveProperty("evaluatedAt");
   });
 
   it("returns 400 when evaluateWallet throws an Error", async () => {

@@ -8,7 +8,7 @@ import {
   InvalidTransitionError,
   CreditLineNotFoundError,
   InvalidCreditLineInputError,
-  CreateCreditLineInput,
+  type CreateCreditLineInput,
   _resetStore,
   _store,
 } from "../services/creditService.js";

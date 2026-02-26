@@ -1,5 +1,5 @@
 /// <reference types="vitest/globals" />
-import express, { Express } from "express";
+import express, { type Express } from "express";
 import request from "supertest";
 import { vi } from "vitest";
 import { _resetStore, createCreditLine } from "../services/creditService.js";
@@ -10,7 +10,7 @@ vi.mock("../middleware/adminAuth.js", () => ({
   ADMIN_KEY_HEADER: "x-admin-api-key",
 }));
 
-import creditRouter from "../routes/credit.js";
+import { creditRouter } from "../routes/credit.js";
 import { adminAuth } from "../middleware/adminAuth.js";
 
 const mockAdminAuth = adminAuth as ReturnType<typeof vi.fn>;
@@ -31,7 +31,7 @@ function allowAdmin() {
 }
 
 function denyAdmin() {
-  mockAdminAuth.mockImplementation((_req, res: any, _next) => {
+  mockAdminAuth.mockImplementation((_req, res: express.Response, _next) => {
     res.status(401).json({
       error: "Unauthorized: valid X-Admin-Api-Key header is required.",
     });
@@ -269,8 +269,8 @@ describe("POST /api/credit/lines/:id/suspend — business logic", () => {
       .set("x-admin-api-key", ADMIN_KEY);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.status).toBe("suspended");
-    expect(res.body.message).toBe("Credit line suspended.");
+    expect(res.body.data.line.status).toBe("suspended");
+    expect(res.body.data.message).toBe("Credit line suspended.");
   });
 
   it("response includes the full credit line object", async () => {
@@ -279,11 +279,11 @@ describe("POST /api/credit/lines/:id/suspend — business logic", () => {
       .post(`/api/credit/lines/${VALID_ID}/suspend`)
       .set("x-admin-api-key", ADMIN_KEY);
 
-    expect(res.body.data).toMatchObject({
+    expect(res.body.data.line).toMatchObject({
       id: VALID_ID,
       status: "suspended",
     });
-    expect(res.body.data.events).toBeDefined();
+    expect(res.body.data.line.events).toBeDefined();
   });
 
   it("returns 404 when the credit line does not exist", async () => {
@@ -342,8 +342,8 @@ describe("POST /api/credit/lines/:id/close — business logic", () => {
       .set("x-admin-api-key", ADMIN_KEY);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.status).toBe("closed");
-    expect(res.body.message).toBe("Credit line closed.");
+    expect(res.body.data.line.status).toBe("closed");
+    expect(res.body.data.message).toBe("Credit line closed.");
   });
 
   it("returns 200 and closed line for a suspended credit line", async () => {
@@ -353,7 +353,7 @@ describe("POST /api/credit/lines/:id/close — business logic", () => {
       .set("x-admin-api-key", ADMIN_KEY);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.status).toBe("closed");
+    expect(res.body.data.line.status).toBe("closed");
   });
 
   it("response includes the full credit line object with events", async () => {
@@ -362,8 +362,8 @@ describe("POST /api/credit/lines/:id/close — business logic", () => {
       .post(`/api/credit/lines/${VALID_ID}/close`)
       .set("x-admin-api-key", ADMIN_KEY);
 
-    expect(res.body.data.events).toBeDefined();
-    expect(res.body.data.events.at(-1).action).toBe("closed");
+    expect(res.body.data.line.events).toBeDefined();
+    expect(res.body.data.line.events.at(-1).action).toBe("closed");
   });
 
   it("returns 404 when the credit line does not exist", async () => {
@@ -398,9 +398,9 @@ describe("POST /api/credit/lines/:id/close — business logic", () => {
       .set("x-admin-api-key", ADMIN_KEY);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.status).toBe("closed");
+    expect(res.body.data.line.status).toBe("closed");
     expect(
-      res.body.data.events.map((e: { action: string }) => e.action),
+      res.body.data.line.events.map((e: { action: string }) => e.action),
     ).toContain("suspended");
   });
 });

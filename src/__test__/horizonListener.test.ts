@@ -90,22 +90,22 @@ describe("resolveConfig()", () => {
     expect(config.startLedger).toBe("latest");
   });
 
-  it("reads HORIZON_URL from env", () => {
-    withEnv({ HORIZON_URL: "https://custom-horizon.example.com" }, () => {
+  it("reads HORIZON_URL from env", async () => {
+    await withEnv({ HORIZON_URL: "https://custom-horizon.example.com" }, () => {
       expect(resolveConfig().horizonUrl).toBe(
         "https://custom-horizon.example.com",
       );
     });
   });
 
-  it("parses a single CONTRACT_ID", () => {
-    withEnv({ CONTRACT_IDS: "CONTRACT_A" }, () => {
+  it("parses a single CONTRACT_ID", async () => {
+    await withEnv({ CONTRACT_IDS: "CONTRACT_A" }, () => {
       expect(resolveConfig().contractIds).toEqual(["CONTRACT_A"]);
     });
   });
 
-  it("parses multiple CONTRACT_IDS separated by commas", () => {
-    withEnv({ CONTRACT_IDS: "CONTRACT_A,CONTRACT_B,CONTRACT_C" }, () => {
+  it("parses multiple CONTRACT_IDS separated by commas", async () => {
+    await withEnv({ CONTRACT_IDS: "CONTRACT_A,CONTRACT_B,CONTRACT_C" }, () => {
       expect(resolveConfig().contractIds).toEqual([
         "CONTRACT_A",
         "CONTRACT_B",
@@ -114,26 +114,26 @@ describe("resolveConfig()", () => {
     });
   });
 
-  it("trims whitespace from CONTRACT_IDS entries", () => {
-    withEnv({ CONTRACT_IDS: " CONTRACT_A , CONTRACT_B " }, () => {
+  it("trims whitespace from CONTRACT_IDS entries", async () => {
+    await withEnv({ CONTRACT_IDS: " CONTRACT_A , CONTRACT_B " }, () => {
       expect(resolveConfig().contractIds).toEqual(["CONTRACT_A", "CONTRACT_B"]);
     });
   });
 
-  it("returns empty contractIds for an empty CONTRACT_IDS string", () => {
-    withEnv({ CONTRACT_IDS: "" }, () => {
+  it("returns empty contractIds for an empty CONTRACT_IDS string", async () => {
+    await withEnv({ CONTRACT_IDS: "" }, () => {
       expect(resolveConfig().contractIds).toEqual([]);
     });
   });
 
-  it("parses POLL_INTERVAL_MS from env", () => {
-    withEnv({ POLL_INTERVAL_MS: "2000" }, () => {
+  it("parses POLL_INTERVAL_MS from env", async () => {
+    await withEnv({ POLL_INTERVAL_MS: "2000" }, () => {
       expect(resolveConfig().pollIntervalMs).toBe(2000);
     });
   });
 
-  it("reads HORIZON_START_LEDGER from env", () => {
-    withEnv({ HORIZON_START_LEDGER: "500" }, () => {
+  it("reads HORIZON_START_LEDGER from env", async () => {
+    await withEnv({ HORIZON_START_LEDGER: "500" }, () => {
       expect(resolveConfig().startLedger).toBe("500");
     });
   });
@@ -179,7 +179,6 @@ describe("start()", () => {
 
   it("executes an immediate first poll on start", async () => {
     vi.useFakeTimers();
-    const pollSpy = vi.fn<[HorizonListenerConfig], Promise<void>>();
 
     await withEnv({ CONTRACT_IDS: "MY_CONTRACT" }, async () => {
       const received: HorizonEvent[] = [];

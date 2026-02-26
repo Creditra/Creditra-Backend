@@ -1,4 +1,5 @@
-import { Router, Request, Response } from "express";
+import { Router, type Request, type Response } from "express";
+import { ok, fail } from "../utils/response.js";
 import { adminAuth } from "../middleware/adminAuth.js";
 import {
   listCreditLines,
@@ -9,47 +10,46 @@ import {
   CreditLineNotFoundError,
   InvalidTransitionError,
   InvalidCreditLineInputError,
-  CreateCreditLineInput,
+  type CreateCreditLineInput,
 } from "../services/creditService.js";
 
-const router = Router();
+export const creditRouter = Router();
 
 function handleServiceError(err: unknown, res: Response): void {
   if (err instanceof CreditLineNotFoundError) {
-    res.status(404).json({ error: err.message });
+    fail(res, err.message, 404);
     return;
   }
   if (err instanceof InvalidTransitionError) {
-    res.status(409).json({ error: err.message });
+    fail(res, err.message, 409);
     return;
   }
   if (err instanceof InvalidCreditLineInputError) {
-    res.status(400).json({ error: err.message });
+    fail(res, err.message, 400);
     return;
   }
-  const message = err instanceof Error ? err.message : "Internal server error";
-  res.status(500).json({ error: message });
+  fail(res, err, 500);
 }
 
-router.get("/lines", (_req: Request, res: Response): void => {
-  res.json({ data: listCreditLines() });
+creditRouter.get("/lines", (_req: Request, res: Response): void => {
+  ok(res, listCreditLines());
 });
 
-router.post("/lines", (req: Request, res: Response): void => {
+creditRouter.post("/lines", (req: Request, res: Response): void => {
   try {
     const body = req.body as Partial<CreateCreditLineInput>;
 
     // Check required fields presence
     if (!body.borrowerId) {
-      res.status(400).json({ error: "borrowerId is required" });
+      fail(res, "borrowerId is required", 400);
       return;
     }
     if (body.initialLimit === undefined || body.initialLimit === null) {
-      res.status(400).json({ error: "initialLimit is required" });
+      fail(res, "initialLimit is required", 400);
       return;
     }
     if (body.interestRateBps === undefined || body.interestRateBps === null) {
-      res.status(400).json({ error: "interestRateBps is required" });
+      fail(res, "interestRateBps is required", 400);
       return;
     }
 
@@ -63,48 +63,43 @@ router.post("/lines", (req: Request, res: Response): void => {
     };
 
     const line = createCreditLine(input);
-    res.status(201).json({ data: line });
+    res.status(201).json({ data: line }); // keep original 201 behavior if possible, or ok(res, line) doesn't support 201
   } catch (err) {
     handleServiceError(err, res);
   }
 });
 
-router.get("/lines/:id", (req: Request, res: Response): void => {
+creditRouter.get("/lines/:id", (req: Request, res: Response): void => {
   const line = getCreditLine(req.params["id"] as string);
   if (!line) {
-    res
-      .status(404)
-      .json({ error: `Credit line "${req.params["id"]}" not found.` });
+    fail(res, `Credit line "${req.params["id"]}" not found.`, 404);
     return;
   }
-  res.json({ data: line });
+  ok(res, line);
 });
 
-router.post(
+creditRouter.post(
   "/lines/:id/suspend",
   adminAuth,
   async (req: Request, res: Response): Promise<void> => {
     try {
       const line = suspendCreditLine(req.params["id"] as string);
-      res.json({ data: line, message: "Credit line suspended." });
+      ok(res, { line, message: "Credit line suspended." });
     } catch (err) {
       handleServiceError(err, res);
     }
   },
 );
 
-router.post(
+creditRouter.post(
   "/lines/:id/close",
   adminAuth,
   async (req: Request, res: Response): Promise<void> => {
     try {
       const line = closeCreditLine(req.params["id"] as string);
-      res.json({ data: line, message: "Credit line closed." });
+      ok(res, { line, message: "Credit line closed." });
     } catch (err) {
       handleServiceError(err, res);
     }
   },
 );
-
-export { router as creditRouter };
-export default router;
