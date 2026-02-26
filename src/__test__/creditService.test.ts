@@ -1,5 +1,5 @@
 
-import { beforeEach } from "node:test";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   createCreditLine,
   getCreditLine,
@@ -10,7 +10,7 @@ import {
   CreditLineNotFoundError,
   _resetStore,
   _store,
-} from "../../services/creditService.js";
+} from "../services/creditService.js";
 
 
     

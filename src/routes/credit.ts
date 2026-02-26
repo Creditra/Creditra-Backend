@@ -10,6 +10,7 @@ import {
 } from "../services/creditService.js";
 
 const router = Router();
+export const creditRouter = router;
 
 function handleServiceError(err: unknown, res: Response): void {
   if (err instanceof CreditLineNotFoundError) {
@@ -64,4 +65,4 @@ router.post(
   },
 );
 
-export default router;
+export default creditRouter;

@@ -75,7 +75,9 @@ The PostgreSQL schema is designed and documented in **[docs/data-model.md](docs/
 
 - `src/index.ts` — App entry, middleware, route mounting
 - `src/routes/` — credit and risk route handlers
-- `docs/` — Documentation and guidelines
+- `src/services/` — Domain/business logic (kept separate from HTTP concerns)
+- `src/db/` — Migration + schema validation tooling
+- `docs/` — Documentation and guidelines (see `docs/backend-architecture.md`)
 
 ## Security
 
