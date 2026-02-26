@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { type Response } from 'express';
 
 // Standardized response envelope interface
 export interface ApiResponse<T = unknown> {
