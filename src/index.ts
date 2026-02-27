@@ -1,5 +1,9 @@
 import express from 'express';
 import cors from 'cors';
+import creditRouter from './routes/credit.js';
+import riskRouter from './routes/risk.js';
+import { config } from './config/index.js';
+
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -18,7 +22,7 @@ const openapiSpec = yaml.parse(
   readFileSync(join(__dirname, 'openapi.yaml'), 'utf8')
 );
 
-export const app = express();
+const app = express();
 const port = process.env.PORT ?? 3000;
 
 app.use(cors());
