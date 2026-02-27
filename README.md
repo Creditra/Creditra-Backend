@@ -184,6 +184,10 @@ npm run test:watch  # interactive watch mode
 
 Target: ≥ 95 % coverage on all middleware and route files.
 
+## Testing
+
+- Run credit lines endpoint tests: `npm test -- src/__test__/creditLinesEndpoints.test.ts`
+
 ## Project layout
 
 ```

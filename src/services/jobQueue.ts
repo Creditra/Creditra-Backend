@@ -87,7 +87,10 @@ export interface JobQueue {
   drain(): Promise<void>;
 }
 
-interface InternalJob<Data = unknown> extends Job<Data> {
+interface InternalJob<Data = unknown>
+  extends Omit<Job<Data>, 'attempts' | 'updatedAt'> {
+  attempts: number;
+  updatedAt: number;
   nextRunAt: number;
 }
 
@@ -264,4 +267,3 @@ export class InMemoryJobQueue implements JobQueue {
  * `InMemoryJobQueue` instead of using this default export.
  */
 export const defaultJobQueue: JobQueue = new InMemoryJobQueue();
-
