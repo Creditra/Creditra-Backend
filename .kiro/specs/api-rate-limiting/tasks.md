@@ -107,7 +107,7 @@ This plan implements a flexible, performant Express middleware for rate limiting
     - Test with random quota and window values
     - File: `tests/properties/rateLimiter.properties.test.ts`
 
-  - [-]* 4.3 Write unit tests for configuration module
+  - [x]* 4.3 Write unit tests for configuration module
     - Test getRateLimitConfig returns correct config for each environment
     - Test default configuration fallback
     - Test specific endpoint configurations match requirements
@@ -138,7 +138,7 @@ This plan implements a flexible, performant Express middleware for rate limiting
     - Test with same client IP, different endpoints, different quotas
     - File: `tests/properties/rateLimiter.properties.test.ts`
 
-  - [ ]* 5.4 Write integration tests for multiple endpoints
+  - [x]* 5.4 Write integration tests for multiple endpoints
     - Test rate limiting on /api/risk/evaluate with 20 request limit
     - Test rate limiting on /api/credit/lines with 100 request limit
     - Test independent counters for different endpoints from same client
@@ -146,7 +146,7 @@ This plan implements a flexible, performant Express middleware for rate limiting
     - Use supertest to make actual HTTP requests
     - File: `tests/unit/rateLimiter.integration.test.ts`
 
-- [ ] 6. Checkpoint - Ensure all tests pass
+- [x] 6. Checkpoint - Ensure all tests pass
   - Run all unit tests and property tests
   - Verify 95% code coverage achieved
   - Ensure all tests pass, ask the user if questions arise
@@ -170,14 +170,14 @@ This plan implements a flexible, performant Express middleware for rate limiting
     - File: `tests/properties/rateLimiter.properties.test.ts`
 
 - [ ] 8. Add documentation
-  - [ ] 8.1 Add JSDoc comments to all public interfaces and functions
+  - [x] 8.1 Add JSDoc comments to all public interfaces and functions
     - Document IRateLimitStore interface methods with @param and @returns
     - Document RateLimiterConfig interface properties
     - Document createRateLimiter function with usage examples
     - Document configuration functions
     - _Requirements: 8.1, 8.2_
 
-  - [ ] 8.2 Create README documentation
+  - [x] 8.2 Create README documentation
     - Add "Rate Limiting" section to project README
     - Include usage examples for applying rate limiters to endpoints
     - Include table of current rate limits per endpoint (production and development)
@@ -185,7 +185,7 @@ This plan implements a flexible, performant Express middleware for rate limiting
     - Include example of custom store implementation for future Redis migration
     - _Requirements: 8.3, 8.4_
 
-  - [ ] 8.3 Add inline code comments
+  - [x] 8.3 Add inline code comments
     - Comment complex logic in InMemoryStore (window expiration, cleanup)
     - Comment middleware flow in createRateLimiter
     - Comment fail-open error handling rationale
