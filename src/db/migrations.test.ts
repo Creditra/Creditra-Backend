@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { DbClient } from './client.js';
+import { describe, it, expect, vi } from "vitest";
+import type { DbClient } from "./client.js";
 import {
   ensureSchemaMigrations,
   listMigrationFiles,
@@ -8,7 +8,7 @@ import {
   applyMigration,
   runPendingMigrations,
   EXPECTED_TABLES,
-} from './migrations.js';
+} from "./migrations.js";
 
 function createMockClient(overrides: Partial<DbClient> = {}): DbClient {
   return {
@@ -18,40 +18,40 @@ function createMockClient(overrides: Partial<DbClient> = {}): DbClient {
   };
 }
 
-describe('versionFromFilename', () => {
-  it('strips .sql extension', () => {
-    expect(versionFromFilename('001_initial_schema.sql')).toBe('001_initial_schema');
+describe("versionFromFilename", () => {
+  it("strips .sql extension", () => {
+    expect(versionFromFilename("001_initial_schema.sql")).toBe("001_initial_schema");
   });
 
-  it('returns full name if no .sql', () => {
-    expect(versionFromFilename('001_initial_schema')).toBe('001_initial_schema');
+  it("returns full name if no .sql", () => {
+    expect(versionFromFilename("001_initial_schema")).toBe("001_initial_schema");
   });
 });
 
-describe('ensureSchemaMigrations', () => {
-  it('runs CREATE TABLE IF NOT EXISTS for schema_migrations', async () => {
+describe("ensureSchemaMigrations", () => {
+  it("runs CREATE TABLE IF NOT EXISTS for schema_migrations", async () => {
     const client = createMockClient();
     await ensureSchemaMigrations(client);
     expect(client.query).toHaveBeenCalledWith(
-      expect.stringContaining('CREATE TABLE IF NOT EXISTS schema_migrations')
+      expect.stringContaining("CREATE TABLE IF NOT EXISTS schema_migrations"),
     );
   });
 });
 
-describe('getAppliedVersions', () => {
-  it('ensures schema_migrations then returns version list', async () => {
+describe("getAppliedVersions", () => {
+  it("ensures schema_migrations then returns version list", async () => {
     const client = createMockClient();
     vi.mocked(client.query)
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
-        rows: [{ version: '001_initial_schema' }],
+        rows: [{ version: "001_initial_schema" }],
       });
     const versions = await getAppliedVersions(client);
-    expect(versions).toEqual(['001_initial_schema']);
+    expect(versions).toEqual(["001_initial_schema"]);
     expect(client.query).toHaveBeenCalledTimes(2);
   });
 
-  it('returns empty array when no migrations applied', async () => {
+  it("returns empty array when no migrations applied", async () => {
     const client = createMockClient();
     vi.mocked(client.query)
       .mockResolvedValueOnce({ rows: [] })
@@ -61,69 +61,69 @@ describe('getAppliedVersions', () => {
   });
 });
 
-describe('listMigrationFiles', () => {
-  it('returns sorted .sql files from directory', async () => {
-    const { join } = await import('path');
-    const dir = join(process.cwd(), 'migrations');
+describe("listMigrationFiles", () => {
+  it("returns sorted .sql files from directory", async () => {
+    const { join } = await import("path");
+    const dir = join(process.cwd(), "migrations");
     const files = await listMigrationFiles(dir);
     expect(files.length).toBeGreaterThanOrEqual(1);
-    expect(files).toContain('001_initial_schema.sql');
-    expect(files.every((f) => f.endsWith('.sql'))).toBe(true);
+    expect(files).toContain("001_initial_schema.sql");
+    expect(files.every((f) => f.endsWith(".sql"))).toBe(true);
     expect(files).toEqual([...files].sort());
   });
 });
 
-describe('applyMigration', () => {
-  it('reads file, runs SQL, then records version', async () => {
+describe("applyMigration", () => {
+  it("reads file, runs SQL, then records version", async () => {
     const client = createMockClient();
-    const migrationsDir = await import('path').then((p) =>
-      p.join(process.cwd(), 'migrations')
+    const migrationsDir = await import("path").then((p) =>
+      p.join(process.cwd(), "migrations"),
     );
-    await applyMigration(client, migrationsDir, '001_initial_schema.sql');
+    await applyMigration(client, migrationsDir, "001_initial_schema.sql");
     expect(client.query).toHaveBeenCalled();
     const insertCall = vi.mocked(client.query).mock.calls.find(
-      (c) => typeof c[0] === 'string' && c[0].includes('INSERT INTO schema_migrations')
+      (c) => typeof c[0] === "string" && c[0].includes("INSERT INTO schema_migrations"),
     );
     expect(insertCall).toBeDefined();
-    expect(insertCall![1]).toEqual(['001_initial_schema']);
+    expect(insertCall![1]).toEqual(["001_initial_schema"]);
   });
 });
 
-describe('runPendingMigrations', () => {
-  it('skips already applied migrations', async () => {
+describe("runPendingMigrations", () => {
+  it("skips already applied migrations", async () => {
     const client = createMockClient();
     vi.mocked(client.query)
       .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ version: '001_initial_schema' }] });
-    const migrationsDir = await import('path').then((p) =>
-      p.join(process.cwd(), 'migrations')
+      .mockResolvedValueOnce({ rows: [{ version: "001_initial_schema" }] });
+    const migrationsDir = await import("path").then((p) =>
+      p.join(process.cwd(), "migrations"),
     );
     const run = await runPendingMigrations(client, migrationsDir);
     expect(run).toEqual([]);
   });
 
-  it('applies pending migration and returns its version', async () => {
+  it("applies pending migration and returns its version", async () => {
     const client = createMockClient();
     vi.mocked(client.query)
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
-    const migrationsDir = await import('path').then((p) =>
-      p.join(process.cwd(), 'migrations')
+    const migrationsDir = await import("path").then((p) =>
+      p.join(process.cwd(), "migrations"),
     );
     const run = await runPendingMigrations(client, migrationsDir);
-    expect(run).toContain('001_initial_schema');
+    expect(run).toContain("001_initial_schema");
     expect(run.length).toBeGreaterThanOrEqual(1);
   });
 });
 
-describe('EXPECTED_TABLES', () => {
-  it('includes all core domain tables', () => {
+describe("EXPECTED_TABLES", () => {
+  it("includes all core domain tables", () => {
     expect(EXPECTED_TABLES).toEqual([
-      'borrowers',
-      'credit_lines',
-      'risk_evaluations',
-      'transactions',
-      'events',
+      "borrowers",
+      "credit_lines",
+      "risk_evaluations",
+      "transactions",
+      "events",
     ]);
   });
 });

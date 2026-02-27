@@ -193,79 +193,79 @@ describe("suspendCreditLine()", () => {
 
 
 describe("closeCreditLine()", () => {
-    describe("valid transition: active → closed", () => {
-        it("changes status to 'closed'", () => {
-        createCreditLine("line-1");
-        const updated = closeCreditLine("line-1");
-        expect(updated.status).toBe("closed");
-        });
-
-        it("appends a 'closed' event", () => {
-        createCreditLine("line-1");
-        const updated = closeCreditLine("line-1");
-        expect(updated.events.at(-1)!.action).toBe("closed");
-        });
+  describe("valid transition: active → closed", () => {
+    it("changes status to 'closed'", () => {
+      createCreditLine("line-1");
+      const updated = closeCreditLine("line-1");
+      expect(updated.status).toBe("closed");
     });
 
-    describe("valid transition: suspended → closed", () => {
-        it("changes status from suspended to closed", () => {
-        createCreditLine("line-1", "suspended");
-        const updated = closeCreditLine("line-1");
-        expect(updated.status).toBe("closed");
-        });
+    it("appends a 'closed' event", () => {
+      createCreditLine("line-1");
+      const updated = closeCreditLine("line-1");
+      expect(updated.events.at(-1)!.action).toBe("closed");
+    });
+  });
 
-        it("appends a 'closed' event after existing events", () => {
-        createCreditLine("line-1", "suspended");
-        const updated = closeCreditLine("line-1");
-        expect(updated.events.at(-1)!.action).toBe("closed");
-        });
+  describe("valid transition: suspended → closed", () => {
+    it("changes status from suspended to closed", () => {
+      createCreditLine("line-1", "suspended");
+      const updated = closeCreditLine("line-1");
+      expect(updated.status).toBe("closed");
     });
 
-    describe("invalid transition: closed → closed", () => {
-        it("throws InvalidTransitionError when line is already closed", () => {
-        createCreditLine("line-1", "closed");
-        expect(() => closeCreditLine("line-1")).toThrow(InvalidTransitionError);
-        });
+    it("appends a 'closed' event after existing events", () => {
+      createCreditLine("line-1", "suspended");
+      const updated = closeCreditLine("line-1");
+      expect(updated.events.at(-1)!.action).toBe("closed");
+    });
+  });
 
-        it("error message mentions 'close' and 'closed'", () => {
-        createCreditLine("line-1", "closed");
-        expect(() => closeCreditLine("line-1")).toThrow(/close.*closed|closed.*close/i);
-        });
-
-        it("exposes currentStatus 'closed' and requestedAction 'close'", () => {
-        createCreditLine("line-1", "closed");
-        try {
-            closeCreditLine("line-1");
-        } catch (err) {
-            const e = err as InvalidTransitionError;
-            expect(e.currentStatus).toBe("closed");
-            expect(e.requestedAction).toBe("close");
-        }
-        });
+  describe("invalid transition: closed → closed", () => {
+    it("throws InvalidTransitionError when line is already closed", () => {
+      createCreditLine("line-1", "closed");
+      expect(() => closeCreditLine("line-1")).toThrow(InvalidTransitionError);
     });
 
-    describe("not-found error", () => {
-        it("throws CreditLineNotFoundError for unknown id", () => {
-        expect(() => closeCreditLine("ghost")).toThrow(CreditLineNotFoundError);
-        });
-
-        it("error message includes the id", () => {
-        expect(() => closeCreditLine("ghost")).toThrow(/ghost/);
-        });
+    it("error message mentions 'close' and 'closed'", () => {
+      createCreditLine("line-1", "closed");
+      expect(() => closeCreditLine("line-1")).toThrow(/close.*closed|closed.*close/i);
     });
 
-    describe("full lifecycle", () => {
-        it("supports active → suspend → close transition sequence", () => {
-        createCreditLine("line-1");
-        suspendCreditLine("line-1");
-        const closed = closeCreditLine("line-1");
-        expect(closed.status).toBe("closed");
-        expect(closed.events).toHaveLength(3);
-        expect(closed.events.map((e) => e.action)).toEqual([
-            "created",
-            "suspended",
-            "closed",
-        ]);
-        });
+    it("exposes currentStatus 'closed' and requestedAction 'close'", () => {
+      createCreditLine("line-1", "closed");
+      try {
+        closeCreditLine("line-1");
+      } catch (err) {
+        const e = err as InvalidTransitionError;
+        expect(e.currentStatus).toBe("closed");
+        expect(e.requestedAction).toBe("close");
+      }
+    });
+  });
+
+  describe("not-found error", () => {
+    it("throws CreditLineNotFoundError for unknown id", () => {
+      expect(() => closeCreditLine("ghost")).toThrow(CreditLineNotFoundError);
+    });
+
+    it("error message includes the id", () => {
+      expect(() => closeCreditLine("ghost")).toThrow(/ghost/);
+    });
+  });
+
+  describe("full lifecycle", () => {
+    it("supports active → suspend → close transition sequence", () => {
+      createCreditLine("line-1");
+      suspendCreditLine("line-1");
+      const closed = closeCreditLine("line-1");
+      expect(closed.status).toBe("closed");
+      expect(closed.events).toHaveLength(3);
+      expect(closed.events.map((e) => e.action)).toEqual([
+        "created",
+        "suspended",
+        "closed",
+      ]);
+    });
   });
 });

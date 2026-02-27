@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 'use strict';
 
 module.exports = {
@@ -26,26 +27,70 @@ module.exports = {
       'error',
       { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
     ],
-
-    // Allow explicit `any` with a warning instead of hard error (relax for now)
-    '@typescript-eslint/no-explicit-any': 'warn',
-
-    // Enforce consistent type imports
-    '@typescript-eslint/consistent-type-imports': [
-      'error',
-      { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
-    ],
-
-    // No floating promises — important for async route handlers
-    '@typescript-eslint/no-floating-promises': 'error',
-
-    // Disallow require() in ESM codebase
-    '@typescript-eslint/no-require-imports': 'error',
+        'airbnb-typescript/base',
+      ],
+      rules: {
+        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+        '@typescript-eslint/quotes': ['error', 'double'],
+        'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
+        'import/extensions': 'off',
+        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/naming-convention': [
+          'error',
+          {
+            selector: 'variableLike',
+            format: ['camelCase', 'PascalCase', 'UPPER_CASE'],
+            leadingUnderscore: 'allow',
+          },
+        ],
+        'node/no-missing-import': 'off',
+        'indent': 'off',
+        '@typescript-eslint/indent': 'off',
+      },
+      overrides: [
+        {
+          files: ['**/*.test.ts'],
+          rules: {
+            '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+          },
+        },
+      ],
+      ignorePatterns: ['dist/', 'node_modules/', 'coverage/', 'build/'],
+    es2021: true,
+    jest: true,
   },
-  ignorePatterns: [
-    'dist/',
-    'node_modules/',
-    'coverage/',
-    '*.cjs',        // ignore this file itself
+  plugins: ['@typescript-eslint', 'import', 'node', 'promise'],
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'airbnb-typescript/base',
   ],
+  rules: {
+    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    '@typescript-eslint/quotes': ['error', 'double'],
+    'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
+    'import/extensions': 'off',
+    '@typescript-eslint/no-explicit-any': 'off',
+    '@typescript-eslint/naming-convention': [
+      'error',
+      {
+        selector: 'variableLike',
+        format: ['camelCase', 'PascalCase', 'UPPER_CASE'],
+        leadingUnderscore: 'allow',
+      },
+    ],
+    'node/no-missing-import': 'off',
+    'indent': 'off',
+    '@typescript-eslint/indent': 'off',
+  },
+  overrides: [
+    {
+      files: ['**/*.test.ts'],
+      rules: {
+        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      },
+    },
+  ],
+  ignorePatterns: ['dist/', 'node_modules/', 'coverage/', 'build/'],
+>>>>>>> 4e2f84e (chore: configure ESLint for backend TypeScript)
 };

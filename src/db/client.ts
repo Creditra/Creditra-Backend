@@ -1,4 +1,4 @@
-import { createRequire } from 'module';
+import { createRequire } from "module";
 
 /**
  * Database client interface for migrations and validation.
@@ -15,9 +15,9 @@ const require = createRequire(import.meta.url);
 export function getConnection(): DbClient {
   const url = process.env.DATABASE_URL;
   if (!url) {
-    throw new Error('DATABASE_URL is required');
+    throw new Error("DATABASE_URL is required");
   }
-  const pg = require('pg') as {
+  const pg = require("pg") as {
     Client: new (opts: { connectionString: string }) => DbClient;
   };
   return new pg.Client({ connectionString: url });

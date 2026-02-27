@@ -1,6 +1,6 @@
-import { readdir, readFile } from 'fs/promises';
-import { join } from 'path';
-import type { DbClient } from './client.js';
+import { readdir, readFile } from "fs/promises";
+import { join } from "path";
+import type { DbClient } from "./client.js";
 
 const SCHEMA_MIGRATIONS_TABLE = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -11,11 +11,11 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 
 /** Expected core tables that must exist after initial schema. */
 export const EXPECTED_TABLES = [
-  'borrowers',
-  'credit_lines',
-  'risk_evaluations',
-  'transactions',
-  'events',
+  "borrowers",
+  "credit_lines",
+  "risk_evaluations",
+  "transactions",
+  "events",
 ] as const;
 
 /**
@@ -31,7 +31,7 @@ export async function ensureSchemaMigrations(client: DbClient): Promise<void> {
 export async function listMigrationFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   const files = entries
-    .filter((e) => e.isFile() && e.name.endsWith('.sql'))
+    .filter((e) => e.isFile() && e.name.endsWith(".sql"))
     .map((e) => e.name)
     .sort();
   return files;
@@ -41,7 +41,7 @@ export async function listMigrationFiles(dir: string): Promise<string[]> {
  * Extract version string from migration filename (e.g. 001_initial_schema.sql -> 001_initial_schema).
  */
 export function versionFromFilename(filename: string): string {
-  if (!filename.endsWith('.sql')) return filename;
+  if (!filename.endsWith(".sql")) return filename;
   return filename.slice(0, -4);
 }
 
@@ -51,7 +51,7 @@ export function versionFromFilename(filename: string): string {
 export async function getAppliedVersions(client: DbClient): Promise<string[]> {
   await ensureSchemaMigrations(client);
   const result = await client.query(
-    'SELECT version FROM schema_migrations ORDER BY version'
+    "SELECT version FROM schema_migrations ORDER BY version",
   );
   const rows = result.rows as { version: string }[];
   return rows.map((r) => r.version);
@@ -63,15 +63,15 @@ export async function getAppliedVersions(client: DbClient): Promise<string[]> {
 export async function applyMigration(
   client: DbClient,
   migrationsDir: string,
-  filename: string
+  filename: string,
 ): Promise<void> {
   const path = join(migrationsDir, filename);
-  const sql = await readFile(path, 'utf-8');
+  const sql = await readFile(path, "utf-8");
   await client.query(sql);
   const version = versionFromFilename(filename);
   await client.query(
-    'INSERT INTO schema_migrations (version, applied_at) VALUES ($1, now()) ON CONFLICT (version) DO NOTHING',
-    [version]
+    "INSERT INTO schema_migrations (version, applied_at) VALUES ($1, now()) ON CONFLICT (version) DO NOTHING",
+    [version],
   );
 }
 
@@ -81,7 +81,7 @@ export async function applyMigration(
  */
 export async function runPendingMigrations(
   client: DbClient,
-  migrationsDir: string
+  migrationsDir: string,
 ): Promise<string[]> {
   const applied = await getAppliedVersions(client);
   const files = await listMigrationFiles(migrationsDir);

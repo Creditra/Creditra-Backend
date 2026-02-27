@@ -106,6 +106,16 @@ npm run test:watch
 - `GET /api/credit/lines/:id` — Get credit line by id (placeholder)
 - `POST /api/risk/evaluate` — Request risk evaluation; body: `{ "walletAddress": "..." }`
 
+## Linting and formatting
+
+Consistent coding practices are enforced via ESLint configured for TypeScript. Run the linter with:
+
+```bash
+npm run lint          # analyze source files under src/
+```
+
+The configuration lives in `.eslintrc.cjs` and common ignores are listed in `.eslintignore`.
+
 ## Project layout
 
 ```
