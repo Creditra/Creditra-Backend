@@ -1,8 +1,13 @@
 import { Router, Request, Response } from "express";
+import { createLogger } from '../lib/logger.js';
+import { createRequestLogger } from '../middleware/requestLogger.js';
 import { evaluateWallet } from "../services/riskService.js";
 import { ok, fail } from "../utils/response.js";
 
 export const riskRouter = Router();
+
+const logger = createLogger('risk-router');
+riskRouter.use(createRequestLogger(logger));
 
 riskRouter.post(
   "/evaluate",

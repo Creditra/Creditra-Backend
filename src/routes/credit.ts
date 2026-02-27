@@ -1,4 +1,6 @@
 import { Router, Request, Response } from "express";
+import { createLogger } from '../lib/logger.js';
+import { createRequestLogger } from '../middleware/requestLogger.js';
 import { ok, fail } from "../utils/response.js";
 import { adminAuth } from "../middleware/adminAuth.js";
 import {
@@ -11,6 +13,9 @@ import {
 } from "../services/creditService.js";
 
 export const creditRouter = Router();
+
+const logger = createLogger('credit-router');
+creditRouter.use(createRequestLogger(logger));
 
 function handleServiceError(err: unknown, res: Response): void {
   if (err instanceof CreditLineNotFoundError) {
