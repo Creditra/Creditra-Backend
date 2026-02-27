@@ -79,7 +79,7 @@ This plan implements a flexible, performant Express middleware for rate limiting
     - Generate two different IPs, make requests from one, verify other unaffected
     - File: `tests/properties/rateLimiter.properties.test.ts`
 
-  - [ ]* 3.4 Write unit tests for rate limiter middleware
+  - [x]* 3.4 Write unit tests for rate limiter middleware
     - Test requests within quota succeed
     - Test requests exceeding quota return 429
     - Test 429 response format includes all required fields
@@ -107,7 +107,7 @@ This plan implements a flexible, performant Express middleware for rate limiting
     - Test with random quota and window values
     - File: `tests/properties/rateLimiter.properties.test.ts`
 
-  - [ ]* 4.3 Write unit tests for configuration module
+  - [-]* 4.3 Write unit tests for configuration module
     - Test getRateLimitConfig returns correct config for each environment
     - Test default configuration fallback
     - Test specific endpoint configurations match requirements

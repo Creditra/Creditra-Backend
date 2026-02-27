@@ -45,7 +45,9 @@ export function createRateLimiter(config: RateLimiterConfig): RequestHandler {
       const clientKey = keyGenerator(req);
       
       // Generate storage key: {clientIP}:{endpoint}
-      const key = `${clientKey}:${req.path}`;
+      // Use baseUrl + path to get the full path including base path
+      const endpoint = (req.baseUrl || '') + (req.path || '');
+      const key = `${clientKey}:${endpoint}`;
 
       // Increment counter and get current state
       const { count, resetAt } = await store.increment(key, windowMs);

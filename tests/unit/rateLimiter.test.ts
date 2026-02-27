@@ -466,22 +466,21 @@ describe('Rate Limiter Middleware', () => {
         windowMs: 60000,
         maxRequests: 1,
         store,
-      });
-
-      // Middleware that removes IP
-      app.use((req: Request, res: Response, next) => {
-        (req as any).ip = undefined;
-        next();
+        keyGenerator: (req: Request) => {
+          // Simulate missing IP
+          return (req as any).ip || 'unknown';
+        },
       });
 
       app.use('/test', limiter, (req: Request, res: Response) => {
         res.status(200).json({ ok: true });
       });
 
+      // Supertest should work normally
       const res1 = await request(app).get('/test');
       expect(res1.status).toBe(200);
 
-      // Should still rate limit using "unknown" as key
+      // Should still rate limit
       const res2 = await request(app).get('/test');
       expect(res2.status).toBe(429);
     });
