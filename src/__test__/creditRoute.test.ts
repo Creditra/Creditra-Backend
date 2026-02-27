@@ -2,7 +2,12 @@
 import express, { Express } from "express";
 import request from "supertest";
 import { jest } from "@jest/globals";
-import { _resetStore, createCreditLine } from "../../services/creditService.js";
+import {
+  _resetStore,
+  createCreditLine,
+  suspendCreditLine,
+  closeCreditLine,
+} from "../../services/creditService.js";
 
 // Mock adminAuth so we can control auth pass/fail from within tests
 jest.mock("../../middleware/adminAuth.js", () => ({
@@ -245,5 +250,191 @@ describe("POST /api/credit/lines/:id/close — business logic", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe("closed");
     expect(res.body.data.events.map((e: { action: string }) => e.action)).toContain("suspended");
+  });
+});
+
+
+describe("GET /api/credit/lines/:id/transactions", () => {
+  it("returns 200 with the response envelope", async () => {
+    createCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(`/api/credit/lines/${VALID_ID}/transactions`);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty("data");
+    expect(res.body.error).toBeNull();
+  });
+
+  it("returns pagination metadata in the response", async () => {
+    createCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(`/api/credit/lines/${VALID_ID}/transactions`);
+    expect(res.body.data).toMatchObject({
+      transactions: expect.any(Array),
+      total: expect.any(Number),
+      page: 1,
+      limit: 20,
+      totalPages: expect.any(Number),
+    });
+  });
+
+  it("returns the status_change transaction recorded on line creation", async () => {
+    createCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(`/api/credit/lines/${VALID_ID}/transactions`);
+    expect(res.body.data.transactions).toHaveLength(1);
+    expect(res.body.data.transactions[0].type).toBe("status_change");
+    expect(res.body.data.transactions[0].metadata.action).toBe("created");
+  });
+
+  it("returns populated history after suspend and close via service", async () => {
+    createCreditLine(VALID_ID);
+    suspendCreditLine(VALID_ID);
+    closeCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(`/api/credit/lines/${VALID_ID}/transactions`);
+    expect(res.body.data.total).toBe(3);
+    expect(res.body.data.transactions).toHaveLength(3);
+  });
+
+  it("returns 404 with error containing id for an unknown credit line", async () => {
+    const res = await request(buildApp()).get(`/api/credit/lines/${MISSING_ID}/transactions`);
+    expect(res.status).toBe(404);
+    expect(res.body.error).toContain(MISSING_ID);
+  });
+
+  it("returns 404 with JSON content-type", async () => {
+    const res = await request(buildApp()).get(`/api/credit/lines/${MISSING_ID}/transactions`);
+    expect(res.headers["content-type"]).toMatch(/application\/json/);
+  });
+
+  it("filters by type=status_change", async () => {
+    createCreditLine(VALID_ID);
+    suspendCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${VALID_ID}/transactions?type=status_change`,
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.transactions.every((tx: { type: string }) => tx.type === "status_change")).toBe(true);
+  });
+
+  it("returns empty transactions array when type filter has no matches", async () => {
+    createCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${VALID_ID}/transactions?type=draw`,
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.transactions).toHaveLength(0);
+    expect(res.body.data.total).toBe(0);
+  });
+
+  it("returns 400 for an invalid type filter value", async () => {
+    createCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${VALID_ID}/transactions?type=invalid`,
+    );
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/type/i);
+  });
+
+  it("returns 400 for an invalid 'from' date", async () => {
+    createCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${VALID_ID}/transactions?from=not-a-date`,
+    );
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/from/i);
+  });
+
+  it("returns 400 for an invalid 'to' date", async () => {
+    createCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${VALID_ID}/transactions?to=not-a-date`,
+    );
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/to/i);
+  });
+
+  it("returns 400 for a non-numeric 'page' value", async () => {
+    createCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${VALID_ID}/transactions?page=abc`,
+    );
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/page/i);
+  });
+
+  it("returns 400 for page=0", async () => {
+    createCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${VALID_ID}/transactions?page=0`,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for a non-numeric 'limit' value", async () => {
+    createCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${VALID_ID}/transactions?limit=xyz`,
+    );
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/limit/i);
+  });
+
+  it("returns 400 for limit=0", async () => {
+    createCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${VALID_ID}/transactions?limit=0`,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for limit exceeding 100", async () => {
+    createCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${VALID_ID}/transactions?limit=101`,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("respects custom page and limit query params", async () => {
+    createCreditLine(VALID_ID);
+    suspendCreditLine(VALID_ID);
+    closeCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${VALID_ID}/transactions?page=1&limit=2`,
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.transactions).toHaveLength(2);
+    expect(res.body.data.total).toBe(3);
+    expect(res.body.data.totalPages).toBe(2);
+    expect(res.body.data.limit).toBe(2);
+  });
+
+  it("returns second page of results correctly", async () => {
+    createCreditLine(VALID_ID);
+    suspendCreditLine(VALID_ID);
+    closeCreditLine(VALID_ID);
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${VALID_ID}/transactions?page=2&limit=2`,
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.transactions).toHaveLength(1);
+    expect(res.body.data.transactions[0].metadata.action).toBe("closed");
+  });
+
+  it("filters by valid 'from' date excluding older transactions", async () => {
+    createCreditLine(VALID_ID);
+    const future = new Date(Date.now() + 60_000).toISOString();
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${VALID_ID}/transactions?from=${encodeURIComponent(future)}`,
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.transactions).toHaveLength(0);
+  });
+
+  it("filters by valid 'to' date excluding newer transactions", async () => {
+    createCreditLine(VALID_ID);
+    const past = new Date(Date.now() - 60_000).toISOString();
+    const res = await request(buildApp()).get(
+      `/api/credit/lines/${VALID_ID}/transactions?to=${encodeURIComponent(past)}`,
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.transactions).toHaveLength(0);
   });
 });
