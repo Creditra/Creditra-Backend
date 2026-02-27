@@ -25,7 +25,6 @@ import {
 } from "../services/creditService.js";
 
 export const creditRouter = Router();
-const container = Container.getInstance();
 
 creditRouter.get('/lines', async (req, res) => {
   try {
