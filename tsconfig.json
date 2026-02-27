@@ -10,5 +10,11 @@
     "skipLibCheck": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "coverage"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "src/__test__/**",
+    "src/__tests__/**"
+  ]
 }
