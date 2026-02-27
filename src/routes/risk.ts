@@ -1,95 +1,148 @@
-import { Router, type Request, type Response } from 'express';
-import { evaluateRisk } from '../risk/index.js';
-import type { RiskInputs } from '../risk/index.js';
+import { Router, Request, Response } from 'express';
+import { validateBody } from '../middleware/validate.js';
+import { riskEvaluateSchema } from '../schemas/index.js';
+import type { RiskEvaluateBody } from '../schemas/index.js';
+import { createApiKeyMiddleware } from '../middleware/auth.js';
+import { loadApiKeys } from '../config/apiKeys.js';
+import { isValidStellarPublicKey } from '../utils/stellarAddress.js';
+import { ok, fail } from '../utils/response.js';
+import { Container } from '../container/Container.js';
 
 export const riskRouter = Router();
+const container = Container.getInstance();
+
+// Lazily resolve API keys (useful for tests)
+const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
+
+/**
+ * ---------------------------------------------------------------------------
+ * Public endpoints
+ * ---------------------------------------------------------------------------
+ */
 
 /**
  * POST /api/risk/evaluate
- *
- * Evaluates the credit risk for a given wallet address.
- *
- * Request body (all fields required):
- * ```json
- * {
- *   "walletAddress":          "0xabc...123",
- *   "transactionCount":       250,
- *   "walletAgeDays":          365,
- *   "defiActivityVolumeUsd":  12000,
- *   "currentBalanceUsd":      8000,
- *   "hasHighRiskInteraction": false
- * }
- * ```
- *
- * Responses:
- * - 200 RiskOutput — successful evaluation
- * - 400 { error, fields? } — missing or invalid fields
- * - 500 { error } — unexpected server error
  */
-riskRouter.post('/evaluate', async (req: Request, res: Response) => {
-  const body = req.body ?? {};
+riskRouter.post(
+  '/evaluate',
+  validateBody(riskEvaluateSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { walletAddress, forceRefresh} = req.body as RiskEvaluateBody;
 
-  // ── Field presence validation ─────────────────────────────────────────────
-  const requiredFields: (keyof RiskInputs)[] = [
-    'walletAddress',
-    'transactionCount',
-    'walletAgeDays',
-    'defiActivityVolumeUsd',
-    'currentBalanceUsd',
-    'hasHighRiskInteraction',
-  ];
+      const normalizedWalletAddress = walletAddress.trim();
 
-  const missingFields = requiredFields.filter((f) => body[f] === undefined || body[f] === null);
-  if (missingFields.length > 0) {
-    return res.status(400).json({
-      error: 'Missing required fields',
-      fields: missingFields,
-    });
-  }
+      if (!isValidStellarPublicKey(normalizedWalletAddress)) {
+        fail(res, 'Invalid wallet address format.', 400);
+        return;
+      }
 
-  // ── Type validation ───────────────────────────────────────────────────────
-  const numericFields: (keyof RiskInputs)[] = [
-    'transactionCount',
-    'walletAgeDays',
-    'defiActivityVolumeUsd',
-    'currentBalanceUsd',
-  ];
+      const result = await container.riskEvaluationService.evaluateRisk({
+        walletAddress: normalizedWalletAddress,
+        forceRefresh: forceRefresh ?? false,
+      });
 
-  const invalidNumeric = numericFields.filter(
-    (f) => typeof body[f] !== 'number' || !isFinite(body[f]) || body[f] < 0,
-  );
-  if (invalidNumeric.length > 0) {
-    return res.status(400).json({
-      error: 'Fields must be non-negative finite numbers',
-      fields: invalidNumeric,
-    });
-  }
+      ok(res, result);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Risk evaluation failed';
+      fail(res, message, 500);
+    }
+  },
+);
 
-  if (typeof body.walletAddress !== 'string' || body.walletAddress.trim() === '') {
-    return res.status(400).json({ error: 'walletAddress must be a non-empty string' });
-  }
+/**
+ * GET /api/risk/evaluations/:id
+ */
+riskRouter.get(
+  '/evaluations/:id',
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const evaluation =
+        await container.riskEvaluationService.getRiskEvaluation(
+          req.params.id,
+        );
 
-  if (typeof body.hasHighRiskInteraction !== 'boolean') {
-    return res.status(400).json({
-      error: 'hasHighRiskInteraction must be a boolean',
-    });
-  }
+      if (!evaluation) {
+        fail(res, 'Risk evaluation not found', 404);
+        return;
+      }
 
-  // ── Scoring ───────────────────────────────────────────────────────────────
-  const inputs: RiskInputs = {
-    walletAddress: body.walletAddress.trim(),
-    transactionCount: body.transactionCount,
-    walletAgeDays: body.walletAgeDays,
-    defiActivityVolumeUsd: body.defiActivityVolumeUsd,
-    currentBalanceUsd: body.currentBalanceUsd,
-    hasHighRiskInteraction: body.hasHighRiskInteraction,
-  };
+      ok(res, evaluation);
+    } catch {
+      fail(res, 'Failed to fetch risk evaluation', 500);
+    }
+  },
+);
 
-  try {
-    const result = await evaluateRisk(inputs);
-    return res.json(result);
-  } catch (err) {
-    console.error('[risk/evaluate] scoring error', err);
-    return res.status(500).json({ error: 'Internal risk evaluation error' });
-  }
-});
+/**
+ * GET /api/risk/wallet/:walletAddress/latest
+ */
+riskRouter.get(
+  '/wallet/:walletAddress/latest',
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const evaluation =
+        await container.riskEvaluationService.getLatestRiskEvaluation(
+          req.params.walletAddress,
+        );
+
+      if (!evaluation) {
+        fail(res, 'No risk evaluation found for wallet', 404);
+        return;
+      }
+
+      ok(res, evaluation);
+    } catch {
+      fail(res, 'Failed to fetch latest risk evaluation', 500);
+    }
+  },
+);
+
+/**
+ * GET /api/risk/wallet/:walletAddress/history
+ */
+riskRouter.get(
+  '/wallet/:walletAddress/history',
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const offset = req.query.offset
+        ? parseInt(req.query.offset as string, 10)
+        : undefined;
+
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string, 10)
+        : undefined;
+
+      const evaluations =
+        await container.riskEvaluationService.getRiskEvaluationHistory(
+          req.params.walletAddress,
+          offset,
+          limit,
+        );
+
+      ok(res, { evaluations });
+    } catch {
+      fail(res, 'Failed to fetch risk evaluation history', 500);
+    }
+  },
+);
+
+/**
+ * ---------------------------------------------------------------------------
+ * Admin endpoints (API key required)
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * POST /api/risk/admin/recalibrate
+ */
+riskRouter.post(
+  '/admin/recalibrate',
+  requireApiKey,
+  (_req: Request, res: Response): void => {
+    ok(res, { message: 'Risk model recalibration triggered' });
+  },
+);
+
+export default riskRouter;
