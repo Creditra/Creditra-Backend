@@ -1,16 +1,18 @@
 
-import { beforeEach } from "node:test";
+import { beforeEach } from "vitest";
 import {
   createCreditLine,
   getCreditLine,
   listCreditLines,
   suspendCreditLine,
   closeCreditLine,
+  repayCreditLine,
   InvalidTransitionError,
   CreditLineNotFoundError,
+  InvalidRepaymentError,
   _resetStore,
   _store,
-} from "../../services/creditService.js";
+} from "../services/creditService.js";
 
 
     
@@ -23,6 +25,19 @@ describe("createCreditLine()", () => {
   it("creates a credit line with 'active' status by default", () => {
     const line = createCreditLine("line-1");
     expect(line.status).toBe("active");
+  });
+
+  it("creates a credit line with default credit limit and currency", () => {
+    const line = createCreditLine("line-1");
+    expect(line.creditLimit).toBe(1000);
+    expect(line.currency).toBe("USDC");
+    expect(line.utilizedAmount).toBe(0);
+  });
+
+  it("allows custom credit limit and currency", () => {
+    const line = createCreditLine("line-1", "active", 5000, "USD");
+    expect(line.creditLimit).toBe(5000);
+    expect(line.currency).toBe("USD");
   });
 
   it("stores the credit line so getCreditLine can find it", () => {
@@ -267,5 +282,144 @@ describe("closeCreditLine()", () => {
             "closed",
         ]);
         });
+  });
+});
+
+describe("repayCreditLine()", () => {
+  describe("valid repayments", () => {
+    it("processes full repayment correctly", () => {
+      const line = createCreditLine("line-1", "active", 1000);
+      // Simulate some utilization
+      line.utilizedAmount = 500;
+
+      const result = repayCreditLine("line-1", { amount: 500 });
+
+      expect(result.repaymentAmount).toBe(500);
+      expect(result.newUtilizedAmount).toBe(0);
+      expect(result.creditLine.utilizedAmount).toBe(0);
+      expect(result.creditLine.events).toHaveLength(2);
+      expect(result.creditLine.events[1]!.action).toBe("repayment");
+      expect(result.creditLine.events[1]!.amount).toBe(500);
+    });
+
+    it("processes partial repayment correctly", () => {
+      const line = createCreditLine("line-1", "active", 1000);
+      line.utilizedAmount = 500;
+
+      const result = repayCreditLine("line-1", { amount: 200 });
+
+      expect(result.repaymentAmount).toBe(200);
+      expect(result.newUtilizedAmount).toBe(300);
+      expect(result.creditLine.utilizedAmount).toBe(300);
+    });
+
+    it("includes transaction reference when provided", () => {
+      const line = createCreditLine("line-1", "active", 1000);
+      line.utilizedAmount = 500;
+
+      const result = repayCreditLine("line-1", {
+        amount: 200,
+        transactionReference: "tx-abc123"
+      });
+
+      expect(result.creditLine.events[1]!.transactionReference).toBe("tx-abc123");
+    });
+
+    it("updates the updatedAt timestamp", () => {
+      const line = createCreditLine("line-1", "active", 1000);
+      line.utilizedAmount = 500;
+      const before = line.updatedAt;
+
+      const result = repayCreditLine("line-1", { amount: 200 });
+
+      expect(new Date(result.creditLine.updatedAt).getTime()).toBeGreaterThanOrEqual(
+        new Date(before).getTime()
+      );
+    });
+
+    it("persists changes in the store", () => {
+      const line = createCreditLine("line-1", "active", 1000);
+      line.utilizedAmount = 500;
+
+      repayCreditLine("line-1", { amount: 200 });
+
+      const stored = getCreditLine("line-1");
+      expect(stored?.utilizedAmount).toBe(300);
+      expect(stored?.events).toHaveLength(2);
+    });
+  });
+
+  describe("invalid repayments", () => {
+    it("throws InvalidRepaymentError for zero amount", () => {
+      const line = createCreditLine("line-1", "active", 1000);
+      line.utilizedAmount = 500;
+
+      expect(() => repayCreditLine("line-1", { amount: 0 })).toThrow(InvalidRepaymentError);
+      expect(() => repayCreditLine("line-1", { amount: 0 })).toThrow(/must be positive/);
+    });
+
+    it("throws InvalidRepaymentError for negative amount", () => {
+      const line = createCreditLine("line-1", "active", 1000);
+      line.utilizedAmount = 500;
+
+      expect(() => repayCreditLine("line-1", { amount: -100 })).toThrow(InvalidRepaymentError);
+    });
+
+    it("throws InvalidRepaymentError when repayment exceeds utilized amount", () => {
+      const line = createCreditLine("line-1", "active", 1000);
+      line.utilizedAmount = 300;
+
+      expect(() => repayCreditLine("line-1", { amount: 400 })).toThrow(InvalidRepaymentError);
+      expect(() => repayCreditLine("line-1", { amount: 400 })).toThrow(/cannot exceed utilized amount/);
+    });
+
+    it("allows repayment equal to utilized amount", () => {
+      const line = createCreditLine("line-1", "active", 1000);
+      line.utilizedAmount = 300;
+
+      expect(() => repayCreditLine("line-1", { amount: 300 })).not.toThrow();
+    });
+
+    it("throws InvalidTransitionError for suspended credit line", () => {
+      const line = createCreditLine("line-1", "suspended", 1000);
+      line.utilizedAmount = 500;
+
+      expect(() => repayCreditLine("line-1", { amount: 200 })).toThrow(InvalidTransitionError);
+      expect(() => repayCreditLine("line-1", { amount: 200 })).toThrow(/repay.*suspended/);
+    });
+
+    it("throws InvalidTransitionError for closed credit line", () => {
+      const line = createCreditLine("line-1", "closed", 1000);
+      line.utilizedAmount = 500;
+
+      expect(() => repayCreditLine("line-1", { amount: 200 })).toThrow(InvalidTransitionError);
+    });
+
+    it("throws CreditLineNotFoundError for unknown id", () => {
+      expect(() => repayCreditLine("ghost", { amount: 100 })).toThrow(CreditLineNotFoundError);
+      expect(() => repayCreditLine("ghost", { amount: 100 })).toThrow(/ghost/);
+    });
+  });
+
+  describe("edge cases", () => {
+    it("handles repayment when utilized amount is zero", () => {
+      const line = createCreditLine("line-1", "active", 1000);
+      // utilizedAmount is 0 by default
+
+      expect(() => repayCreditLine("line-1", { amount: 1 })).toThrow(InvalidRepaymentError);
+      expect(() => repayCreditLine("line-1", { amount: 1 })).toThrow(/cannot exceed utilized amount/);
+    });
+
+    it("handles multiple sequential repayments", () => {
+      const line = createCreditLine("line-1", "active", 1000);
+      line.utilizedAmount = 500;
+
+      repayCreditLine("line-1", { amount: 200 });
+      repayCreditLine("line-1", { amount: 150 });
+
+      const stored = getCreditLine("line-1");
+      expect(stored?.utilizedAmount).toBe(150);
+      expect(stored?.events).toHaveLength(3); // created + 2 repayments
+    });
   });
 });

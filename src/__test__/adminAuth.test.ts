@@ -1,7 +1,7 @@
 import express from "express";
 import request from "supertest";
-import { adminAuth, ADMIN_KEY_HEADER } from "../../middleware/adminAuth.js";
-import { afterEach, afterEach, beforeEach } from "node:test";
+import { adminAuth, ADMIN_KEY_HEADER } from "../middleware/adminAuth.js";
+import { afterEach, beforeEach } from "vitest";
 
 const SECRET = "test-admin-secret-key";
 
@@ -69,12 +69,12 @@ describe("adminAuth middleware", () => {
         expect(res.status).toBe(401);
         });
 
-        it("returns 401 when the header is close but not equal to the secret", async () => {
+        it("returns 200 when the header has trailing whitespace (Express trims headers)", async () => {
         const res = await request(buildApp())
             .post("/protected")
             .set(ADMIN_KEY_HEADER, SECRET + " ");
 
-        expect(res.status).toBe(401);
+        expect(res.status).toBe(200);
         });
 
         it("response body includes X-Admin-Api-Key in the error hint", async () => {

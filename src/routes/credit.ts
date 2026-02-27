@@ -6,8 +6,11 @@ import {
   getCreditLine,
   suspendCreditLine,
   closeCreditLine,
+  repayCreditLine,
   CreditLineNotFoundError,
   InvalidTransitionError,
+  InvalidRepaymentError,
+  RepaymentRequest,
 } from "../services/creditService.js";
 
 export const creditRouter = Router();
@@ -21,7 +24,12 @@ function handleServiceError(err: unknown, res: Response): void {
     fail(res, err.message, 409);
     return;
   }
-  fail(res, err, 500);
+  if (err instanceof InvalidRepaymentError) {
+    res.status(400).json({ error: err.message });
+    return;
+  }
+  const message = err instanceof Error ? err.message : "Internal server error";
+  res.status(500).json({ error: message });
 }
 
 creditRouter.get("/lines", (_req: Request, res: Response): void => {
@@ -62,3 +70,32 @@ creditRouter.post(
     }
   },
 );
+
+router.post(
+  "/lines/:id/repay",
+  adminAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { amount, transactionReference } = req.body as RepaymentRequest;
+
+      if (typeof amount !== "number") {
+        res.status(400).json({ error: "Amount is required and must be a number" });
+        return;
+      }
+
+      const result = repayCreditLine(req.params["id"] as string, {
+        amount,
+        transactionReference,
+      });
+
+      res.json({
+        data: result.creditLine,
+        message: `Repayment of ${result.repaymentAmount} processed. New utilized amount: ${result.newUtilizedAmount}`
+      });
+    } catch (err) {
+      handleServiceError(err, res);
+    }
+  },
+);
+
+export default router;
