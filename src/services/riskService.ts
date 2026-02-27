@@ -1,4 +1,6 @@
 
+import { isValidStellarPublicKey } from "../utils/stellarAddress.js";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -18,9 +20,15 @@ export interface RiskEvaluationResult {
 // ---------------------------------------------------------------------------
 
 export function isValidWalletAddress(address: string): boolean {
-    return /^G[A-Z2-7]{55}$/.test(address);
+    return isValidStellarPublicKey(address);
 }
 
+export class InvalidWalletAddressError extends Error {
+    constructor() {
+        super("Invalid wallet address format.");
+        this.name = "InvalidWalletAddressError";
+    }
+}
 
 export function scoreToRiskLevel(score: number): RiskLevel {
     if (score < 40) return "low";
@@ -36,10 +44,7 @@ export async function evaluateWallet(
     walletAddress: string,
     ): Promise<RiskEvaluationResult> {
     if (!isValidWalletAddress(walletAddress)) {
-        throw new Error(
-        `Invalid wallet address: "${walletAddress}". ` +
-            "Must start with 'G' and be 56 alphanumeric characters.",
-        );
+        throw new InvalidWalletAddressError();
     }
 
     return {
