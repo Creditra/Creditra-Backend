@@ -8,6 +8,7 @@ import swaggerUi from 'swagger-ui-express';
 
 import { creditRouter } from './routes/credit.js';
 import { riskRouter } from './routes/risk.js';
+import { healthRouter } from './routes/health.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 import { ok } from './utils/response.js';
@@ -23,14 +24,12 @@ const port = process.env.PORT ?? 3000;
 app.use(cors());
 app.use(express.json());
 
+app.use('/health', healthRouter);
 // ── Docs ────────────────────────────────────────────────────────────────────
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
 app.get('/docs.json', (_req, res) => res.json(openapiSpec));
 
-// ── Routes ───────────────────────────────────────────────────────────────────
-app.get('/health', (_req, res) => {
-  ok(res, { status: 'ok', service: 'creditra-backend' });
-});
+
 
 app.use('/api/credit', creditRouter);
 app.use('/api/risk', riskRouter);
