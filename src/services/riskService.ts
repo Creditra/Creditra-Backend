@@ -1,3 +1,5 @@
+import { RiskEvaluationRepository } from '../db/riskEvaluationRepository.js';
+import { getConnection } from '../db/client.js';
 
 import { isValidStellarPublicKey } from "../utils/stellarAddress.js";
 
@@ -12,6 +14,16 @@ export interface RiskEvaluationResult {
     score: number | null;
     riskLevel: RiskLevel | null;
     message: string;
+    evaluatedAt: string;
+}
+
+export interface RiskHistoryEntry {
+    id: string;
+    riskScore: number;
+    riskLevel: RiskLevel;
+    suggestedLimit: string;
+    interestRateBps: number;
+    inputs: Record<string, unknown> | null;
     evaluatedAt: string;
 }
 
@@ -54,4 +66,32 @@ export async function evaluateWallet(
         message: "Risk evaluation placeholder — engine not yet integrated.",
         evaluatedAt: new Date().toISOString(),
     };
+}
+
+export async function getRiskHistory(walletAddress: string): Promise<RiskHistoryEntry[]> {
+    if (!isValidWalletAddress(walletAddress)) {
+        throw new Error(
+            `Invalid wallet address: "${walletAddress}". ` +
+            "Must start with 'G' and be 56 alphanumeric characters.",
+        );
+    }
+
+    const db = getConnection();
+    try {
+        await db.connect?.();
+        const repository = new RiskEvaluationRepository(db);
+        const records = await repository.findByWalletAddress(walletAddress);
+        
+        return records.map(record => ({
+            id: record.id,
+            riskScore: record.riskScore,
+            riskLevel: scoreToRiskLevel(record.riskScore),
+            suggestedLimit: record.suggestedLimit,
+            interestRateBps: record.interestRateBps,
+            inputs: record.inputs,
+            evaluatedAt: record.evaluatedAt,
+        }));
+    } finally {
+        await db.end();
+    }
 }
