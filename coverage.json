@@ -1,0 +1,9 @@
+
+> creditra-backend@0.1.0 test
+> node --experimental-vm-modules node_modules/.bin/jest --coverage --reporter=json
+
+----------|---------|----------|---------|---------|-------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+----------|---------|----------|---------|---------|-------------------
+All files |       0 |        0 |       0 |       0 |                   
+----------|---------|----------|---------|---------|-------------------

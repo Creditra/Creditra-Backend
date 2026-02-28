@@ -22,7 +22,7 @@ export function validateBody<T>(schema: z.ZodType<T>) {
     const result = schema.safeParse(req.body);
 
     if (!result.success) {
-      const details = result.error.issues.map((issue) => ({
+      const details = result.error.issues.map((issue: any) => ({
         field: issue.path.join('.'),
         message: issue.message,
       }));

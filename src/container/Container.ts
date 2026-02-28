@@ -4,8 +4,11 @@ import { TransactionRepository } from '../repositories/interfaces/TransactionRep
 import { InMemoryCreditLineRepository } from '../repositories/memory/InMemoryCreditLineRepository.js';
 import { InMemoryRiskEvaluationRepository } from '../repositories/memory/InMemoryRiskEvaluationRepository.js';
 import { InMemoryTransactionRepository } from '../repositories/memory/InMemoryTransactionRepository.js';
+import { InMemoryAuditLogRepository } from '../repositories/memory/InMemoryAuditLogRepository.js';
+import { AuditLogRepository } from '../repositories/interfaces/AuditLogRepository.js';
 import { CreditLineService } from '../services/CreditLineService.js';
 import { RiskEvaluationService } from '../services/RiskEvaluationService.js';
+import { AuditLogService } from '../services/AuditLogService.js';
 
 export class Container {
   private static instance: Container;
@@ -14,20 +17,24 @@ export class Container {
   private _creditLineRepository: CreditLineRepository;
   private _riskEvaluationRepository: RiskEvaluationRepository;
   private _transactionRepository: TransactionRepository;
+  private _auditLogRepository: AuditLogRepository;
   
   // Services
   private _creditLineService: CreditLineService;
   private _riskEvaluationService: RiskEvaluationService;
+  private _auditLogService: AuditLogService;
 
   private constructor() {
     // Initialize repositories (in-memory implementations for now)
     this._creditLineRepository = new InMemoryCreditLineRepository();
     this._riskEvaluationRepository = new InMemoryRiskEvaluationRepository();
     this._transactionRepository = new InMemoryTransactionRepository();
+    this._auditLogRepository = new InMemoryAuditLogRepository();
     
     // Initialize services
     this._creditLineService = new CreditLineService(this._creditLineRepository);
     this._riskEvaluationService = new RiskEvaluationService(this._riskEvaluationRepository);
+    this._auditLogService = new AuditLogService(this._auditLogRepository);
   }
 
   public static getInstance(): Container {
@@ -59,11 +66,16 @@ export class Container {
     return this._riskEvaluationService;
   }
 
+  get auditLogService(): AuditLogService {
+    return this._auditLogService;
+  }
+
   // Method to replace repositories (useful for testing or switching to DB implementations)
   public setRepositories(repositories: {
     creditLineRepository?: CreditLineRepository;
     riskEvaluationRepository?: RiskEvaluationRepository;
     transactionRepository?: TransactionRepository;
+    auditLogRepository?: AuditLogRepository;
   }): void {
     if (repositories.creditLineRepository) {
       this._creditLineRepository = repositories.creditLineRepository;
@@ -77,6 +89,11 @@ export class Container {
     
     if (repositories.transactionRepository) {
       this._transactionRepository = repositories.transactionRepository;
+    }
+
+    if (repositories.auditLogRepository) {
+      this._auditLogRepository = repositories.auditLogRepository;
+      this._auditLogService = new AuditLogService(this._auditLogRepository);
     }
   }
 }

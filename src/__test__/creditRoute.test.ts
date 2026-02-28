@@ -7,16 +7,16 @@ import {
   createCreditLine,
   suspendCreditLine,
   closeCreditLine,
-} from "../../services/creditService.js";
+} from "../services/creditService.js";
 
 // Mock adminAuth so we can control auth pass/fail from within tests
-jest.mock("../../middleware/adminAuth.js", () => ({
+jest.mock("../middleware/adminAuth.js", () => ({
   adminAuth: jest.fn((_req: unknown, _res: unknown, next: () => void) => next()),
   ADMIN_KEY_HEADER: "x-admin-api-key",
 }));
 
-import creditRouter from "../../routes/credit.js";
-import { adminAuth } from "../../middleware/adminAuth.js";
+import creditRouter from "../routes/credit.js";
+import { adminAuth } from "../middleware/adminAuth.js";
 import { afterEach, beforeEach } from "node:test";
 
 const mockAdminAuth = adminAuth as jest.MockedFunction<typeof adminAuth>;
@@ -33,11 +33,11 @@ const MISSING_ID = "does-not-exist";
 const ADMIN_KEY = "test-secret";
 
 function allowAdmin() {
-  mockAdminAuth.mockImplementation((_req, _res, next) => next());
+  mockAdminAuth.mockImplementation((_req: any, _res: any, next: any) => next());
 }
 
 function denyAdmin() {
-  mockAdminAuth.mockImplementation((_req, res: any, _next) => {
+  mockAdminAuth.mockImplementation((_req: any, res: any, _next: any) => {
     res.status(401).json({ error: "Unauthorized: valid X-Admin-Api-Key header is required." });
   });
 }
@@ -107,7 +107,7 @@ describe("POST /api/credit/lines/:id/suspend — authorization", () => {
     denyAdmin();
     createCreditLine(VALID_ID);
     await request(buildApp()).post(`/api/credit/lines/${VALID_ID}/suspend`);
-    const { _store } = await import("../../services/creditService.js");
+    const { _store } = await import("../services/creditService.js");
     expect(_store.get(VALID_ID)?.status).toBe("active");
   });
 });
@@ -179,7 +179,7 @@ describe("POST /api/credit/lines/:id/close — authorization", () => {
     denyAdmin();
     createCreditLine(VALID_ID);
     await request(buildApp()).post(`/api/credit/lines/${VALID_ID}/close`);
-    const { _store } = await import("../../services/creditService.js");
+    const { _store } = await import("../services/creditService.js");
     expect(_store.get(VALID_ID)?.status).toBe("active");
   });
 });

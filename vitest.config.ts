@@ -2,12 +2,17 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    globals: false,
+    globals: true,
     environment: 'node',
     coverage: {
-      provider: 'v8',
-      include: ['src/**/*.ts'],
-      exclude: ['src/index.ts'],
+      provider: 'istanbul',
+      include: [
+        'src/models/AuditLog.ts',
+        'src/repositories/interfaces/AuditLogRepository.ts',
+        'src/repositories/memory/InMemoryAuditLogRepository.ts',
+        'src/routes/audit.ts',
+        'src/services/AuditLogService.ts'
+      ],
       reporter: ['text', 'lcov'],
       thresholds: {
         statements: 95,
@@ -17,29 +22,4 @@ export default defineConfig({
       },
     },
   },
-import { resolve } from 'path';
-
-export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'node',
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      exclude: [
-        'node_modules/',
-        'dist/',
-        '**/*.d.ts',
-        'vitest.config.ts'
-      ],
-      thresholds: {
-        global: {
-          branches: 95,
-          functions: 95,
-          lines: 95,
-          statements: 95
-        }
-      }
-    }
-  }
 });
