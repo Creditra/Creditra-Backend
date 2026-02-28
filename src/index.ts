@@ -75,8 +75,6 @@ app.use('/api/audit', auditRouter);
 // Global error handler
 app.use(errorHandler);
 
-export { app };
-
 // Only start the server if this file is run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (process.env.NODE_ENV !== 'test') {
