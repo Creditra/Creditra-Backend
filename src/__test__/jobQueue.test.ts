@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 import {
   InMemoryJobQueue,
   type Job,
   type JobQueue,
+  type JobHandler,
 } from "../services/jobQueue.js";
 
 function createQueue(): JobQueue & { _impl?: InMemoryJobQueue } {
@@ -17,13 +18,13 @@ describe("InMemoryJobQueue", () => {
   });
 
   afterEach(() => {
-    (console.error as unknown as vi.Mock).mockRestore?.();
+    (console.error as unknown as Mock).mockRestore?.();
     vi.useRealTimers();
   });
 
   it("processes an enqueued job when a handler is registered", async () => {
     const queue = createQueue();
-    const handler = vi.fn<void, [Job<{ value: number }>]>();
+    const handler = vi.fn<JobHandler<{ value: number }>>();
 
     queue.registerHandler("test", handler);
     queue.start();
@@ -41,7 +42,7 @@ describe("InMemoryJobQueue", () => {
 
   it("supports delayed execution via delayMs", async () => {
     const queue = createQueue();
-    const handler = vi.fn<void, [Job<void>]>();
+    const handler = vi.fn<JobHandler<void>>();
 
     queue.registerHandler("delayed", handler);
     queue.start();
@@ -58,10 +59,10 @@ describe("InMemoryJobQueue", () => {
   it("retries a failing job up to maxAttempts then moves it to failed jobs", async () => {
     const queue = createQueue();
     const handler = vi
-      .fn<void, [Job<void>]>()
+      .fn<JobHandler<void>>()
       .mockRejectedValueOnce(new Error("first failure"))
       .mockRejectedValueOnce(new Error("second failure"))
-      .mockResolvedValueOnce();
+      .mockResolvedValueOnce(undefined);
 
     queue.registerHandler("unstable", handler);
     queue.start();
@@ -77,7 +78,7 @@ describe("InMemoryJobQueue", () => {
 
   it("moves job to failed set after exceeding maxAttempts", async () => {
     const queue = createQueue();
-    const handler = vi.fn<void, [Job<void>]>().mockRejectedValue(
+    const handler = vi.fn<JobHandler<void>>().mockRejectedValue(
       new Error("always fails"),
     );
 
@@ -123,7 +124,7 @@ describe("InMemoryJobQueue", () => {
 
   it("drain() processes ready jobs even without timers", async () => {
     const queue = createQueue();
-    const handler = vi.fn<void, [Job<void>]>();
+    const handler = vi.fn<JobHandler<void>>();
 
     queue.registerHandler("immediate", handler);
     queue.start();

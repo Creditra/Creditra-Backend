@@ -296,7 +296,7 @@ describe("onEvent() / clearEventHandlers()", () => {
     jest.useFakeTimers();
     withEnv({ CONTRACT_IDS: "MY_CONTRACT" }, async () => {
       const events: HorizonEvent[] = [];
-      onEvent((e) => events.push(e));
+      onEvent((e) => { events.push(e); });
       await start();
       expect(events.length).toBeGreaterThan(0);
       expect(events[0]!.contractId).toBe("MY_CONTRACT");
@@ -308,8 +308,8 @@ describe("onEvent() / clearEventHandlers()", () => {
     withEnv({ CONTRACT_IDS: "MULTI_CONTRACT" }, async () => {
       const calls1: HorizonEvent[] = [];
       const calls2: HorizonEvent[] = [];
-      onEvent((e) => calls1.push(e));
-      onEvent((e) => calls2.push(e));
+      onEvent((e) => { calls1.push(e); });
+      onEvent((e) => { calls2.push(e); });
       await start();
       expect(calls1.length).toBe(1);
       expect(calls2.length).toBe(1);
@@ -320,7 +320,7 @@ describe("onEvent() / clearEventHandlers()", () => {
     jest.useFakeTimers();
     withEnv({ CONTRACT_IDS: "MY_CONTRACT" }, async () => {
       const events: HorizonEvent[] = [];
-      onEvent((e) => events.push(e));
+      onEvent((e) => { events.push(e); });
       clearEventHandlers();
       await start();
 
@@ -333,7 +333,7 @@ describe("onEvent() / clearEventHandlers()", () => {
     withEnv({ CONTRACT_IDS: "ERROR_CONTRACT" }, async () => {
       const goodEvents: HorizonEvent[] = [];
       onEvent(() => { throw new Error("handler boom"); });
-      onEvent((e) => goodEvents.push(e));
+      onEvent((e) => { goodEvents.push(e); });
       await start();
 
       expect(goodEvents.length).toBe(1);
@@ -348,7 +348,7 @@ describe("onEvent() / clearEventHandlers()", () => {
     withEnv({ CONTRACT_IDS: "ASYNC_ERROR_CONTRACT" }, async () => {
       const goodEvents: HorizonEvent[] = [];
       onEvent(async () => { throw new Error("async handler boom"); });
-      onEvent((e) => goodEvents.push(e));
+      onEvent((e) => { goodEvents.push(e); });
       await start();
       expect(goodEvents.length).toBe(1);
     });
@@ -386,7 +386,7 @@ describe("pollOnce()", () => {
       contractIds: ["TEST_CONTRACT"],
     };
     const events: HorizonEvent[] = [];
-    onEvent((e) => events.push(e));
+    onEvent((e) => { events.push(e); });
     await pollOnce(config);
     expect(events).toHaveLength(1);
     expect(events[0]!.contractId).toBe("TEST_CONTRACT");
@@ -396,7 +396,7 @@ describe("pollOnce()", () => {
 
   it("does not emit events when contractIds is empty", async () => {
     const events: HorizonEvent[] = [];
-    onEvent((e) => events.push(e));
+    onEvent((e) => { events.push(e); });
     await pollOnce(baseConfig);
     expect(events).toHaveLength(0);
   });
@@ -414,7 +414,7 @@ describe("pollOnce()", () => {
       contractIds: ["WALLET_CONTRACT"],
     };
     const events: HorizonEvent[] = [];
-    onEvent((e) => events.push(e));
+    onEvent((e) => { events.push(e); });
     await pollOnce(config);
     const data = JSON.parse(events[0]!.data) as { walletAddress: string };
     expect(data).toHaveProperty("walletAddress");
@@ -426,7 +426,7 @@ describe("pollOnce()", () => {
       contractIds: ["TS_CONTRACT"],
     };
     const events: HorizonEvent[] = [];
-    onEvent((e) => events.push(e));
+    onEvent((e) => { events.push(e); });
     await pollOnce(config);
     expect(() => new Date(events[0]!.timestamp)).not.toThrow();
     expect(new Date(events[0]!.timestamp).getTime()).not.toBeNaN();

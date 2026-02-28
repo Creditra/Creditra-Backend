@@ -87,8 +87,10 @@ export interface JobQueue {
   drain(): Promise<void>;
 }
 
-interface InternalJob<Data = unknown> extends Job<Data> {
+interface InternalJob<Data = unknown> extends Omit<Job<Data>, "attempts" | "updatedAt"> {
   nextRunAt: number;
+  attempts: number;
+  updatedAt: number;
 }
 
 let nextId = 1;

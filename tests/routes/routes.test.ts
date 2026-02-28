@@ -18,7 +18,9 @@ describe('Credit routes', () => {
     it('returns empty array', async () => {
       const res = await request(app).get('/api/credit/lines');
       expect(res.status).toBe(200);
-      expect(res.body).toEqual({ creditLines: [] });
+      expect(res.body.items).toEqual([]);
+      expect(res.body.total).toBe(0);
+      expect(res.body.page).toBe(1);
     });
   });
 

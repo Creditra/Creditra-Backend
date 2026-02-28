@@ -12,7 +12,7 @@ import {
   _resetStore,
   _store,
   _transactionStore,
-} from "../../services/creditService.js";
+} from "../services/creditService.js";
 
 
     
@@ -263,7 +263,7 @@ describe("closeCreditLine()", () => {
         const closed = closeCreditLine("line-1");
         expect(closed.status).toBe("closed");
         expect(closed.events).toHaveLength(3);
-        expect(closed.events.map((e) => e.action)).toEqual([
+        expect(closed.events.map((e: any) => e.action)).toEqual([
             "created",
             "suspended",
             "closed",
@@ -335,7 +335,7 @@ describe("getTransactions()", () => {
       createCreditLine("line-1");
       suspendCreditLine("line-1");
       const result = getTransactions("line-1");
-      const ids = result.transactions.map((tx) => tx.id);
+      const ids = result.transactions.map((tx: any) => tx.id);
       expect(new Set(ids).size).toBe(ids.length);
     });
 
@@ -384,7 +384,7 @@ describe("getTransactions()", () => {
       createCreditLine("line-1");
       suspendCreditLine("line-1");
       const result = getTransactions("line-1", { type: "status_change" });
-      expect(result.transactions.every((tx) => tx.type === "status_change")).toBe(true);
+      expect(result.transactions.every((tx: any) => tx.type === "status_change")).toBe(true);
     });
 
     it("filters by type: total reflects filtered count", () => {
@@ -502,7 +502,7 @@ describe("getTransactions()", () => {
       suspendCreditLine("line-b");
       const resultA = getTransactions("line-a");
       expect(resultA.total).toBe(1);
-      expect(resultA.transactions.every((tx) => tx.creditLineId === "line-a")).toBe(true);
+      expect(resultA.transactions.every((tx: any) => tx.creditLineId === "line-a")).toBe(true);
     });
   });
 });

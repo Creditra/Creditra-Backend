@@ -11,8 +11,6 @@ import { riskRouter } from './routes/risk.js';
 import { healthRouter } from './routes/health.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
-import { ok } from './utils/response.js';
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const openapiSpec = yaml.parse(
   readFileSync(join(__dirname, 'openapi.yaml'), 'utf8')
@@ -24,35 +22,25 @@ const port = process.env.PORT ?? 3000;
 app.use(cors());
 app.use(express.json());
 
+// Routes
 app.use('/health', healthRouter);
-// ── Docs ────────────────────────────────────────────────────────────────────
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
 app.get('/docs.json', (_req, res) => res.json(openapiSpec));
-
-
 
 app.use('/api/credit', creditRouter);
 app.use('/api/risk', riskRouter);
 
-// Global error handler — must be registered after routes
+// Global error handler
 app.use(errorHandler);
 
-app.listen(port, () => {
-  console.log(`Creditra API listening on http://localhost:${port}`);
-  console.log(`Swagger UI available at  http://localhost:${port}/docs`);
-});
-
-export { app };  // exported for tests
-// Only start the server if not imported by tests setup
-// Only start server if this file is run directly (not imported for testing)
+// Only start the server if this file is run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-// Only start listening when this file is the entry-point (not when imported by tests).
-/* istanbul ignore next */
-if (process.env.NODE_ENV !== 'test') {
-  app.listen(port, () => {
-    console.log(`Creditra API listening on http://localhost:${port}`);
-    console.log(`Swagger UI available at  http://localhost:${port}/docs`);
-  });
+  if (process.env.NODE_ENV !== 'test') {
+    app.listen(port, () => {
+      console.log(`Creditra API listening on http://localhost:${port}`);
+      console.log(`Swagger UI available at http://localhost:${port}/docs`);
+    });
+  }
 }
 
 export default app;
