@@ -12,6 +12,8 @@ import { healthRouter } from './routes/health.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 import { ok } from './utils/response.js';
+import { auditRouter } from './routes/audit.js';
+import { Container } from './container/Container.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const openapiSpec = yaml.parse(
@@ -29,10 +31,40 @@ app.use('/health', healthRouter);
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
 app.get('/docs.json', (_req, res) => res.json(openapiSpec));
 
+// Audit hooks for critical routes
+app.use('/api/credit', async (req, _res, next) => {
+  if (req.method !== 'GET') {
+    const container = Container.getInstance();
+    await container.auditLogService.createAuditLog(
+      'CREDIT_LINE_UPDATED',
+      req.headers['x-user'] as string ?? 'anonymous',
+      'credit_line',
+      (req as any).params.id || req.path.split('/')[1] || 'unknown',
+      { method: req.method, path: req.path }
+    );
+  }
+  next();
+});
+
+app.use('/api/risk', async (req, _res, next) => {
+  if (req.method === 'POST') {
+    const container = Container.getInstance();
+    await container.auditLogService.createAuditLog(
+      'RISK_EVALUATED',
+      req.headers['x-user'] as string ?? 'anonymous',
+      'risk',
+      req.body?.walletAddress ?? 'unknown',
+      { method: req.method, path: req.path }
+    );
+  }
+  next();
+});
+
 
 
 app.use('/api/credit', creditRouter);
 app.use('/api/risk', riskRouter);
+app.use('/api/audit', auditRouter);
 
 // Global error handler — must be registered after routes
 app.use(errorHandler);
