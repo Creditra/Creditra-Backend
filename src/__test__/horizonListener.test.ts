@@ -1,4 +1,4 @@
-
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   start,
   stop,
@@ -18,15 +18,15 @@ import {
 
 /** Capture console output without cluttering test output. */
 function silenceConsole() {
-  jest.spyOn(console, "log").mockImplementation(() => {});
-  jest.spyOn(console, "warn").mockImplementation(() => {});
-  jest.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(console, "log").mockImplementation(() => { });
+  vi.spyOn(console, "warn").mockImplementation(() => { });
+  vi.spyOn(console, "error").mockImplementation(() => { });
 }
 
 function restoreConsole() {
-  (console.log as jest.Mock).mockRestore?.();
-  (console.warn as jest.Mock).mockRestore?.();
-  (console.error as jest.Mock).mockRestore?.();
+  (console.log as any).mockRestore?.();
+  (console.warn as any).mockRestore?.();
+  (console.error as any).mockRestore?.();
 }
 
 /** Save and restore env vars. */
@@ -64,8 +64,9 @@ afterEach(() => {
   if (isRunning()) stop();
   clearEventHandlers();
   restoreConsole();
-  jest.useRealTimers();
+  vi.useRealTimers();
 });
+
 
 // ---------------------------------------------------------------------------
 // resolveConfig()
@@ -149,7 +150,7 @@ describe("isRunning() / getConfig()", () => {
   });
 
   it("returns true and a config object after start", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     await start();
     expect(isRunning()).toBe(true);
     expect(getConfig()).not.toBeNull();
@@ -157,7 +158,7 @@ describe("isRunning() / getConfig()", () => {
   });
 
   it("returns false and null config after stop", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     await start();
     stop();
     expect(isRunning()).toBe(false);
@@ -171,26 +172,26 @@ describe("isRunning() / getConfig()", () => {
 
 describe("start()", () => {
   it("sets running to true", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     await start();
     expect(isRunning()).toBe(true);
   });
 
   it("executes an immediate first poll on start", async () => {
-    jest.useFakeTimers();
-    const pollSpy = jest.fn<Promise<void>, [HorizonListenerConfig]>();
+    vi.useFakeTimers();
+    const pollSpy = vi.fn<Promise<void>, [HorizonListenerConfig]>();
 
     withEnv({ CONTRACT_IDS: "MY_CONTRACT" }, async () => {
       const received: HorizonEvent[] = [];
       onEvent((e) => { received.push(e); });
       await start();
-      
+
       expect(received.length).toBe(1);
     });
   });
 
   it("fires handlers on subsequent interval ticks", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     withEnv({ CONTRACT_IDS: "MY_CONTRACT", POLL_INTERVAL_MS: "100" }, async () => {
       const received: HorizonEvent[] = [];
       onEvent((e) => { received.push(e); });
@@ -198,12 +199,12 @@ describe("start()", () => {
 
       expect(received.length).toBe(1);
 
-      jest.advanceTimersByTime(100);
+      vi.advanceTimersByTime(100);
 
       await Promise.resolve();
       expect(received.length).toBe(2);
 
-      jest.advanceTimersByTime(200);
+      vi.advanceTimersByTime(200);
       await Promise.resolve();
       await Promise.resolve();
       expect(received.length).toBe(4);
@@ -211,9 +212,9 @@ describe("start()", () => {
   });
 
   it("is a no-op (warns) if called when already running", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     await start();
-    const warnSpy = console.warn as jest.Mock;
+    const warnSpy = console.warn as vi.Mock;
     warnSpy.mockClear();
     await start(); // second call
     expect(warnSpy).toHaveBeenCalledWith(
@@ -223,8 +224,8 @@ describe("start()", () => {
   });
 
   it("logs startup config information", async () => {
-    jest.useFakeTimers();
-    const logSpy = console.log as jest.Mock;
+    vi.useFakeTimers();
+    const logSpy = console.log as vi.Mock;
     await start();
     const calls = logSpy.mock.calls.flat().join(" ");
     expect(calls).toContain("Starting with config");
@@ -237,21 +238,21 @@ describe("start()", () => {
 
 describe("stop()", () => {
   it("sets running to false", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     await start();
     stop();
     expect(isRunning()).toBe(false);
   });
 
   it("clears the polling interval so no more events fire", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     withEnv({ CONTRACT_IDS: "MY_CONTRACT", POLL_INTERVAL_MS: "100" }, async () => {
       const received: HorizonEvent[] = [];
       onEvent((e) => { received.push(e); });
       await start();
       stop();
       const countAfterStop = received.length;
-      jest.advanceTimersByTime(500);
+      vi.advanceTimersByTime(500);
       await Promise.resolve();
       // No new events after stop
       expect(received.length).toBe(countAfterStop);
@@ -259,7 +260,7 @@ describe("stop()", () => {
   });
 
   it("is a no-op (warns) if called when not running", () => {
-    const warnSpy = console.warn as jest.Mock;
+    const warnSpy = console.warn as vi.Mock;
     stop();
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("Not running"),
@@ -267,18 +268,18 @@ describe("stop()", () => {
   });
 
   it("logs a stopped message", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     await start();
-    const logSpy = console.log as jest.Mock;
+    const logSpy = console.log as vi.Mock;
     logSpy.mockClear();
     stop();
-    expect((console.log as jest.Mock).mock.calls.flat().join(" ")).toContain(
+    expect((console.log as vi.Mock).mock.calls.flat().join(" ")).toContain(
       "Stopped",
     );
   });
 
   it("allows the listener to be restarted after stop", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     await start();
     stop();
     expect(isRunning()).toBe(false);
@@ -293,7 +294,7 @@ describe("stop()", () => {
 
 describe("onEvent() / clearEventHandlers()", () => {
   it("registers a handler that receives simulated events", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     withEnv({ CONTRACT_IDS: "MY_CONTRACT" }, async () => {
       const events: HorizonEvent[] = [];
       onEvent((e) => events.push(e));
@@ -304,7 +305,7 @@ describe("onEvent() / clearEventHandlers()", () => {
   });
 
   it("supports multiple handlers and invokes all of them", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     withEnv({ CONTRACT_IDS: "MULTI_CONTRACT" }, async () => {
       const calls1: HorizonEvent[] = [];
       const calls2: HorizonEvent[] = [];
@@ -317,7 +318,7 @@ describe("onEvent() / clearEventHandlers()", () => {
   });
 
   it("clearEventHandlers() removes all registered handlers", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     withEnv({ CONTRACT_IDS: "MY_CONTRACT" }, async () => {
       const events: HorizonEvent[] = [];
       onEvent((e) => events.push(e));
@@ -329,7 +330,7 @@ describe("onEvent() / clearEventHandlers()", () => {
   });
 
   it("catches and logs errors thrown by a handler without stopping dispatch", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     withEnv({ CONTRACT_IDS: "ERROR_CONTRACT" }, async () => {
       const goodEvents: HorizonEvent[] = [];
       onEvent(() => { throw new Error("handler boom"); });
@@ -337,14 +338,14 @@ describe("onEvent() / clearEventHandlers()", () => {
       await start();
 
       expect(goodEvents.length).toBe(1);
-      expect((console.error as jest.Mock).mock.calls.flat().join(" ")).toContain(
+      expect((console.error as vi.Mock).mock.calls.flat().join(" ")).toContain(
         "handler threw an error",
       );
     });
   });
 
   it("handles async handlers that reject gracefully", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     withEnv({ CONTRACT_IDS: "ASYNC_ERROR_CONTRACT" }, async () => {
       const goodEvents: HorizonEvent[] = [];
       onEvent(async () => { throw new Error("async handler boom"); });
@@ -372,7 +373,7 @@ describe("pollOnce()", () => {
   });
 
   it("logs a polling message on every call", async () => {
-    const logSpy = console.log as jest.Mock;
+    const logSpy = console.log as vi.Mock;
     logSpy.mockClear();
     await pollOnce(baseConfig);
     expect(logSpy).toHaveBeenCalledWith(
@@ -402,7 +403,7 @@ describe("pollOnce()", () => {
   });
 
   it("logs 'none' for contracts when contractIds is empty", async () => {
-    const logSpy = console.log as jest.Mock;
+    const logSpy = console.log as vi.Mock;
     logSpy.mockClear();
     await pollOnce(baseConfig);
     expect((logSpy.mock.calls.flat() as string[]).join(" ")).toContain("none");

@@ -10,6 +10,7 @@ import { Router, Request, Response } from 'express';
 import { createApiKeyMiddleware } from '../middleware/auth.js';
 import { loadApiKeys } from '../config/apiKeys.js';
 import { evaluateWallet } from "../services/riskService.js";
+import { isFeatureEnabled } from "../utils/featureFlags.js";
 import { ok, fail } from "../utils/response.js";
 
 export const riskRouter = Router();
@@ -86,7 +87,20 @@ riskRouter.get('/evaluations/:id', async (req, res) => {
     }
 
     try {
-      const result = await evaluateWallet(normalizedWalletAddress);
+      // Experimental Risk Model V2 Logic
+      if (isFeatureEnabled('risk_v2')) {
+        // For demonstration, let's say V2 returns a specific field or has different threshold
+        const result = await evaluateWallet(walletAddress);
+        res.json({
+          ...result,
+          model: 'risk_v2_experimental',
+          highPrecision: true
+        });
+        return;
+      }
+
+      // Default Logic
+      const result = await evaluateWallet(walletAddress);
       ok(res, result);
     } catch (err) {
       if (err instanceof InvalidWalletAddressError) {
