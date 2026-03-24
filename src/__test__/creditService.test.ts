@@ -7,6 +7,7 @@ import {
   suspendCreditLine,
   closeCreditLine,
   getTransactions,
+  drawFromCreditLine,
   InvalidTransitionError,
   CreditLineNotFoundError,
   _resetStore,
@@ -14,11 +15,57 @@ import {
   _transactionStore,
 } from "../services/creditService.js";
 import { TransactionType } from "../models/Transaction.js";
+import { creditLines } from "../models/creditLineStore.js";
 
 
     
 beforeEach(() => {
   _resetStore();
+  creditLines.splice(0, creditLines.length, {
+    id: "line-1",
+    borrowerId: "user-1",
+    limit: 1000,
+    utilized: 0,
+    status: "Active",
+  });
+});
+
+describe("drawFromCreditLine()", () => {
+  it("draws from an active line for the authorized borrower", () => {
+    const line = drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 200 });
+    expect(line.utilized).toBe(200);
+  });
+
+  it("throws NOT_FOUND when line does not exist", () => {
+    expect(() => drawFromCreditLine({ id: "missing", borrowerId: "user-1", amount: 100 })).toThrow(
+      /NOT_FOUND/,
+    );
+  });
+
+  it("throws INVALID_STATUS when line is not active", () => {
+    creditLines[0]!.status = "Closed";
+    expect(() => drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 100 })).toThrow(
+      /INVALID_STATUS/,
+    );
+  });
+
+  it("throws UNAUTHORIZED for non-owner borrower", () => {
+    expect(() => drawFromCreditLine({ id: "line-1", borrowerId: "other", amount: 100 })).toThrow(
+      /UNAUTHORIZED/,
+    );
+  });
+
+  it("throws INVALID_AMOUNT for non-positive amounts", () => {
+    expect(() => drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 0 })).toThrow(
+      /INVALID_AMOUNT/,
+    );
+  });
+
+  it("throws OVER_LIMIT when amount exceeds available credit", () => {
+    expect(() => drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 1001 })).toThrow(
+      /OVER_LIMIT/,
+    );
+  });
 });
 
 
