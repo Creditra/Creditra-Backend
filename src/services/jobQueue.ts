@@ -14,13 +14,13 @@ export interface Job<Data = unknown> {
   /** Arbitrary JSON-serialisable payload. */
   readonly payload: Data;
   /** Number of times this job has been attempted. */
-  readonly attempts: number;
+  attempts: number;
   /** Maximum number of attempts before the job is considered failed. */
   readonly maxAttempts: number;
   /** Milliseconds since epoch when the job was first enqueued. */
   readonly createdAt: number;
   /** Milliseconds since epoch when the job was last updated. */
-  readonly updatedAt: number;
+  updatedAt: number;
 }
 
 export type JobHandler<Data = unknown> = (job: Job<Data>) => void | Promise<void>;

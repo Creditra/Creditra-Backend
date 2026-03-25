@@ -44,6 +44,24 @@ paths:
       tags: [Credit]
       operationId: listCreditLines
       summary: List all credit lines
+      parameters:
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Pagination offset
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+          description: Number of credit lines per page
       responses:
         "200":
           description: Array of credit lines (may be empty)
@@ -53,6 +71,16 @@ paths:
                 $ref: "#/components/schemas/CreditLinesResponse"
               example:
                 creditLines: []
+                pagination:
+                  total: 0
+                  offset: 0
+                  limit: 100
+        "400":
+          description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/credit/lines/{id}:
     get:
@@ -240,12 +268,22 @@ components:
 
     CreditLinesResponse:
       type: object
-      required: [creditLines]
+      required: [creditLines, pagination]
       properties:
         creditLines:
           type: array
           items:
             $ref: "#/components/schemas/CreditLine"
+        pagination:
+          type: object
+          properties:
+            total:
+              type: integer
+            offset:
+              type: integer
+            limit:
+              type: integer
+          required: [total, offset, limit]
 
     RiskEvaluateRequest:
       type: object

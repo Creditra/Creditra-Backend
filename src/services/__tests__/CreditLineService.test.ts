@@ -198,4 +198,33 @@ describe('CreditLineService', () => {
       expect(result).toBe(5);
     });
   });
+
+  describe('getAllCreditLines', () => {
+    it('should return all credit lines successfully with valid pagination', async () => {
+      const creditLines: CreditLine[] = [
+        { id: 'cl-1', walletAddress: 'w1', creditLimit: '100', availableCredit: '100', interestRateBps: 500, status: CreditLineStatus.ACTIVE, createdAt: new Date(), updatedAt: new Date() }
+      ];
+      vi.mocked(mockRepository.findAll).mockResolvedValue(creditLines);
+
+      const result = await service.getAllCreditLines(0, 10);
+      expect(mockRepository.findAll).toHaveBeenCalledWith(0, 10);
+      expect(result).toEqual(creditLines);
+    });
+
+    it('should throw error for negative offset', async () => {
+      await expect(service.getAllCreditLines(-1, 10)).rejects.toThrow('Offset cannot be negative');
+    });
+
+    it('should throw error for zero limit', async () => {
+      await expect(service.getAllCreditLines(0, 0)).rejects.toThrow('Limit must be greater than 0');
+    });
+
+    it('should throw error for negative limit', async () => {
+      await expect(service.getAllCreditLines(0, -5)).rejects.toThrow('Limit must be greater than 0');
+    });
+
+    it('should throw error for oversized limit', async () => {
+      await expect(service.getAllCreditLines(0, 101)).rejects.toThrow('Limit cannot exceed 100');
+    });
+  });
 });
