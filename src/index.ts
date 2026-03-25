@@ -33,15 +33,11 @@ app.use('/api/risk', riskRouter);
 // Global error handler — must be registered after routes
 app.use(errorHandler);
 
-/**
- * Normalised Startup Logic
- *
- * Only start the server if this file is the entry point (run directly via node).
- * This prevents unwanted side-effects when the app is imported for tests.
- */
+// Only start the server if this file is run directly (not imported for testing)
+// In ES modules, we can check if the current file is the entry point.
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 
-if (isMain) {
+if (isMain || process.env.NODE_ENV !== 'test') {
   app.listen(port, () => {
     console.log(`Creditra API listening on http://localhost:${port}`);
     console.log(`Swagger UI available at  http://localhost:${port}/docs`);
