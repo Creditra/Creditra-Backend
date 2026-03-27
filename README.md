@@ -242,10 +242,51 @@ npm run test:watch
 
 ## API (current)
 
-- `GET /health` — Service health
-- `GET /api/credit/lines` — List credit lines (placeholder)
-- `GET /api/credit/lines/:id` — Get credit line by id (placeholder)
-- `POST /api/risk/evaluate` — Request risk evaluation; body: `{ "walletAddress": "..." }`; returns `400` with `{ "error": "Invalid wallet address format." }` for invalid Stellar addresses
+### Response Envelope
+
+All API endpoints use a standardized response envelope format for consistency:
+
+```typescript
+{
+  data: T | null,      // Success payload or null on error
+  error: string | null // Error message or null on success
+}
+```
+
+Examples:
+
+```json
+// Success response (200)
+{
+  "data": {
+    "id": "line-123",
+    "walletAddress": "GABCDEF...",
+    "creditLimit": "5000.00"
+  },
+  "error": null
+}
+
+// Error response (400)
+{
+  "data": null,
+  "error": "Credit line not found"
+}
+```
+
+The envelope is implemented via helper functions in `src/utils/response.ts`:
+- `ok(res, data, statusCode?)` - Send success response (default 200)
+- `fail(res, error, statusCode?)` - Send error response (default 500)
+
+HTTP status codes follow REST conventions:
+- `200` - Success
+- `201` - Created
+- `204` - No Content (DELETE operations)
+- `400` - Bad Request (client error)
+- `401` - Unauthorized (missing auth)
+- `403` - Forbidden (invalid auth)
+- `404` - Not Found
+- `500` - Internal Server Error
+
 ### Public
 
 - `GET  /health` — Service health

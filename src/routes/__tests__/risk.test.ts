@@ -35,11 +35,12 @@ describe('Risk Routes', () => {
         .send(requestBody)
         .expect(200);
 
-      expect(response.body.walletAddress).toBe('wallet123');
-      expect(response.body.riskScore).toBeGreaterThan(0);
-      expect(response.body.creditLimit).toBeDefined();
-      expect(response.body.interestRateBps).toBeGreaterThan(0);
-      expect(response.body.message).toBe('New risk evaluation completed');
+      expect(response.body.data.walletAddress).toBe('wallet123');
+      expect(response.body.data.riskScore).toBeGreaterThan(0);
+      expect(response.body.data.creditLimit).toBeDefined();
+      expect(response.body.data.interestRateBps).toBeGreaterThan(0);
+      expect(response.body.data.message).toBe('New risk evaluation completed');
+      expect(response.body.error).toBeNull();
     });
 
     it('should use cached evaluation when available', async () => {
@@ -57,8 +58,9 @@ describe('Risk Routes', () => {
         .send({ walletAddress })
         .expect(200);
 
-      expect(response2.body.message).toBe('Using cached risk evaluation');
-      expect(response2.body.riskScore).toBe(response1.body.riskScore);
+      expect(response2.body.data.message).toBe('Using cached risk evaluation');
+      expect(response2.body.data.riskScore).toBe(response1.body.data.riskScore);
+      expect(response2.body.error).toBeNull();
     });
 
     it('should force new evaluation when forceRefresh is true', async () => {
@@ -76,7 +78,8 @@ describe('Risk Routes', () => {
         .send({ walletAddress, forceRefresh: true })
         .expect(200);
 
-      expect(response.body.message).toBe('New risk evaluation completed');
+      expect(response.body.data.message).toBe('New risk evaluation completed');
+      expect(response.body.error).toBeNull();
     });
 
     it('should return 400 for missing wallet address', async () => {
@@ -86,6 +89,7 @@ describe('Risk Routes', () => {
         .expect(400);
 
       expect(response.body.error).toBe('walletAddress required');
+      expect(response.body.data).toBeNull();
     });
 
     it('should handle empty request body', async () => {
@@ -94,6 +98,7 @@ describe('Risk Routes', () => {
         .expect(400);
 
       expect(response.body.error).toBe('walletAddress required');
+      expect(response.body.data).toBeNull();
     });
 
     it('should handle service errors gracefully', async () => {
@@ -113,7 +118,8 @@ describe('Risk Routes', () => {
         .send({ walletAddress: 'wallet123' })
         .expect(500);
 
-      expect(response.body.error).toBe('Risk evaluation failed');
+      expect(response.body.error).toBe('Internal server error');
+      expect(response.body.data).toBeNull();
 
       // Restore original service
       (container as any)._riskEvaluationService = originalService;
@@ -181,8 +187,9 @@ describe('Risk Routes', () => {
         .get(`/api/risk/wallet/${walletAddress}/latest`)
         .expect(200);
 
-      expect(response.body.walletAddress).toBe(walletAddress);
-      expect(response.body.riskScore).toBeDefined();
+      expect(response.body.data.walletAddress).toBe(walletAddress);
+      expect(response.body.data.riskScore).toBeDefined();
+      expect(response.body.error).toBeNull();
     });
 
     it('should return 404 when no evaluation found', async () => {
@@ -191,6 +198,7 @@ describe('Risk Routes', () => {
         .expect(404);
 
       expect(response.body.error).toBe('No risk evaluation found for wallet');
+      expect(response.body.data).toBeNull();
     });
 
     it('should handle service errors gracefully', async () => {
@@ -209,7 +217,8 @@ describe('Risk Routes', () => {
         .get('/api/risk/wallet/test-wallet/latest')
         .expect(500);
 
-      expect(response.body.error).toBe('Failed to fetch latest risk evaluation');
+      expect(response.body.error).toBe('Internal server error');
+      expect(response.body.data).toBeNull();
 
       // Restore original service
       (container as any)._riskEvaluationService = originalService;
@@ -228,8 +237,9 @@ describe('Risk Routes', () => {
         .get(`/api/risk/wallet/${walletAddress}/history`)
         .expect(200);
 
-      expect(response.body.evaluations).toHaveLength(2);
-      expect(response.body.evaluations.every((evaluation: any) => evaluation.walletAddress === walletAddress)).toBe(true);
+      expect(response.body.data.evaluations).toHaveLength(2);
+      expect(response.body.data.evaluations.every((evaluation: any) => evaluation.walletAddress === walletAddress)).toBe(true);
+      expect(response.body.error).toBeNull();
     });
 
     it('should support pagination parameters', async () => {
@@ -244,7 +254,8 @@ describe('Risk Routes', () => {
         .get(`/api/risk/wallet/${walletAddress}/history?offset=1&limit=1`)
         .expect(200);
 
-      expect(response.body.evaluations).toHaveLength(1);
+      expect(response.body.data.evaluations).toHaveLength(1);
+      expect(response.body.error).toBeNull();
     });
 
     it('should handle invalid pagination parameters', async () => {
@@ -254,7 +265,8 @@ describe('Risk Routes', () => {
         .get(`/api/risk/wallet/${walletAddress}/history?offset=invalid&limit=invalid`)
         .expect(200);
 
-      expect(response.body.evaluations).toEqual([]);
+      expect(response.body.data.evaluations).toEqual([]);
+      expect(response.body.error).toBeNull();
     });
 
     it('should return empty array when no evaluations found', async () => {
@@ -262,7 +274,8 @@ describe('Risk Routes', () => {
         .get('/api/risk/wallet/nonexistent/history')
         .expect(200);
 
-      expect(response.body.evaluations).toEqual([]);
+      expect(response.body.data.evaluations).toEqual([]);
+      expect(response.body.error).toBeNull();
     });
 
     it('should handle server errors gracefully', async () => {
@@ -281,7 +294,8 @@ describe('Risk Routes', () => {
         .get('/api/risk/wallet/test-wallet/history')
         .expect(500);
 
-      expect(response.body.error).toBe('Failed to fetch risk evaluation history');
+      expect(response.body.error).toBe('Internal server error');
+      expect(response.body.data).toBeNull();
 
       // Restore original service
       (container as any)._riskEvaluationService = originalService;

@@ -30,7 +30,7 @@ riskRouter.post(
 
       // ✅ keep strict null safety
       if (!walletAddress || typeof walletAddress !== "string") {
-        return res.status(400).json({ error: "walletAddress required" });
+        return fail(res, "walletAddress required", 400);
       }
 
       const result = await container.riskEvaluationService.evaluateRisk({
@@ -40,9 +40,7 @@ riskRouter.post(
 
       return ok(res, result);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to evaluate risk";
-      return res.status(500).json({ error: message });
+      return fail(res, error);
     }
   },
 );
@@ -58,16 +56,12 @@ riskRouter.get("/wallet/:walletAddress/latest", async (req, res) => {
       );
 
     if (!evaluation) {
-      return res
-        .status(404)
-        .json({ error: "No risk evaluation found for wallet" });
+      return fail(res, "No risk evaluation found for wallet", 404);
     }
 
-    return res.json(evaluation);
-  } catch {
-    return res
-      .status(500)
-      .json({ error: "Failed to fetch latest risk evaluation" });
+    return ok(res, evaluation);
+  } catch (error) {
+    return fail(res, error);
   }
 });
 
@@ -91,9 +85,9 @@ riskRouter.get("/wallet/:walletAddress/history", async (req, res) => {
         limitNum,
       );
 
-    res.json({ evaluations });
-  } catch {
-    res.status(500).json({ error: "Failed to fetch risk evaluation history" });
+    return ok(res, { evaluations });
+  } catch (error) {
+    return fail(res, error);
   }
 });
 

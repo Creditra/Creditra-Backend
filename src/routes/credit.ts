@@ -29,8 +29,7 @@ function handleServiceError(err: unknown, res: Response): void {
     return;
   }
 
-  const message = err instanceof Error ? err.message : "Internal server error";
-  res.status(500).json({ error: message });
+  fail(res, err);
 }
 
 // ---------------------------------------------------------------------------
@@ -53,7 +52,7 @@ creditRouter.get("/lines", async (req, res) => {
 
     const total = await container.creditLineService.getCreditLineCount();
 
-    res.json({
+    return ok(res, {
       creditLines,
       pagination: {
         total,
@@ -62,9 +61,7 @@ creditRouter.get("/lines", async (req, res) => {
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to fetch credit lines";
-    res.status(400).json({ error: message });
+    return fail(res, error, 400);
   }
 });
 
@@ -75,14 +72,12 @@ creditRouter.get("/lines/:id", async (req, res) => {
     );
 
     if (!creditLine) {
-      return res
-        .status(404)
-        .json({ error: "Credit line not found", id: req.params.id });
+      return fail(res, "Credit line not found", 404);
     }
 
-    return res.json(creditLine);
-  } catch {
-    return res.status(500).json({ error: "Failed to fetch credit line" });
+    return ok(res, creditLine);
+  } catch (error) {
+    return fail(res, error);
   }
 });
 
@@ -94,7 +89,7 @@ creditRouter.post(
       const { walletAddress, requestedLimit } = req.body ?? {};
 
       if (!walletAddress || !requestedLimit) {
-        return res.status(400).json({ error: "Missing required fields" });
+        return fail(res, "Missing required fields", 400);
       }
 
       const creditLine = await container.creditLineService.createCreditLine({
@@ -103,11 +98,9 @@ creditRouter.post(
         interestRateBps: 0,
       });
 
-      return res.status(201).json(creditLine);
+      return ok(res, creditLine, 201);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to create credit line";
-      return res.status(400).json({ error: message });
+      return fail(res, error, 400);
     }
   },
 );
@@ -126,16 +119,12 @@ creditRouter.put("/lines/:id", async (req, res) => {
     );
 
     if (!creditLine) {
-      return res
-        .status(404)
-        .json({ error: "Credit line not found", id: req.params.id });
+      return fail(res, "Credit line not found", 404);
     }
 
-    return res.json(creditLine);
+    return ok(res, creditLine);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to update credit line";
-    return res.status(400).json({ error: message });
+    return fail(res, error, 400);
   }
 });
 
@@ -146,14 +135,12 @@ creditRouter.delete("/lines/:id", async (req, res) => {
     );
 
     if (!deleted) {
-      return res
-        .status(404)
-        .json({ error: "Credit line not found", id: req.params.id });
+      return fail(res, "Credit line not found", 404);
     }
 
     return res.status(204).send();
-  } catch {
-    return res.status(500).json({ error: "Failed to delete credit line" });
+  } catch (error) {
+    return fail(res, error);
   }
 });
 
@@ -164,11 +151,9 @@ creditRouter.get("/wallet/:walletAddress/lines", async (req, res) => {
         req.params.walletAddress,
       );
 
-    res.json({ creditLines });
-  } catch {
-    res.status(500).json({
-      error: "Failed to fetch credit lines for wallet",
-    });
+    return ok(res, { creditLines });
+  } catch (error) {
+    return fail(res, error);
   }
 });
 
