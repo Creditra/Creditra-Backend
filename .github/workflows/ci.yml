@@ -47,7 +47,6 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:coverage
 
-      # 🆕 NUEVO STEP
       - name: Audit dependencies (production)
         run: npm audit --production --audit-level=moderate
 
