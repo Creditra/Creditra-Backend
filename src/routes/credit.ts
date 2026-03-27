@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, type Request, type Response } from "express";
 import { validateBody } from "../middleware/validate.js";
 import { createCreditLineSchema } from "../schemas/index.js";
 import { Container } from "../container/Container.js";
@@ -9,6 +9,11 @@ import {
   CreditLineNotFoundError,
   type TransactionType,
 } from "../services/creditService.js";
+import { loadRateLimitConfig } from "../config/rateLimit.js";
+import {
+  createRateLimitMiddleware,
+  createIpKeyGenerator,
+} from "../middleware/rateLimit.js";
 
 export const creditRouter = Router();
 
@@ -16,6 +21,14 @@ export const creditRouter = Router();
 const container = Container.getInstance();
 
 const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
+
+// Rate limiter
+const rateLimitConfig = loadRateLimitConfig();
+const creditLimiter = createRateLimitMiddleware({
+  windowMs: rateLimitConfig.default.windowMs,
+  maxRequests: rateLimitConfig.default.maxRequests,
+  keyGenerator: createIpKeyGenerator(),
+});
 
 const VALID_TRANSACTION_TYPES: readonly TransactionType[] = [
   "draw",
@@ -37,7 +50,7 @@ function handleServiceError(err: unknown, res: Response): void {
 // Public endpoints
 // ---------------------------------------------------------------------------
 
-creditRouter.get("/lines", async (req, res) => {
+creditRouter.get("/lines", creditLimiter, async (req, res) => {
   try {
     const { offset, limit } = req.query;
 
@@ -68,7 +81,7 @@ creditRouter.get("/lines", async (req, res) => {
   }
 });
 
-creditRouter.get("/lines/:id", async (req, res) => {
+creditRouter.get("/lines/:id", creditLimiter, async (req, res) => {
   try {
     const creditLine = await container.creditLineService.getCreditLine(
       req.params.id,
@@ -88,6 +101,7 @@ creditRouter.get("/lines/:id", async (req, res) => {
 
 creditRouter.post(
   "/lines",
+  creditLimiter,
   validateBody(createCreditLineSchema),
   async (req, res) => {
     try {
@@ -112,7 +126,7 @@ creditRouter.post(
   },
 );
 
-creditRouter.put("/lines/:id", async (req, res) => {
+creditRouter.put("/lines/:id", creditLimiter, async (req, res) => {
   try {
     const { creditLimit, interestRateBps, status } = req.body ?? {};
 
@@ -139,7 +153,7 @@ creditRouter.put("/lines/:id", async (req, res) => {
   }
 });
 
-creditRouter.delete("/lines/:id", async (req, res) => {
+creditRouter.delete("/lines/:id", creditLimiter, async (req, res) => {
   try {
     const deleted = await container.creditLineService.deleteCreditLine(
       req.params.id,
@@ -157,7 +171,7 @@ creditRouter.delete("/lines/:id", async (req, res) => {
   }
 });
 
-creditRouter.get("/wallet/:walletAddress/lines", async (req, res) => {
+creditRouter.get("/wallet/:walletAddress/lines", creditLimiter, async (req, res) => {
   try {
     const creditLines =
       await container.creditLineService.getCreditLinesByWallet(

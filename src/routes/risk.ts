@@ -5,6 +5,11 @@ import { Container } from "../container/Container.js";
 import { createApiKeyMiddleware } from "../middleware/auth.js";
 import { loadApiKeys } from "../config/apiKeys.js";
 import { ok, fail } from "../utils/response.js";
+import { loadRateLimitConfig } from "../config/rateLimit.js";
+import {
+  createRateLimitMiddleware,
+  createIpKeyGenerator,
+} from "../middleware/rateLimit.js";
 
 export const riskRouter = Router();
 
@@ -13,6 +18,19 @@ const container = Container.getInstance();
 
 // Lazy API key loader
 const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
+
+// Rate limiters
+const rateLimitConfig = loadRateLimitConfig();
+const defaultRiskLimiter = createRateLimitMiddleware({
+  windowMs: rateLimitConfig.default.windowMs,
+  maxRequests: rateLimitConfig.default.maxRequests,
+  keyGenerator: createIpKeyGenerator(),
+});
+const evaluateLimiter = createRateLimitMiddleware({
+  windowMs: rateLimitConfig.evaluate.windowMs,
+  maxRequests: rateLimitConfig.evaluate.maxRequests,
+  keyGenerator: createIpKeyGenerator(),
+});
 
 // ---------------------------------------------------------------------------
 // Public endpoints
@@ -23,6 +41,7 @@ const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
  */
 riskRouter.post(
   "/evaluate",
+  evaluateLimiter,
   validateBody(riskEvaluateSchema),
   async (req: Request, res: Response) => {
     try {
@@ -50,7 +69,7 @@ riskRouter.post(
 /**
  * GET latest evaluation
  */
-riskRouter.get("/wallet/:walletAddress/latest", async (req, res) => {
+riskRouter.get("/wallet/:walletAddress/latest", defaultRiskLimiter, async (req, res) => {
   try {
     const evaluation =
       await container.riskEvaluationService.getLatestRiskEvaluation(
@@ -74,7 +93,7 @@ riskRouter.get("/wallet/:walletAddress/latest", async (req, res) => {
 /**
  * GET evaluation history
  */
-riskRouter.get("/wallet/:walletAddress/history", async (req, res) => {
+riskRouter.get("/wallet/:walletAddress/history", defaultRiskLimiter, async (req, res) => {
   try {
     const { offset, limit } = req.query;
 

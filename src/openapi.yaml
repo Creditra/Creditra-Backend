@@ -69,6 +69,22 @@ paths:
       responses:
         "200":
           description: Array of credit lines (may be empty)
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests allowed per window
+              schema:
+                type: integer
+                example: 100
+            X-RateLimit-Remaining:
+              description: Requests remaining in current window
+              schema:
+                type: integer
+                example: 95
+            X-RateLimit-Reset:
+              description: Unix timestamp when the rate limit window resets
+              schema:
+                type: integer
+                example: 1700000060
           content:
             application/json:
               schema:
@@ -85,6 +101,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              schema:
+                type: integer
+                example: 47
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateLimitErrorResponse"
 
   /api/credit/lines/{id}:
     get:
@@ -101,6 +138,16 @@ paths:
       responses:
         "200":
           description: Credit line found
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
           content:
             application/json:
               schema:
@@ -114,6 +161,25 @@ paths:
               example:
                 error: Credit line not found
                 id: "abc123"
+        "429":
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateLimitErrorResponse"
 
   /api/credit/lines/{id}/transactions:
     get:
@@ -216,6 +282,9 @@ paths:
       tags: [Risk]
       operationId: evaluateRisk
       summary: Evaluate on-chain risk for a wallet
+      description: |
+        Rate limited: default 10 requests per minute per IP address.
+        Configure via RATE_LIMIT_MAX_EVALUATE and RATE_LIMIT_WINDOW_MS env vars.
       requestBody:
         required: true
         content:
@@ -227,6 +296,20 @@ paths:
       responses:
         "200":
           description: Risk evaluation result
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests allowed per window
+              schema:
+                type: integer
+                example: 10
+            X-RateLimit-Remaining:
+              description: Requests remaining in current window
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              description: Unix timestamp when the rate limit window resets
+              schema:
+                type: integer
           content:
             application/json:
               schema:
@@ -245,6 +328,150 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: walletAddress required
+        "429":
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              schema:
+                type: integer
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateLimitErrorResponse"
+
+  /api/risk/wallet/{walletAddress}/latest:
+    get:
+      tags: [Risk]
+      operationId: getLatestRiskEvaluation
+      summary: Get the latest risk evaluation for a wallet
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Wallet address
+      responses:
+        "200":
+          description: Latest risk evaluation found
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskEvaluateResponse"
+        "404":
+          description: No risk evaluation found for wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateLimitErrorResponse"
+
+  /api/risk/wallet/{walletAddress}/history:
+    get:
+      tags: [Risk]
+      operationId: getRiskEvaluationHistory
+      summary: Get risk evaluation history for a wallet
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Wallet address
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: Pagination offset
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Number of evaluations per page
+      responses:
+        "200":
+          description: Risk evaluation history
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  evaluations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RiskEvaluateResponse"
+        "429":
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateLimitErrorResponse"
 
 components:
   schemas:
@@ -386,3 +613,21 @@ components:
         id:
           type: string
           description: Present on 404 responses that reference a specific resource
+
+    RateLimitErrorResponse:
+      type: object
+      required: [data, error, retryAfter]
+      description: Returned when rate limit is exceeded
+      properties:
+        data:
+          type: null
+          nullable: true
+          example: null
+        error:
+          type: string
+          description: Human-readable error message indicating rate limit exceeded
+          example: "Too many requests. Please retry after 47 seconds."
+        retryAfter:
+          type: integer
+          description: Number of seconds to wait before retrying
+          example: 47
