@@ -125,8 +125,14 @@ docker build --target runner -t creditra-backend:latest .
 | `API_KEYS`  | **Yes**  | Comma-separated list of valid admin API keys (see below) |
 | `CORS_ORIGINS` | Prod   | Comma-separated allowlist of exact browser origins        |
 | `DATABASE_URL` | No    | PostgreSQL connection string (required for migrations)   |
+| `HTTP_CONNECT_TIMEOUT_MS` | No | Connection timeout for outbound HTTP (default: `5000`) |
+| `HTTP_READ_TIMEOUT_MS` | No | Read timeout for outbound HTTP (default: `10000`) |
 
 Optional later: `REDIS_URL`, `HORIZON_URL`, etc.
+
+### HTTP Timeouts
+
+All outbound HTTP requests (Horizon API, risk providers) use configurable timeouts to prevent hanging connections. See [docs/http-timeouts.md](docs/http-timeouts.md) for configuration and usage details.
 
 ### Browser origins
 

@@ -1,3 +1,4 @@
+import { fetchJsonWithTimeout, HttpTimeoutError, HttpRequestError } from '../utils/fetchWithTimeout.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -92,10 +93,17 @@ async function dispatchEvent(event: HorizonEvent): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Simulated polling (skeleton — replace with real HTTP call in production)
+// Polling with timeout support
 // ---------------------------------------------------------------------------
 
-
+/**
+ * Poll Horizon API for contract events with configurable timeouts.
+ * 
+ * In production, this would query the Horizon events endpoint:
+ * GET /contracts/{contractId}/events?startLedger={ledger}
+ * 
+ * For now, this is a skeleton that demonstrates timeout handling.
+ */
 export async function pollOnce(config: HorizonListenerConfig): Promise<void> {
     console.log(
         `[HorizonListener] Polling ${config.horizonUrl} ` +
@@ -103,21 +111,50 @@ export async function pollOnce(config: HorizonListenerConfig): Promise<void> {
         `startLedger: ${config.startLedger})`,
     );
 
-    if (config.contractIds.length > 0) {
+    // Skip actual HTTP call if no contracts configured
+    if (config.contractIds.length === 0) {
+        return;
+    }
+
+    try {
+        // In production, this would be a real Horizon API call:
+        // const url = `${config.horizonUrl}/contracts/${config.contractIds[0]}/events?startLedger=${config.startLedger}`;
+        // const response = await fetchJsonWithTimeout<HorizonEventsResponse>(url, {
+        //   timeouts: {
+        //     connectTimeoutMs: 5000,
+        //     readTimeoutMs: 10000,
+        //   }
+        // });
+
+        // For now, simulate an event for testing
         const simulatedEvent: HorizonEvent = {
-        ledger: 1000,
-        timestamp: new Date().toISOString(),
-        contractId: config.contractIds[0]!,
-        topics: ["credit_line_created"],
-        data: JSON.stringify({ walletAddress: "GXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" }),
+            ledger: 1000,
+            timestamp: new Date().toISOString(),
+            contractId: config.contractIds[0]!,
+            topics: ["credit_line_created"],
+            data: JSON.stringify({ walletAddress: "GXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" }),
         };
 
         console.log(
-        "[HorizonListener] Simulated event received:",
-        JSON.stringify(simulatedEvent),
+            "[HorizonListener] Simulated event received:",
+            JSON.stringify(simulatedEvent),
         );
 
         await dispatchEvent(simulatedEvent);
+    } catch (error) {
+        if (error instanceof HttpTimeoutError) {
+            console.error(
+                `[HorizonListener] ${error.type} timeout after ${error.timeoutMs}ms: ${error.url}`
+            );
+        } else if (error instanceof HttpRequestError) {
+            console.error(
+                `[HorizonListener] HTTP request failed: ${error.message}`,
+                error.cause ? `(${error.cause.message})` : ''
+            );
+        } else {
+            console.error("[HorizonListener] Unexpected error during polling:", error);
+        }
+        // Don't throw - let the polling continue on next interval
     }
 }
 
