@@ -217,7 +217,44 @@ The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push and 
 |------|---------|-----------------|
 | TypeScript typecheck | `npm run typecheck` | Any type error |
 | Lint | `npm run lint` | Any ESLint warning or error |
-| Tests + Coverage | `npm test` | Failing test OR coverage < 95% |
+| Dependency audit | `npm audit --production` | Moderate+ vulnerabilities |
+
+## 🔐 Dependency Security
+
+This project enforces automated dependency vulnerability checks as part of CI.
+
+### Checks in place
+
+- `npm audit --production` runs on every push
+- GitHub Dependency Review runs on every pull request
+
+These checks help prevent vulnerable dependencies from reaching production.
+
+### Severity policy
+
+| Severity   | Policy |
+|-----------|--------|
+| Low       | Allowed |
+| Moderate  | Allowed with justification |
+| High      | Must be fixed before merge |
+| Critical  | Blocker — cannot be merged |
+
+### Exceptions
+
+Moderate vulnerabilities may be accepted only if:
+
+- No fix is available
+- The vulnerable code path is not used in production
+- There is no impact on security-sensitive data (API keys, PII, Stellar data)
+
+All exceptions **must be documented in the pull request description**.
+
+### Local validation
+
+Before pushing changes, run:
+
+```bash
+npm audit --production
 
 ### Run locally
 
@@ -476,7 +513,7 @@ Security is a priority for Creditra. Before deploying or contributing:
 
 - Review the [Backend Security Checklist](docs/security-checklist-backend.md)
 - Ensure all security requirements are met
-- Run `npm audit` to check for vulnerabilities
+- Run `npm audit --production` to check for vulnerabilities
 - Maintain minimum 95% test coverage
 
 ## Merging to remote
