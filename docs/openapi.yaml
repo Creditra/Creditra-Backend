@@ -6,6 +6,10 @@ info:
     API Documentation for the Creditra Backend. All responses follow a unified envelope format:
     `{ data: any | null, error: string | null }`.
 
+    Browser clients are restricted by a CORS allowlist. Production deployments
+    must set `CORS_ORIGINS` to a comma-separated list of exact origins; local
+    development falls back to loopback origins when the variable is unset.
+
 servers:
   - url: http://localhost:3000
     description: Local development server

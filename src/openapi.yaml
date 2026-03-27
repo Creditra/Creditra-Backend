@@ -5,6 +5,10 @@ info:
   description: |
     Backend API for Creditra – on-chain credit scoring and risk evaluation.
 
+    Browser clients are restricted by a CORS allowlist. Production deployments
+    must set `CORS_ORIGINS` to a comma-separated list of exact origins; local
+    development falls back to loopback origins when the variable is unset.
+
     ## Keeping the spec in sync
     - Every new route **must** have a corresponding entry here before merging.
     - Run `npm run validate:spec` in CI to catch YAML/structural errors early.
