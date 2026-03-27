@@ -216,6 +216,10 @@ paths:
       tags: [Risk]
       operationId: evaluateRisk
       summary: Evaluate on-chain risk for a wallet
+      description: |
+        Returns a risk evaluation for the given wallet address. Results are
+        cached with a 24-hour TTL. Set `forceRefresh: true` to bypass the
+        cache and trigger a fresh evaluation.
       requestBody:
         required: true
         content:
@@ -223,7 +227,7 @@ paths:
             schema:
               $ref: "#/components/schemas/RiskEvaluateRequest"
             example:
-              walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
+              walletAddress: "GABC1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890AB"
       responses:
         "200":
           description: Risk evaluation result
@@ -232,11 +236,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/RiskEvaluateResponse"
               example:
-                walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
-                riskScore: 0
-                creditLimit: "0"
-                interestRateBps: 0
-                message: Risk engine not yet connected; placeholder response.
+                walletAddress: "GABC1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890AB"
+                riskScore: 70
+                creditLimit: "700.00"
+                interestRateBps: 650
+                message: New risk evaluation completed
         "400":
           description: Missing required field
           content:
@@ -245,6 +249,36 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: walletAddress required
+
+  /api/risk/evaluations/{id}:
+    get:
+      tags: [Risk]
+      operationId: getRiskEvaluationById
+      summary: Fetch a stored risk evaluation by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Risk evaluation identifier
+      responses:
+        "200":
+          description: Risk evaluation found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskEvaluation"
+        "404":
+          description: Risk evaluation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Risk evaluation not found
+                id: "abc123"
 
 components:
   schemas:
@@ -295,8 +329,12 @@ components:
       properties:
         walletAddress:
           type: string
-          description: EVM-compatible wallet address
-          example: "0xAbC1234567890abcdef1234567890abcdef123456"
+          description: Stellar wallet public key
+          example: "GABC1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890AB"
+        forceRefresh:
+          type: boolean
+          description: When true, bypass the TTL cache and force a fresh evaluation
+          default: false
 
     RiskEvaluateResponse:
       type: object
@@ -311,6 +349,49 @@ components:
         interestRateBps:
           type: number
         message:
+          type: string
+
+    RiskEvaluation:
+      type: object
+      required: [id, walletAddress, riskScore, creditLimit, interestRateBps, factors, evaluatedAt, expiresAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        walletAddress:
+          type: string
+        riskScore:
+          type: number
+          description: 0–100 risk score; higher is lower risk
+        creditLimit:
+          type: string
+          description: Approved credit limit as a decimal string
+        interestRateBps:
+          type: integer
+          description: Interest rate in basis points
+        factors:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskFactor"
+        evaluatedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          description: Timestamp after which the evaluation is considered stale
+
+    RiskFactor:
+      type: object
+      required: [name, value, weight]
+      properties:
+        name:
+          type: string
+        value:
+          type: number
+        weight:
+          type: number
+        description:
           type: string
 
     Transaction:

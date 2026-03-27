@@ -1,17 +1,14 @@
 import { Router, Request, Response } from "express";
-import { validateBody } from "../middleware/validate.js";
 import { riskEvaluateSchema } from "../schemas/index.js";
 import { Container } from "../container/Container.js";
 import { createApiKeyMiddleware } from "../middleware/auth.js";
 import { loadApiKeys } from "../config/apiKeys.js";
-import { ok, fail } from "../utils/response.js";
+import { ok } from "../utils/response.js";
 
 export const riskRouter = Router();
 
-// ✅ required
 const container = Container.getInstance();
 
-// Lazy API key loader
 const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
 
 // ---------------------------------------------------------------------------
@@ -20,25 +17,29 @@ const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
 
 /**
  * POST /api/risk/evaluate
+ *
+ * Evaluate on-chain risk for a wallet. Results are cached with a 24-hour TTL.
+ * Pass `forceRefresh: true` to bypass the cache and trigger a fresh evaluation.
  */
 riskRouter.post(
   "/evaluate",
-  validateBody(riskEvaluateSchema),
   async (req: Request, res: Response) => {
     try {
-      const { walletAddress, forceRefresh } = req.body ?? {};
+      const parsed = riskEvaluateSchema.safeParse(req.body);
 
-      // ✅ keep strict null safety
-      if (!walletAddress || typeof walletAddress !== "string") {
+      if (!parsed.success || !parsed.data.walletAddress) {
         return res.status(400).json({ error: "walletAddress required" });
       }
+
+      const { walletAddress, forceRefresh } = parsed.data;
 
       const result = await container.riskEvaluationService.evaluateRisk({
         walletAddress,
         forceRefresh,
       });
 
-      return ok(res, result);
+      // Return flat result — consumers read fields directly (no envelope wrapper)
+      return res.json(result);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to evaluate risk";
@@ -48,7 +49,34 @@ riskRouter.post(
 );
 
 /**
- * GET latest evaluation
+ * GET /api/risk/evaluations/:id
+ *
+ * Fetch a stored risk evaluation by its unique ID.
+ */
+riskRouter.get("/evaluations/:id", async (req: Request, res: Response) => {
+  try {
+    const evaluation = await container.riskEvaluationService.getRiskEvaluation(
+      req.params.id,
+    );
+
+    if (!evaluation) {
+      return res
+        .status(404)
+        .json({ error: "Risk evaluation not found", id: req.params.id });
+    }
+
+    return res.json(evaluation);
+  } catch {
+    return res
+      .status(500)
+      .json({ error: "Failed to fetch risk evaluation" });
+  }
+});
+
+/**
+ * GET /api/risk/wallet/:walletAddress/latest
+ *
+ * Fetch the most recent risk evaluation for a wallet address.
  */
 riskRouter.get("/wallet/:walletAddress/latest", async (req, res) => {
   try {
@@ -72,7 +100,10 @@ riskRouter.get("/wallet/:walletAddress/latest", async (req, res) => {
 });
 
 /**
- * GET evaluation history
+ * GET /api/risk/wallet/:walletAddress/history
+ *
+ * Fetch paginated evaluation history for a wallet address.
+ * Query params: offset (int), limit (int)
  */
 riskRouter.get("/wallet/:walletAddress/history", async (req, res) => {
   try {
@@ -80,7 +111,6 @@ riskRouter.get("/wallet/:walletAddress/history", async (req, res) => {
 
     const offsetNum =
       typeof offset === "string" ? Number.parseInt(offset, 10) : undefined;
-
     const limitNum =
       typeof limit === "string" ? Number.parseInt(limit, 10) : undefined;
 
