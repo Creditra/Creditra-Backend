@@ -1,5 +1,5 @@
-import { RiskEvaluation } from '../../models/RiskEvaluation.js';
-import { RiskEvaluationRepository } from '../interfaces/RiskEvaluationRepository.js';
+import type { RiskEvaluation } from '../../models/RiskEvaluation.js';
+import type { RiskEvaluationRepository } from '../interfaces/RiskEvaluationRepository.js';
 import { randomUUID } from 'crypto';
 
 export class InMemoryRiskEvaluationRepository implements RiskEvaluationRepository {

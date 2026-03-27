@@ -1,5 +1,5 @@
-import { CreditLine, CreateCreditLineRequest, UpdateCreditLineRequest } from '../models/CreditLine.js';
-import { CreditLineRepository } from '../repositories/interfaces/CreditLineRepository.js';
+import type { CreditLine, CreateCreditLineRequest, UpdateCreditLineRequest } from '../models/CreditLine.js';
+import type { CreditLineRepository } from '../repositories/interfaces/CreditLineRepository.js';
 
 export class CreditLineService {
   constructor(private creditLineRepository: CreditLineRepository) {}
@@ -30,6 +30,15 @@ export class CreditLineService {
   }
 
   async getAllCreditLines(offset?: number, limit?: number): Promise<CreditLine[]> {
+    if (offset !== undefined && offset < 0) {
+      throw new Error('Offset cannot be negative');
+    }
+    if (limit !== undefined && limit <= 0) {
+      throw new Error('Limit must be greater than 0');
+    }
+    if (limit !== undefined && limit > 100) {
+      throw new Error('Limit cannot exceed 100');
+    }
     return await this.creditLineRepository.findAll(offset, limit);
   }
 

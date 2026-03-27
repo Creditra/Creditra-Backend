@@ -1,4 +1,3 @@
-
 import {
   start,
   stop,
@@ -112,10 +111,7 @@ describe("resolveConfig()", () => {
 
   it("trims whitespace from CONTRACT_IDS entries", () => {
     withEnv({ CONTRACT_IDS: " CONTRACT_A , CONTRACT_B " }, () => {
-      expect(resolveConfig().contractIds).toEqual([
-        "CONTRACT_A",
-        "CONTRACT_B",
-      ]);
+      expect(resolveConfig().contractIds).toEqual(["CONTRACT_A", "CONTRACT_B"]);
     });
   });
 
@@ -178,36 +174,42 @@ describe("start()", () => {
 
   it("executes an immediate first poll on start", async () => {
     jest.useFakeTimers();
-    const pollSpy = jest.fn<Promise<void>, [HorizonListenerConfig]>();
 
     withEnv({ CONTRACT_IDS: "MY_CONTRACT" }, async () => {
       const received: HorizonEvent[] = [];
-      onEvent((e) => { received.push(e); });
+      onEvent((e) => {
+        received.push(e);
+      });
       await start();
-      
+
       expect(received.length).toBe(1);
     });
   });
 
   it("fires handlers on subsequent interval ticks", async () => {
     jest.useFakeTimers();
-    withEnv({ CONTRACT_IDS: "MY_CONTRACT", POLL_INTERVAL_MS: "100" }, async () => {
-      const received: HorizonEvent[] = [];
-      onEvent((e) => { received.push(e); });
-      await start();
+    withEnv(
+      { CONTRACT_IDS: "MY_CONTRACT", POLL_INTERVAL_MS: "100" },
+      async () => {
+        const received: HorizonEvent[] = [];
+        onEvent((e) => {
+          received.push(e);
+        });
+        await start();
 
-      expect(received.length).toBe(1);
+        expect(received.length).toBe(1);
 
-      jest.advanceTimersByTime(100);
+        jest.advanceTimersByTime(100);
 
-      await Promise.resolve();
-      expect(received.length).toBe(2);
+        await Promise.resolve();
+        expect(received.length).toBe(2);
 
-      jest.advanceTimersByTime(200);
-      await Promise.resolve();
-      await Promise.resolve();
-      expect(received.length).toBe(4);
-    });
+        jest.advanceTimersByTime(200);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(received.length).toBe(4);
+      },
+    );
   });
 
   it("is a no-op (warns) if called when already running", async () => {
@@ -245,17 +247,22 @@ describe("stop()", () => {
 
   it("clears the polling interval so no more events fire", async () => {
     jest.useFakeTimers();
-    withEnv({ CONTRACT_IDS: "MY_CONTRACT", POLL_INTERVAL_MS: "100" }, async () => {
-      const received: HorizonEvent[] = [];
-      onEvent((e) => { received.push(e); });
-      await start();
-      stop();
-      const countAfterStop = received.length;
-      jest.advanceTimersByTime(500);
-      await Promise.resolve();
-      // No new events after stop
-      expect(received.length).toBe(countAfterStop);
-    });
+    withEnv(
+      { CONTRACT_IDS: "MY_CONTRACT", POLL_INTERVAL_MS: "100" },
+      async () => {
+        const received: HorizonEvent[] = [];
+        onEvent((e) => {
+          received.push(e);
+        });
+        await start();
+        stop();
+        const countAfterStop = received.length;
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+        // No new events after stop
+        expect(received.length).toBe(countAfterStop);
+      },
+    );
   });
 
   it("is a no-op (warns) if called when not running", () => {
@@ -296,7 +303,9 @@ describe("onEvent() / clearEventHandlers()", () => {
     jest.useFakeTimers();
     withEnv({ CONTRACT_IDS: "MY_CONTRACT" }, async () => {
       const events: HorizonEvent[] = [];
-      onEvent((e) => events.push(e));
+      onEvent((e) => {
+        events.push(e);
+      });
       await start();
       expect(events.length).toBeGreaterThan(0);
       expect(events[0]!.contractId).toBe("MY_CONTRACT");
@@ -308,8 +317,12 @@ describe("onEvent() / clearEventHandlers()", () => {
     withEnv({ CONTRACT_IDS: "MULTI_CONTRACT" }, async () => {
       const calls1: HorizonEvent[] = [];
       const calls2: HorizonEvent[] = [];
-      onEvent((e) => calls1.push(e));
-      onEvent((e) => calls2.push(e));
+      onEvent((e) => {
+        calls1.push(e);
+      });
+      onEvent((e) => {
+        calls2.push(e);
+      });
       await start();
       expect(calls1.length).toBe(1);
       expect(calls2.length).toBe(1);
@@ -320,7 +333,9 @@ describe("onEvent() / clearEventHandlers()", () => {
     jest.useFakeTimers();
     withEnv({ CONTRACT_IDS: "MY_CONTRACT" }, async () => {
       const events: HorizonEvent[] = [];
-      onEvent((e) => events.push(e));
+      onEvent((e) => {
+        events.push(e);
+      });
       clearEventHandlers();
       await start();
 
@@ -332,14 +347,18 @@ describe("onEvent() / clearEventHandlers()", () => {
     jest.useFakeTimers();
     withEnv({ CONTRACT_IDS: "ERROR_CONTRACT" }, async () => {
       const goodEvents: HorizonEvent[] = [];
-      onEvent(() => { throw new Error("handler boom"); });
-      onEvent((e) => goodEvents.push(e));
+      onEvent(() => {
+        throw new Error("handler boom");
+      });
+      onEvent((e) => {
+        goodEvents.push(e);
+      });
       await start();
 
       expect(goodEvents.length).toBe(1);
-      expect((console.error as jest.Mock).mock.calls.flat().join(" ")).toContain(
-        "handler threw an error",
-      );
+      expect(
+        (console.error as jest.Mock).mock.calls.flat().join(" "),
+      ).toContain("handler threw an error");
     });
   });
 
@@ -347,8 +366,12 @@ describe("onEvent() / clearEventHandlers()", () => {
     jest.useFakeTimers();
     withEnv({ CONTRACT_IDS: "ASYNC_ERROR_CONTRACT" }, async () => {
       const goodEvents: HorizonEvent[] = [];
-      onEvent(async () => { throw new Error("async handler boom"); });
-      onEvent((e) => goodEvents.push(e));
+      onEvent(async () => {
+        throw new Error("async handler boom");
+      });
+      onEvent((e) => {
+        goodEvents.push(e);
+      });
       await start();
       expect(goodEvents.length).toBe(1);
     });
@@ -375,9 +398,7 @@ describe("pollOnce()", () => {
     const logSpy = console.log as jest.Mock;
     logSpy.mockClear();
     await pollOnce(baseConfig);
-    expect(logSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Polling"),
-    );
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Polling"));
   });
 
   it("emits a simulated event when contractIds is non-empty", async () => {
@@ -386,7 +407,9 @@ describe("pollOnce()", () => {
       contractIds: ["TEST_CONTRACT"],
     };
     const events: HorizonEvent[] = [];
-    onEvent((e) => events.push(e));
+    onEvent((e) => {
+      events.push(e);
+    });
     await pollOnce(config);
     expect(events).toHaveLength(1);
     expect(events[0]!.contractId).toBe("TEST_CONTRACT");
@@ -396,7 +419,9 @@ describe("pollOnce()", () => {
 
   it("does not emit events when contractIds is empty", async () => {
     const events: HorizonEvent[] = [];
-    onEvent((e) => events.push(e));
+    onEvent((e) => {
+      events.push(e);
+    });
     await pollOnce(baseConfig);
     expect(events).toHaveLength(0);
   });
@@ -414,7 +439,9 @@ describe("pollOnce()", () => {
       contractIds: ["WALLET_CONTRACT"],
     };
     const events: HorizonEvent[] = [];
-    onEvent((e) => events.push(e));
+    onEvent((e) => {
+      events.push(e);
+    });
     await pollOnce(config);
     const data = JSON.parse(events[0]!.data) as { walletAddress: string };
     expect(data).toHaveProperty("walletAddress");
@@ -426,7 +453,9 @@ describe("pollOnce()", () => {
       contractIds: ["TS_CONTRACT"],
     };
     const events: HorizonEvent[] = [];
-    onEvent((e) => events.push(e));
+    onEvent((e) => {
+      events.push(e);
+    });
     await pollOnce(config);
     expect(() => new Date(events[0]!.timestamp)).not.toThrow();
     expect(new Date(events[0]!.timestamp).getTime()).not.toBeNaN();

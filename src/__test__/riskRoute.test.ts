@@ -1,4 +1,4 @@
-import express, { Express } from "express";
+import express, { type Express } from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -12,7 +12,7 @@ vi.mock("../services/riskService.js", () => ({
   },
 }));
 
-import riskRouter from "../routes/risk.js";
+import { riskRouter } from "../routes/risk.js";
 import {
   evaluateWallet,
   InvalidWalletAddressError,
@@ -27,7 +27,8 @@ function buildApp(): Express {
   return app;
 }
 
-const VALID_ADDRESS = "GCKFBEIYV2U22IO2BJ4KVJOIP7XPWQGZBW3JXDC55CYIXB5NAXMCEKJA";
+const VALID_ADDRESS =
+  "GCKFBEIYV2U22IO2BJ4KVJOIP7XPWQGZBW3JXDC55CYIXB5NAXMCEKJA";
 const MOCK_RESULT = {
   walletAddress: VALID_ADDRESS,
   score: null,
@@ -116,7 +117,9 @@ describe("POST /api/risk/evaluate", () => {
       .send({ walletAddress: VALID_ADDRESS });
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: "Unable to evaluate wallet at this time." });
+    expect(res.body).toEqual({
+      error: "Unable to evaluate wallet at this time.",
+    });
   });
 
   it("returns JSON content-type on 400 error", async () => {

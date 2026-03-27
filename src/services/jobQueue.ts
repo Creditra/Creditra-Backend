@@ -14,16 +14,18 @@ export interface Job<Data = unknown> {
   /** Arbitrary JSON-serialisable payload. */
   readonly payload: Data;
   /** Number of times this job has been attempted. */
-  readonly attempts: number;
+  attempts: number;
   /** Maximum number of attempts before the job is considered failed. */
   readonly maxAttempts: number;
   /** Milliseconds since epoch when the job was first enqueued. */
   readonly createdAt: number;
   /** Milliseconds since epoch when the job was last updated. */
-  readonly updatedAt: number;
+  updatedAt: number;
 }
 
-export type JobHandler<Data = unknown> = (job: Job<Data>) => void | Promise<void>;
+export type JobHandler<Data = unknown> = (
+  job: Job<Data>,
+) => void | Promise<void>;
 
 export interface EnqueueOptions {
   /**
@@ -87,7 +89,12 @@ export interface JobQueue {
   drain(): Promise<void>;
 }
 
-interface InternalJob<Data = unknown> extends Job<Data> {
+interface InternalJob<Data = unknown> extends Omit<
+  Job<Data>,
+  "attempts" | "updatedAt"
+> {
+  attempts: number;
+  updatedAt: number;
   nextRunAt: number;
 }
 
@@ -155,12 +162,9 @@ export class InMemoryJobQueue implements JobQueue {
     if (this.running) return;
     this.running = true;
     if (!this.intervalHandle) {
-      this.intervalHandle = setInterval(
-        () => {
-          void this.processTick();
-        },
-        this.tickIntervalMs,
-      );
+      this.intervalHandle = setInterval(() => {
+        void this.processTick();
+      }, this.tickIntervalMs);
     }
   }
 
@@ -264,4 +268,3 @@ export class InMemoryJobQueue implements JobQueue {
  * `InMemoryJobQueue` instead of using this default export.
  */
 export const defaultJobQueue: JobQueue = new InMemoryJobQueue();
-

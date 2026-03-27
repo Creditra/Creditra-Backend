@@ -123,9 +123,27 @@ docker build --target runner -t creditra-backend:latest .
 |-------------|----------|----------------------------------------------------------|
 | `PORT`      | No       | Server port (default: `3000`)                            |
 | `API_KEYS`  | **Yes**  | Comma-separated list of valid admin API keys (see below) |
+| `CORS_ORIGINS` | Prod   | Comma-separated allowlist of exact browser origins        |
 | `DATABASE_URL` | No    | PostgreSQL connection string (required for migrations)   |
 
 Optional later: `REDIS_URL`, `HORIZON_URL`, etc.
+
+### Browser origins
+
+Browser clients are allowed only when their `Origin` header matches the
+configured CORS policy.
+
+- In production, set `CORS_ORIGINS` to a comma-separated list of exact
+  origins, for example `https://app.example.com,https://admin.example.com`.
+- In non-production environments, the server falls back to loopback origins
+  such as `http://localhost:3000`, `http://127.0.0.1:3000`, and
+  `http://[::1]:3000` so local UI development stays frictionless.
+- Requests without an `Origin` header are still accepted; CORS only controls
+  browser access, not API authentication.
+
+> **Security note:** CORS is not an auth boundary. It does not protect
+> `API_KEYS`, PII, or Stellar secrets. Keep those values server-side, use HTTPS
+> in production, and keep the browser allowlist tight.
 
 ## Data model and migrations
 

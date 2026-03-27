@@ -1,5 +1,5 @@
-import { CreditLine, CreateCreditLineRequest, UpdateCreditLineRequest, CreditLineStatus } from '../../models/CreditLine.js';
-import { CreditLineRepository } from '../interfaces/CreditLineRepository.js';
+import{ type CreditLine, type CreateCreditLineRequest, type UpdateCreditLineRequest, CreditLineStatus } from '../../models/CreditLine.js';
+import type{ CreditLineRepository } from '../interfaces/CreditLineRepository.js';
 import { randomUUID } from 'crypto';
 
 export class InMemoryCreditLineRepository implements CreditLineRepository {

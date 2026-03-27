@@ -6,6 +6,10 @@ info:
     API Documentation for the Creditra Backend. All responses follow a unified envelope format:
     `{ data: any | null, error: string | null }`.
 
+    Browser clients are restricted by a CORS allowlist. Production deployments
+    must set `CORS_ORIGINS` to a comma-separated list of exact origins; local
+    development falls back to loopback origins when the variable is unset.
+
 servers:
   - url: http://localhost:3000
     description: Local development server
@@ -27,6 +31,24 @@ paths:
     get:
       summary: Get Credit Lines
       description: Returns all available credit lines.
+      parameters:
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Pagination offset
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+          description: Number of credit lines per page
       responses:
         '200':
           description: OK
@@ -34,6 +56,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Bad Request (Invalid pagination parameters)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FailureResponse'
 
   /api/credit/lines/{id}:
     get:

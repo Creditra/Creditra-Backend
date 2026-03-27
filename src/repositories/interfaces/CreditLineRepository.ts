@@ -1,4 +1,4 @@
-import { CreditLine, CreateCreditLineRequest, UpdateCreditLineRequest } from '../../models/CreditLine.js';
+import type { CreditLine, CreateCreditLineRequest, UpdateCreditLineRequest } from '../../models/CreditLine.js';
 
 export interface CreditLineRepository {
   /**

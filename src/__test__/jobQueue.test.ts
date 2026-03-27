@@ -1,31 +1,40 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type MockInstance,
+} from "vitest";
 import {
   InMemoryJobQueue,
   type Job,
   type JobQueue,
 } from "../services/jobQueue.js";
 
-function createQueue(): JobQueue & { _impl?: InMemoryJobQueue } {
-  const q = new InMemoryJobQueue(10, 20);
-  return q as JobQueue & { _impl?: InMemoryJobQueue };
+function createQueue(): JobQueue {
+  return new InMemoryJobQueue(10, 20);
 }
 
 describe("InMemoryJobQueue", () => {
+  let consoleErrorSpy: MockInstance;
+
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
-    (console.error as unknown as vi.Mock).mockRestore?.();
+    consoleErrorSpy.mockRestore();
     vi.useRealTimers();
   });
 
   it("processes an enqueued job when a handler is registered", async () => {
     const queue = createQueue();
-    const handler = vi.fn<void, [Job<{ value: number }>]>();
+    const handler = vi.fn((job: Job<{ value: number }>) => {});
 
-    queue.registerHandler("test", handler);
+    queue.registerHandler<{ value: number }>("test", handler);
     queue.start();
 
     queue.enqueue("test", { value: 42 });
@@ -33,17 +42,18 @@ describe("InMemoryJobQueue", () => {
     await vi.runAllTimersAsync();
 
     expect(handler).toHaveBeenCalledTimes(1);
-    const jobArg = handler.mock.calls[0]![0];
-    expect(jobArg.type).toBe("test");
-    expect(jobArg.payload).toEqual({ value: 42 });
+    const jobArg = handler.mock.calls[0]?.[0];
+    expect(jobArg).toBeDefined();
+    expect(jobArg?.type).toBe("test");
+    expect(jobArg?.payload).toEqual({ value: 42 });
     expect(queue.size()).toBe(0);
   });
 
   it("supports delayed execution via delayMs", async () => {
     const queue = createQueue();
-    const handler = vi.fn<void, [Job<void>]>();
+    const handler = vi.fn((_job: Job<void>) => {});
 
-    queue.registerHandler("delayed", handler);
+    queue.registerHandler<void>("delayed", handler);
     queue.start();
 
     queue.enqueue("delayed", undefined, { delayMs: 1000 });
@@ -58,12 +68,12 @@ describe("InMemoryJobQueue", () => {
   it("retries a failing job up to maxAttempts then moves it to failed jobs", async () => {
     const queue = createQueue();
     const handler = vi
-      .fn<void, [Job<void>]>()
+      .fn(async (_job: Job<void>) => {})
       .mockRejectedValueOnce(new Error("first failure"))
       .mockRejectedValueOnce(new Error("second failure"))
-      .mockResolvedValueOnce();
+      .mockResolvedValueOnce(undefined);
 
-    queue.registerHandler("unstable", handler);
+    queue.registerHandler<void>("unstable", handler);
     queue.start();
 
     queue.enqueue("unstable", undefined, { maxAttempts: 3 });
@@ -77,11 +87,11 @@ describe("InMemoryJobQueue", () => {
 
   it("moves job to failed set after exceeding maxAttempts", async () => {
     const queue = createQueue();
-    const handler = vi.fn<void, [Job<void>]>().mockRejectedValue(
-      new Error("always fails"),
-    );
+    const handler = vi.fn(async (_job: Job<void>) => {
+      throw new Error("always fails");
+    });
 
-    queue.registerHandler("always-fail", handler);
+    queue.registerHandler<void>("always-fail", handler);
     queue.start();
 
     queue.enqueue("always-fail", undefined, { maxAttempts: 2 });
@@ -91,7 +101,7 @@ describe("InMemoryJobQueue", () => {
     expect(handler).toHaveBeenCalledTimes(2);
     const failed = queue.getFailedJobs();
     expect(failed).toHaveLength(1);
-    expect(failed[0]!.type).toBe("always-fail");
+    expect(failed[0]?.type).toBe("always-fail");
   });
 
   it("drops jobs for unknown types and records them as failed", async () => {
@@ -103,13 +113,14 @@ describe("InMemoryJobQueue", () => {
     await vi.runAllTimersAsync();
 
     expect(queue.getFailedJobs()).toHaveLength(1);
-    expect(queue.getFailedJobs()[0]!.type).toBe("no-handler");
+    expect(queue.getFailedJobs()[0]?.type).toBe("no-handler");
     expect(queue.size()).toBe(0);
     expect(console.error).toHaveBeenCalled();
   });
 
   it("is idempotent when start() or stop() are called multiple times", () => {
     const queue = createQueue();
+
     expect(queue.isRunning()).toBe(false);
     queue.start();
     expect(queue.isRunning()).toBe(true);
@@ -123,9 +134,9 @@ describe("InMemoryJobQueue", () => {
 
   it("drain() processes ready jobs even without timers", async () => {
     const queue = createQueue();
-    const handler = vi.fn<void, [Job<void>]>();
+    const handler = vi.fn((_job: Job<void>) => {});
 
-    queue.registerHandler("immediate", handler);
+    queue.registerHandler<void>("immediate", handler);
     queue.start();
 
     queue.enqueue("immediate", undefined);
@@ -136,4 +147,3 @@ describe("InMemoryJobQueue", () => {
     expect(queue.size()).toBe(0);
   });
 });
-

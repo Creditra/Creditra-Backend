@@ -1,5 +1,5 @@
-import { Transaction, CreateTransactionRequest, TransactionStatus, TransactionType } from '../../models/Transaction.js';
-import { TransactionRepository } from '../interfaces/TransactionRepository.js';
+import { type Transaction, type CreateTransactionRequest, TransactionStatus } from '../../models/Transaction.js';
+import type { TransactionRepository } from '../interfaces/TransactionRepository.js';
 import { randomUUID } from 'crypto';
 
 export class InMemoryTransactionRepository implements TransactionRepository {

@@ -1,4 +1,4 @@
-import { Transaction, CreateTransactionRequest, TransactionStatus } from '../../models/Transaction.js';
+import type{ Transaction, CreateTransactionRequest, TransactionStatus } from '../../models/Transaction.js';
 
 export interface TransactionRepository {
   /**

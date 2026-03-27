@@ -1,5 +1,5 @@
-import { RiskEvaluation, RiskEvaluationRequest, RiskEvaluationResult, RiskFactor } from '../models/RiskEvaluation.js';
-import { RiskEvaluationRepository } from '../repositories/interfaces/RiskEvaluationRepository.js';
+import type { RiskEvaluation, RiskEvaluationRequest, RiskEvaluationResult, RiskFactor } from '../models/RiskEvaluation.js';
+import type { RiskEvaluationRepository } from '../repositories/interfaces/RiskEvaluationRepository.js';
 
 export class RiskEvaluationService {
   constructor(private riskEvaluationRepository: RiskEvaluationRepository) {}

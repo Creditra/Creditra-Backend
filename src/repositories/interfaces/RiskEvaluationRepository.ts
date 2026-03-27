@@ -1,4 +1,4 @@
-import { RiskEvaluation, RiskEvaluationRequest } from '../../models/RiskEvaluation.js';
+import {type  RiskEvaluation } from '../../models/RiskEvaluation.js';
 
 export interface RiskEvaluationRepository {
   /**

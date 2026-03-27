@@ -59,6 +59,27 @@ describe('Credit Routes', () => {
       expect(response.body.pagination.limit).toBe(10);
     });
 
+    it('should return 400 for negative offset', async () => {
+      const response = await request(app)
+        .get('/api/credit/lines?offset=-1')
+        .expect(400);
+      expect(response.body.error).toBe('Offset cannot be negative');
+    });
+
+    it('should return 400 for zero limit', async () => {
+      const response = await request(app)
+        .get('/api/credit/lines?limit=0')
+        .expect(400);
+      expect(response.body.error).toBe('Limit must be greater than 0');
+    });
+
+    it('should return 400 for oversized limit', async () => {
+      const response = await request(app)
+        .get('/api/credit/lines?limit=101')
+        .expect(400);
+      expect(response.body.error).toBe('Limit cannot exceed 100');
+    });
+
     it('should handle server errors gracefully', async () => {
       // Mock repository to throw error
       const originalMethod = container.creditLineService.getAllCreditLines;
@@ -68,9 +89,9 @@ describe('Credit Routes', () => {
 
       const response = await request(app)
         .get('/api/credit/lines')
-        .expect(500);
+        .expect(400);
 
-      expect(response.body.error).toBe('Failed to fetch credit lines');
+      expect(response.body.error).toBe('Database error');
 
       // Restore original method
       container.creditLineService.getAllCreditLines = originalMethod;
