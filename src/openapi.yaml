@@ -31,6 +31,37 @@ paths:
     get:
       tags: [Health]
       operationId: getHealth
+      summary: Readiness check
+      responses:
+        "200":
+          description: Service and dependencies are running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReadinessResponse"
+              example:
+                status: ok
+                service: creditra-backend
+                dependencies:
+                  database: up
+                  horizon: up
+        "503":
+          description: Service or dependencies are down
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReadinessResponse"
+              example:
+                status: error
+                service: creditra-backend
+                dependencies:
+                  database: down
+                  horizon: up
+
+  /health/live:
+    get:
+      tags: [Health]
+      operationId: getHealthLive
       summary: Liveness check
       responses:
         "200":
@@ -258,6 +289,29 @@ components:
         service:
           type: string
           example: creditra-backend
+
+    HealthReadinessResponse:
+      type: object
+      required: [status, service, dependencies]
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: creditra-backend
+        dependencies:
+          type: object
+          required: [database, horizon]
+          properties:
+            database:
+              type: string
+              enum: [up, down]
+              example: up
+            horizon:
+              type: string
+              enum: [up, down]
+              example: up
 
     CreditLine:
       type: object

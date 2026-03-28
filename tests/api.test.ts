@@ -4,9 +4,9 @@ import { app } from '../src/index.js';
 
 describe('API Integration Tests', () => {
 
-    describe('GET /health', () => {
+    describe('GET /health/live', () => {
         it('returns a successful envelope with health status', async () => {
-            const response = await request(app).get('/health');
+            const response = await request(app).get('/health/live');
 
             expect(response.status).toBe(200);
             expect(response.body).toEqual({

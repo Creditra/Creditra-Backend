@@ -20,7 +20,7 @@ describe('Main Application', () => {
     const { default: app } = await import('../index.js');
     
     const response = await request(app)
-      .get('/health')
+      .get('/health/live')
       .expect(200);
 
     expect(response.body).toEqual({
