@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { validateBody } from "../middleware/validate.js";
 import { riskEvaluateSchema } from "../schemas/index.js";
 import { Container } from "../container/Container.js";
@@ -24,13 +24,15 @@ const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
 riskRouter.post(
   "/evaluate",
   validateBody(riskEvaluateSchema),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { walletAddress, forceRefresh } = req.body ?? {};
 
       // ✅ keep strict null safety
       if (!walletAddress || typeof walletAddress !== "string") {
-        return res.status(400).json({ error: "walletAddress required" });
+        const validationError = new Error("walletAddress required");
+        validationError.name = "ValidationError";
+        return next(validationError);
       }
 
       const result = await container.riskEvaluationService.evaluateRisk({
@@ -40,9 +42,7 @@ riskRouter.post(
 
       return ok(res, result);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to evaluate risk";
-      return res.status(500).json({ error: message });
+      next(error);
     }
   },
 );
@@ -50,7 +50,7 @@ riskRouter.post(
 /**
  * GET latest evaluation
  */
-riskRouter.get("/wallet/:walletAddress/latest", async (req, res) => {
+riskRouter.get("/wallet/:walletAddress/latest", async (req, res, next) => {
   try {
     const evaluation =
       await container.riskEvaluationService.getLatestRiskEvaluation(
@@ -58,23 +58,21 @@ riskRouter.get("/wallet/:walletAddress/latest", async (req, res) => {
       );
 
     if (!evaluation) {
-      return res
-        .status(404)
-        .json({ error: "No risk evaluation found for wallet" });
+      const notFoundError = new Error("No risk evaluation found for wallet");
+      notFoundError.name = "NotFoundError";
+      return next(notFoundError);
     }
 
-    return res.json(evaluation);
-  } catch {
-    return res
-      .status(500)
-      .json({ error: "Failed to fetch latest risk evaluation" });
+    return ok(res, evaluation);
+  } catch (error) {
+    next(error);
   }
 });
 
 /**
  * GET evaluation history
  */
-riskRouter.get("/wallet/:walletAddress/history", async (req, res) => {
+riskRouter.get("/wallet/:walletAddress/history", async (req, res, next) => {
   try {
     const { offset, limit } = req.query;
 
@@ -91,9 +89,9 @@ riskRouter.get("/wallet/:walletAddress/history", async (req, res) => {
         limitNum,
       );
 
-    res.json({ evaluations });
-  } catch {
-    res.status(500).json({ error: "Failed to fetch risk evaluation history" });
+    return ok(res, { evaluations });
+  } catch (error) {
+    next(error);
   }
 });
 
