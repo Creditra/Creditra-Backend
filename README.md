@@ -312,6 +312,7 @@ docs/
   data-model.md                            # PostgreSQL schema documentation
   REPOSITORY_ARCHITECTURE.md              # deep-dive on the repository pattern
   security-checklist-backend.md
+  security-pentest-checklist.md           # pre-engagement API pentest readiness
 migrations/                                # sequential SQL migration files
 .github/workflows/
   ci.yml                                   # CI: typecheck → lint → test → coverage
@@ -475,6 +476,7 @@ Keep `openapi.yaml` in sync with route behaviour; the CI pipeline validates the 
 Security is a priority for Creditra. Before deploying or contributing:
 
 - Review the [Backend Security Checklist](docs/security-checklist-backend.md)
+- Before an external pentest, work through the [API pentest readiness checklist](docs/security-pentest-checklist.md)
 - Ensure all security requirements are met
 - Run `npm audit` to check for vulnerabilities
 - Maintain minimum 95% test coverage
