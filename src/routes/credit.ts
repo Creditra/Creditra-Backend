@@ -1,6 +1,4 @@
 import { Router, Request, Response } from "express";
-import { validateBody } from "../middleware/validate.js";
-import { createCreditLineSchema } from "../schemas/index.js";
 import { Container } from "../container/Container.js";
 import { createApiKeyMiddleware } from "../middleware/auth.js";
 import { loadApiKeys } from "../config/apiKeys.js";
@@ -88,19 +86,21 @@ creditRouter.get("/lines/:id", async (req, res) => {
 
 creditRouter.post(
   "/lines",
-  validateBody(createCreditLineSchema),
   async (req, res) => {
     try {
-      const { walletAddress, requestedLimit } = req.body ?? {};
+      const { walletAddress, creditLimit, interestRateBps } = req.body ?? {};
 
-      if (!walletAddress || !requestedLimit) {
-        return res.status(400).json({ error: "Missing required fields" });
+      if (!walletAddress || !creditLimit || interestRateBps === undefined) {
+        return res.status(400).json({
+          error:
+            "Missing required fields: walletAddress, creditLimit, interestRateBps",
+        });
       }
 
       const creditLine = await container.creditLineService.createCreditLine({
         walletAddress,
-        creditLimit: requestedLimit,
-        interestRateBps: 0,
+        creditLimit,
+        interestRateBps,
       });
 
       return res.status(201).json(creditLine);
