@@ -379,10 +379,18 @@ components:
 
     ErrorResponse:
       type: object
-      required: [error]
+      required: [data, error]
+      description: Standardized error response format used across all endpoints
       properties:
+        data:
+          type: object
+          nullable: true
+          description: Always null for error responses
         error:
           type: string
-        id:
-          type: string
-          description: Present on 404 responses that reference a specific resource
+          description: Human-readable error message. For 5xx errors, this will be a generic message to avoid leaking internal details. For 4xx errors, specific validation or business logic errors are returned.
+          examples:
+            - "Internal server error"
+            - "Validation failed: walletAddress is required"
+            - "Credit line not found"
+            - "Unauthorized access"
