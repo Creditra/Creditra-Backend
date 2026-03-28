@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../../src/index.js';
 
-describe('GET /health', () => {
+describe('GET /health/live', () => {
   it('returns 200 with ok status', async () => {
-    const res = await request(app).get('/health');
+    const res = await request(app).get('/health/live');
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ status: 'ok', service: 'creditra-backend' });
   });

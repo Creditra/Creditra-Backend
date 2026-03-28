@@ -242,13 +242,15 @@ npm run test:watch
 
 ## API (current)
 
-- `GET /health` — Service health
+- `GET /health` — Service readiness check (with DB and Horizon)
+- `GET /health/live` — Service liveness check (fast-fail)
 - `GET /api/credit/lines` — List credit lines (placeholder)
 - `GET /api/credit/lines/:id` — Get credit line by id (placeholder)
 - `POST /api/risk/evaluate` — Request risk evaluation; body: `{ "walletAddress": "..." }`; returns `400` with `{ "error": "Invalid wallet address format." }` for invalid Stellar addresses
 ### Public
 
-- `GET  /health` — Service health
+- `GET  /health` — Service readiness (checks dependencies)
+- `GET  /health/live` — Service liveness (fast-fail)
 - `GET  /api/credit/lines` — List credit lines (placeholder)
 - `GET  /api/credit/lines/:id` — Get credit line by id (placeholder)
 - `POST /api/risk/evaluate` — Risk evaluation; body: `{ "walletAddress": "..." }`
