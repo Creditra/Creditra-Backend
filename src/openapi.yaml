@@ -245,6 +245,24 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: walletAddress required
+        "413":
+          description: Request body exceeds the 100 kb limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                data: null
+                error: Request body too large. Maximum size is 100kb.
+        "415":
+          description: Content-Type is not application/json
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                data: null
+                error: Content-Type must be application/json
 
 components:
   schemas:
