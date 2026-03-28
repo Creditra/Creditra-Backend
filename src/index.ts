@@ -11,6 +11,7 @@ import { riskRouter } from "./routes/risk.js";
 import { healthRouter } from "./routes/health.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { Container } from "./container/Container.js";
+import { validateEnv } from "./config/env.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const openapiSpec = yaml.parse(
@@ -52,6 +53,8 @@ const isMain =
   process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 
 if (isMain) {
+  validateEnv();
+
   const server = app.listen(port, () => {
     console.log(`Creditra API listening on http://localhost:${port}`);
     console.log(`Swagger UI available at http://localhost:${port}/docs`);
