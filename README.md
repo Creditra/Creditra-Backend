@@ -119,14 +119,21 @@ docker build --target runner -t creditra-backend:latest .
 
 ### Environment
 
-| Variable    | Required | Description                                              |
-|-------------|----------|----------------------------------------------------------|
-| `PORT`      | No       | Server port (default: `3000`)                            |
-| `API_KEYS`  | **Yes**  | Comma-separated list of valid admin API keys (see below) |
-| `CORS_ORIGINS` | Prod   | Comma-separated allowlist of exact browser origins        |
-| `DATABASE_URL` | No    | PostgreSQL connection string (required for migrations)   |
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DATABASE_URL` | **Yes** | — | PostgreSQL connection string (`postgresql://user:pass@host:port/db`) |
+| `API_KEYS` | **Yes** | — | Comma-separated list of API keys for the `X-Api-Key` header |
+| `PORT` | No | `3000` | HTTP port the server binds to (integer 1–65535) |
+| `NODE_ENV` | No | `development` | Runtime environment: `development`, `production`, or `test` |
+| `SHUTDOWN_TIMEOUT_MS` | No | `30000` | Graceful shutdown window in ms before forced exit |
+| `CORS_ORIGINS` | Prod only | — | Comma-separated exact browser origins; **required in production** |
+| `HORIZON_URL` | No | `https://horizon-testnet.stellar.org` | Stellar Horizon API base URL |
+| `CONTRACT_IDS` | No | _(empty)_ | Comma-separated Soroban contract IDs to watch for events |
+| `POLL_INTERVAL_MS` | No | `5000` | Horizon polling interval in ms (minimum 100) |
+| `HORIZON_START_LEDGER` | No | `latest` | Ledger to start event replay from |
+| `ADMIN_API_KEY` | No | — | Key for `X-Admin-Api-Key` header; admin endpoints return 503 when unset |
 
-Optional later: `REDIS_URL`, `HORIZON_URL`, etc.
+All variables are validated at startup via `src/config/env.ts` (Zod). The server will **refuse to start** and print a clear diagnostic listing every failing variable. Copy `.env.example` to `.env` to get started.
 
 ### Browser origins
 
@@ -274,6 +281,8 @@ Target: ≥ 95 % coverage on all middleware and route files.
 src/
   config/
     apiKeys.ts                              # loads + validates API_KEYS env var
+    cors.ts                                 # loads + validates CORS_ORIGINS env var
+    env.ts                                  # Zod schema; validates all env vars at startup
   container/
     Container.ts                            # DI container; wires repos → services
   middleware/
