@@ -153,6 +153,68 @@ The PostgreSQL schema is designed and documented in **[docs/data-model.md](docs/
 - **Apply migrations:** `DATABASE_URL=... npm run db:migrate`
 - **Validate schema:** `DATABASE_URL=... npm run db:validate`
 
+### Migration CLI Safety Features
+
+The migration CLI includes comprehensive safety guards to prevent accidental data loss in production environments.
+
+#### Safety Features
+
+- **Dry-run mode**: Preview pending migrations without applying them
+- **Environment detection**: Automatic detection of production-like environments
+- **Force requirement**: Production-like environments require explicit `--force` flag
+- **Interactive confirmation**: Prompts for confirmation in production environments
+- **Clear error messages**: Detailed troubleshooting and rollback guidance
+
+#### Usage Examples
+
+```bash
+# Dry run - see what would be applied
+DATABASE_URL=... npm run db:migrate -- --dry-run
+
+# Development - safe to run
+DATABASE_URL=... npm run db:migrate
+
+# Staging - requires force flag
+DATABASE_URL=... npm run db:migrate -- --force --env staging
+
+# Production - requires force flag and explicit confirmation
+DATABASE_URL=... npm run db:migrate -- --force --env production
+```
+
+#### Environment Safety Levels
+
+| Environment | Force Required | Confirmation |
+|-------------|---------------|--------------|
+| `development` | No | No |
+| `test` | No | No |
+| `staging` | Yes | Yes |
+| `production` | Yes | Yes (requires "MIGRATE PRODUCTION") |
+| `*prod*` | Yes | Yes |
+
+#### Operator Runbook
+
+**Before Migration:**
+1. Always run with `--dry-run` first to review pending migrations
+2. Ensure you have a recent database backup
+3. Test migrations in staging environment first
+4. Prepare rollback plan
+5. Notify relevant stakeholders
+
+**Production Migration Process:**
+1. Run dry-run: `npm run db:migrate -- --dry-run --env production`
+2. Review pending migrations carefully
+3. Confirm backup is available
+4. Execute with force: `npm run db:migrate -- --force --env production`
+5. Type "MIGRATE PRODUCTION" when prompted
+6. Verify application functionality post-migration
+
+**Troubleshooting:**
+- Check database connection and permissions
+- Verify migration file syntax
+- Ensure database is in correct state
+- Review migration logs for specific errors
+- Consider rollback if production issues occur
+
 ## Authentication
 
 Admin and internal endpoints are protected by an **API key** sent in the
