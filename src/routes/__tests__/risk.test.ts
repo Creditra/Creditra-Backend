@@ -123,7 +123,7 @@ describe('Risk Routes', () => {
   describe('GET /api/risk/evaluations/:id', () => {
     it('should return risk evaluation when found', async () => {
       // Create a risk evaluation first
-      const evalResult = await container.riskEvaluationService.evaluateRisk({
+      const _evalResult = await container.riskEvaluationService.evaluateRisk({
         walletAddress: 'wallet123'
       });
 

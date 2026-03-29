@@ -1,10 +1,10 @@
-import { Router, Request, Response } from "express";
+import { Router, type Request, type Response } from "express";
 import { validateBody } from "../middleware/validate.js";
 import { riskEvaluateSchema } from "../schemas/index.js";
 import { Container } from "../container/Container.js";
 import { createApiKeyMiddleware } from "../middleware/auth.js";
 import { loadApiKeys } from "../config/apiKeys.js";
-import { ok, fail } from "../utils/response.js";
+import { ok } from "../utils/response.js";
 
 export const riskRouter = Router();
 

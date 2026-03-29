@@ -9,7 +9,7 @@ describe('Container', () => {
 
   beforeEach(() => {
     // Reset singleton for each test
-    Container['instance'] = undefined as any;
+    (Container as any)['instance'] = undefined;
     container = Container.getInstance();
   });
 

@@ -310,8 +310,8 @@ describe('InMemoryTransactionRepository', () => {
   });
 
   describe('clear', () => {
-    it('should clear all transactions', () => {
-      repository.create({
+    it('should clear all transactions', async () => {
+      await repository.create({
         creditLineId: 'cl-123',
         amount: '100.00',
         type: TransactionType.BORROW
