@@ -1,0 +1,52 @@
+# Docker Compose for LOCAL DEVELOPMENT only.
+# Brings up the Creditra API (hot-reload via tsx) + a PostgreSQL 15 instance.
+#
+# Ports:
+#   3000  → API (http://localhost:3000)
+#   5432  → Postgres (localhost:5432, for GUI clients like TablePlus / psql)
+#
+# Usage:
+#   cp .env.example .env   # fill in real values
+#   docker compose up --build
+
+services:
+  api:
+    build:
+      context: .
+      # Targets the "development" stage — devDependencies included, tsx watch
+      target: development
+    ports:
+      - "3000:3000"   # HOST:CONTAINER — app listens on PORT (default 3000)
+    volumes:
+      - .:/app                  # bind-mount source for hot-reload
+      - /app/node_modules       # anonymous volume keeps container modules intact
+    env_file:
+      - .env                    # developer's local overrides (gitignored)
+    environment:
+      # Override DB URL so the API always reaches the compose "db" service
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/creditra_db
+      - NODE_ENV=development
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres   # change via .env in real environments
+      - POSTGRES_DB=creditra_db
+    ports:
+      - "5432:5432"   # expose to host for direct DB access (psql / GUI clients)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data   # persist data across restarts
+
+volumes:
+  postgres_data:

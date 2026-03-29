@@ -1,76 +1,112 @@
-import { Router } from 'express';
-import { fail } from '../helpers/fail.js';
+import { Router, Request, Response } from "express";
+import { validateBody } from "../middleware/validate.js";
+import { riskEvaluateSchema } from "../schemas/index.js";
+import { Container } from "../container/Container.js";
+import { createApiKeyMiddleware } from "../middleware/auth.js";
+import { loadApiKeys } from "../config/apiKeys.js";
+import { ok, fail } from "../utils/response.js";
 
 export const riskRouter = Router();
 
-// ---------------------------------------------------------------------------
-// In-memory store (placeholder until a real DB is wired up)
-// ---------------------------------------------------------------------------
-export interface RiskEvaluation {
-  id: string;
-  walletAddress: string;
-  riskScore: number;
-  creditLimit: string;
-  interestRateBps: number;
-}
+// ✅ required
+const container = Container.getInstance();
 
-// Exported so tests can seed data without importing a real DB
-export const evaluationStore = new Map<string, RiskEvaluation>();
-
-// Simple UUID-v4 pattern used for ID validation
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// Lazy API key loader
+const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
 
 // ---------------------------------------------------------------------------
-// POST /api/risk/evaluate
+// Public endpoints
 // ---------------------------------------------------------------------------
-riskRouter.post('/evaluate', (req, res) => {
-  const walletAddress: unknown = req.body?.walletAddress;
 
-  if (!walletAddress) {
-    // Use fail() for consistency — no raw error JSON
-    return fail(res, 400, 'INVALID_INPUT', 'walletAddress required');
-  }
+/**
+ * POST /api/risk/evaluate
+ */
+riskRouter.post(
+  "/evaluate",
+  validateBody(riskEvaluateSchema),
+  async (req: Request, res: Response) => {
+    try {
+      const { walletAddress, forceRefresh } = req.body ?? {};
 
-  const evaluation: RiskEvaluation = {
-    id: crypto.randomUUID(),
-    walletAddress: walletAddress as string,
-    riskScore: 0,
-    creditLimit: '0',
-    interestRateBps: 0,
-  };
+      // ✅ keep strict null safety
+      if (!walletAddress || typeof walletAddress !== "string") {
+        return res.status(400).json({ error: "walletAddress required" });
+      }
 
-  evaluationStore.set(evaluation.id, evaluation);
+      const result = await container.riskEvaluationService.evaluateRisk({
+        walletAddress,
+        forceRefresh,
+      });
 
-  return res.json({
-    ...evaluation,
-    message: 'Risk engine not yet connected; placeholder response.',
-  });
-});
+      return ok(res, result);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to evaluate risk";
+      return res.status(500).json({ error: message });
+    }
+  },
+);
 
-// ---------------------------------------------------------------------------
-// GET /api/risk/evaluations/:id
-// ---------------------------------------------------------------------------
-riskRouter.get('/evaluations/:id', (req, res) => {
-  const { id } = req.params;
-
-  // Validate ID format before hitting the data source
-  if (!UUID_RE.test(id)) {
-    return fail(res, 400, 'INVALID_INPUT', 'Invalid evaluation id format');
-  }
-
+/**
+ * GET latest evaluation
+ */
+riskRouter.get("/wallet/:walletAddress/latest", async (req, res) => {
   try {
-    const evaluation = evaluationStore.get(id);
+    const evaluation =
+      await container.riskEvaluationService.getLatestRiskEvaluation(
+        req.params.walletAddress,
+      );
 
     if (!evaluation) {
-      // 404 — resource does not exist; use fail() only, no stack trace
-      return fail(res, 404, 'NOT_FOUND', 'Risk evaluation not found');
+      return res
+        .status(404)
+        .json({ error: "No risk evaluation found for wallet" });
     }
 
-    return res.json({ evaluation });
-  } catch (err) {
-    // Log internally — never expose internals to the caller
-    console.error('[GET /evaluations/:id] Unexpected error:', err);
-    return fail(res, 500, 'INTERNAL_ERROR', 'Something went wrong');
+    return res.json(evaluation);
+  } catch {
+    return res
+      .status(500)
+      .json({ error: "Failed to fetch latest risk evaluation" });
   }
 });
+
+/**
+ * GET evaluation history
+ */
+riskRouter.get("/wallet/:walletAddress/history", async (req, res) => {
+  try {
+    const { offset, limit } = req.query;
+
+    const offsetNum =
+      typeof offset === "string" ? Number.parseInt(offset, 10) : undefined;
+
+    const limitNum =
+      typeof limit === "string" ? Number.parseInt(limit, 10) : undefined;
+
+    const evaluations =
+      await container.riskEvaluationService.getRiskEvaluationHistory(
+        req.params.walletAddress,
+        offsetNum,
+        limitNum,
+      );
+
+    res.json({ evaluations });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch risk evaluation history" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Admin endpoints
+// ---------------------------------------------------------------------------
+
+riskRouter.post(
+  "/admin/recalibrate",
+  requireApiKey,
+  (_req: Request, res: Response): void => {
+    ok(res, { message: "Risk model recalibration triggered" });
+  },
+);
+
+export default riskRouter;

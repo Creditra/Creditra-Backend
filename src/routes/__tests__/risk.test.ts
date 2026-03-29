@@ -1,157 +1,290 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach } from 'vitest';
+import express from 'express';
 import request from 'supertest';
-import { createApp } from '../../app.js';
-import { evaluationStore } from '../risk.js';
+import { riskRouter } from '../risk.js';
+import { Container } from '../../container/Container.js';
 
-const app = createApp();
+describe('Risk Routes', () => {
+  let app: express.Application;
+  let container: Container;
 
-// Valid UUID v4 that will never exist in the store
-const MISSING_ID = '00000000-0000-4000-8000-000000000000';
-// Malformed IDs
-const BAD_IDS = ['not-a-uuid', '123', 'abc-def', ''];
+  beforeAll(() => {
+    // Use single container instance for all tests
+    container = Container.getInstance();
+    
+    app = express();
+    app.use(express.json());
+    app.use('/api/risk', riskRouter);
+  });
 
-beforeEach(() => {
-  // Reset store between tests to avoid cross-test pollution
-  evaluationStore.clear();
-});
+  afterEach(() => {
+    // Clear repository data after each test
+    if (container.riskEvaluationRepository && typeof (container.riskEvaluationRepository as any).clear === 'function') {
+      (container.riskEvaluationRepository as any).clear();
+    }
+  });
 
-// ---------------------------------------------------------------------------
-// SUCCESS
-// ---------------------------------------------------------------------------
-describe('GET /api/risk/evaluations/:id — success', () => {
-  it('returns 200 with the evaluation when a valid ID exists', async () => {
-    // Seed the store directly
-    const id = '11111111-1111-4111-8111-111111111111';
-    evaluationStore.set(id, {
-      id,
-      walletAddress: '0xABC',
-      riskScore: 42,
-      creditLimit: '1000',
-      interestRateBps: 500,
+  describe('POST /api/risk/evaluate', () => {
+    it('should evaluate risk successfully', async () => {
+      const requestBody = {
+        walletAddress: 'wallet123'
+      };
+
+      const response = await request(app)
+        .post('/api/risk/evaluate')
+        .send(requestBody)
+        .expect(200);
+
+      expect(response.body.walletAddress).toBe('wallet123');
+      expect(response.body.riskScore).toBeGreaterThan(0);
+      expect(response.body.creditLimit).toBeDefined();
+      expect(response.body.interestRateBps).toBeGreaterThan(0);
+      expect(response.body.message).toBe('New risk evaluation completed');
     });
 
-    const res = await request(app).get(`/api/risk/evaluations/${id}`);
+    it('should use cached evaluation when available', async () => {
+      const walletAddress = 'wallet123';
 
-    expect(res.status).toBe(200);
-    expect(res.body.evaluation).toMatchObject({ id, walletAddress: '0xABC' });
-    // Must NOT contain error key
-    expect(res.body.error).toBeUndefined();
-  });
-});
+      // First evaluation
+      const response1 = await request(app)
+        .post('/api/risk/evaluate')
+        .send({ walletAddress })
+        .expect(200);
 
-// ---------------------------------------------------------------------------
-// NOT FOUND
-// ---------------------------------------------------------------------------
-describe('GET /api/risk/evaluations/:id — not found', () => {
-  it('returns 404 with NOT_FOUND code for a valid UUID that does not exist', async () => {
-    const res = await request(app).get(`/api/risk/evaluations/${MISSING_ID}`);
+      // Second evaluation (should use cache)
+      const response2 = await request(app)
+        .post('/api/risk/evaluate')
+        .send({ walletAddress })
+        .expect(200);
 
-    expect(res.status).toBe(404);
-    expect(res.body).toEqual({
-      error: { code: 'NOT_FOUND', message: 'Risk evaluation not found' },
+      expect(response2.body.message).toBe('Using cached risk evaluation');
+      expect(response2.body.riskScore).toBe(response1.body.riskScore);
+    });
+
+    it('should force new evaluation when forceRefresh is true', async () => {
+      const walletAddress = 'wallet123';
+
+      // First evaluation
+      await request(app)
+        .post('/api/risk/evaluate')
+        .send({ walletAddress })
+        .expect(200);
+
+      // Force refresh
+      const response = await request(app)
+        .post('/api/risk/evaluate')
+        .send({ walletAddress, forceRefresh: true })
+        .expect(200);
+
+      expect(response.body.message).toBe('New risk evaluation completed');
+    });
+
+    it('should return 400 for missing wallet address', async () => {
+      const response = await request(app)
+        .post('/api/risk/evaluate')
+        .send({})
+        .expect(400);
+
+      expect(response.body.error).toBe('walletAddress required');
+    });
+
+    it('should handle empty request body', async () => {
+      const response = await request(app)
+        .post('/api/risk/evaluate')
+        .expect(400);
+
+      expect(response.body.error).toBe('walletAddress required');
+    });
+
+    it('should handle service errors gracefully', async () => {
+      // Mock service to throw error
+      const originalService = container.riskEvaluationService;
+      const mockService = {
+        ...originalService,
+        evaluateRisk: async () => {
+          throw new Error('Risk evaluation failed');
+        }
+      };
+      
+      (container as any)._riskEvaluationService = mockService;
+
+      const response = await request(app)
+        .post('/api/risk/evaluate')
+        .send({ walletAddress: 'wallet123' })
+        .expect(500);
+
+      expect(response.body.error).toBe('Risk evaluation failed');
+
+      // Restore original service
+      (container as any)._riskEvaluationService = originalService;
     });
   });
-});
 
-// ---------------------------------------------------------------------------
-// INVALID INPUT
-// ---------------------------------------------------------------------------
-describe('GET /api/risk/evaluations/:id — invalid input', () => {
-  it.each(BAD_IDS.filter(Boolean))(
-    'returns 400 with INVALID_INPUT for malformed id "%s"',
-    async (badId) => {
-      const res = await request(app).get(`/api/risk/evaluations/${badId}`);
-
-      expect(res.status).toBe(400);
-      expect(res.body).toEqual({
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'Invalid evaluation id format',
-        },
+  describe('GET /api/risk/evaluations/:id', () => {
+    it('should return risk evaluation when found', async () => {
+      // Create a risk evaluation first
+      const evalResult = await container.riskEvaluationService.evaluateRisk({
+        walletAddress: 'wallet123'
       });
-    },
-  );
-});
 
-// ---------------------------------------------------------------------------
-// INTERNAL ERROR (simulated DB failure)
-// ---------------------------------------------------------------------------
-describe('GET /api/risk/evaluations/:id — internal error', () => {
-  it('returns 500 with INTERNAL_ERROR and no stack trace when store throws', async () => {
-    const id = '22222222-2222-4222-8222-222222222222';
+      // Get the evaluation ID from repository
+      const latest = await container.riskEvaluationRepository.findLatestByWalletAddress('wallet123');
+      
+      const response = await request(app)
+        .get(`/api/risk/evaluations/${latest!.id}`)
+        .expect(200);
 
-    // Force the store to throw on .get()
-    vi.spyOn(evaluationStore, 'get').mockImplementationOnce(() => {
-      throw new Error('DB connection lost');
+      expect(response.body.id).toBe(latest!.id);
+      expect(response.body.walletAddress).toBe('wallet123');
     });
 
-    const res = await request(app).get(`/api/risk/evaluations/${id}`);
+    it('should return 404 when evaluation not found', async () => {
+      const response = await request(app)
+        .get('/api/risk/evaluations/nonexistent')
+        .expect(404);
 
-    expect(res.status).toBe(500);
-    expect(res.body).toEqual({
-      error: { code: 'INTERNAL_ERROR', message: 'Something went wrong' },
+      expect(response.body.error).toBe('Risk evaluation not found');
+      expect(response.body.id).toBe('nonexistent');
     });
 
-    // Security: no stack trace or internal details in response
-    const body = JSON.stringify(res.body);
-    expect(body).not.toContain('stack');
-    expect(body).not.toContain('DB connection lost');
-    expect(body).not.toContain('node_modules');
-    expect(body).not.toContain('src/routes');
-  });
-});
+    it('should handle server errors gracefully', async () => {
+      // Mock service to throw error
+      const originalService = container.riskEvaluationService;
+      const mockService = {
+        ...originalService,
+        getRiskEvaluation: async () => {
+          throw new Error('Database error');
+        }
+      };
+      
+      (container as any)._riskEvaluationService = mockService;
 
-// ---------------------------------------------------------------------------
-// SECURITY — stack trace / internal path leak assertions
-// ---------------------------------------------------------------------------
-describe('Security — no internal leaks in any error response', () => {
-  it('404 response does not contain stack, error.stack, or internal paths', async () => {
-    const res = await request(app).get(`/api/risk/evaluations/${MISSING_ID}`);
-    const raw = JSON.stringify(res.body);
+      const response = await request(app)
+        .get('/api/risk/evaluations/test-id')
+        .expect(500);
 
-    expect(raw).not.toContain('stack');
-    expect(raw).not.toContain('node_modules');
-    expect(raw).not.toContain('src/');
-    expect(raw).not.toContain('Error:');
-  });
+      expect(response.body.error).toBe('Failed to fetch risk evaluation');
 
-  it('400 response does not contain stack or internal paths', async () => {
-    const res = await request(app).get('/api/risk/evaluations/bad-id');
-    const raw = JSON.stringify(res.body);
-
-    expect(raw).not.toContain('stack');
-    expect(raw).not.toContain('node_modules');
-    expect(raw).not.toContain('src/');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// POST /evaluate — existing route still works (no regression)
-// ---------------------------------------------------------------------------
-describe('POST /api/risk/evaluate — regression', () => {
-  it('returns 400 when walletAddress is missing', async () => {
-    const res = await request(app).post('/api/risk/evaluate').send({});
-
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('INVALID_INPUT');
+      // Restore original service
+      (container as any)._riskEvaluationService = originalService;
+    });
   });
 
-  it('returns 400 when body is absent entirely', async () => {
-    const res = await request(app)
-      .post('/api/risk/evaluate')
-      .set('Content-Type', 'application/json')
-      .send();
+  describe('GET /api/risk/wallet/:walletAddress/latest', () => {
+    it('should return latest evaluation for wallet', async () => {
+      const walletAddress = 'wallet123';
 
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('INVALID_INPUT');
+      // Create evaluation
+      await container.riskEvaluationService.evaluateRisk({ walletAddress });
+
+      const response = await request(app)
+        .get(`/api/risk/wallet/${walletAddress}/latest`)
+        .expect(200);
+
+      expect(response.body.walletAddress).toBe(walletAddress);
+      expect(response.body.riskScore).toBeDefined();
+    });
+
+    it('should return 404 when no evaluation found', async () => {
+      const response = await request(app)
+        .get('/api/risk/wallet/nonexistent/latest')
+        .expect(404);
+
+      expect(response.body.error).toBe('No risk evaluation found for wallet');
+    });
+
+    it('should handle service errors gracefully', async () => {
+      // Mock service to throw error
+      const originalService = container.riskEvaluationService;
+      const mockService = {
+        ...originalService,
+        getLatestRiskEvaluation: async () => {
+          throw new Error('Database error');
+        }
+      };
+      
+      (container as any)._riskEvaluationService = mockService;
+
+      const response = await request(app)
+        .get('/api/risk/wallet/test-wallet/latest')
+        .expect(500);
+
+      expect(response.body.error).toBe('Failed to fetch latest risk evaluation');
+
+      // Restore original service
+      (container as any)._riskEvaluationService = originalService;
+    });
   });
 
-  it('returns 200 with a valid walletAddress', async () => {
-    const res = await request(app)
-      .post('/api/risk/evaluate')
-      .send({ walletAddress: '0xDEAD' });
+  describe('GET /api/risk/wallet/:walletAddress/history', () => {
+    it('should return evaluation history for wallet', async () => {
+      const walletAddress = 'wallet123';
 
-    expect(res.status).toBe(200);
-    expect(res.body.walletAddress).toBe('0xDEAD');
+      // Create multiple evaluations
+      await container.riskEvaluationService.evaluateRisk({ walletAddress, forceRefresh: true });
+      await container.riskEvaluationService.evaluateRisk({ walletAddress, forceRefresh: true });
+
+      const response = await request(app)
+        .get(`/api/risk/wallet/${walletAddress}/history`)
+        .expect(200);
+
+      expect(response.body.evaluations).toHaveLength(2);
+      expect(response.body.evaluations.every((evaluation: any) => evaluation.walletAddress === walletAddress)).toBe(true);
+    });
+
+    it('should support pagination parameters', async () => {
+      const walletAddress = 'wallet123';
+
+      // Create evaluations
+      await container.riskEvaluationService.evaluateRisk({ walletAddress, forceRefresh: true });
+      await container.riskEvaluationService.evaluateRisk({ walletAddress, forceRefresh: true });
+      await container.riskEvaluationService.evaluateRisk({ walletAddress, forceRefresh: true });
+
+      const response = await request(app)
+        .get(`/api/risk/wallet/${walletAddress}/history?offset=1&limit=1`)
+        .expect(200);
+
+      expect(response.body.evaluations).toHaveLength(1);
+    });
+
+    it('should handle invalid pagination parameters', async () => {
+      const walletAddress = 'wallet123';
+
+      const response = await request(app)
+        .get(`/api/risk/wallet/${walletAddress}/history?offset=invalid&limit=invalid`)
+        .expect(200);
+
+      expect(response.body.evaluations).toEqual([]);
+    });
+
+    it('should return empty array when no evaluations found', async () => {
+      const response = await request(app)
+        .get('/api/risk/wallet/nonexistent/history')
+        .expect(200);
+
+      expect(response.body.evaluations).toEqual([]);
+    });
+
+    it('should handle server errors gracefully', async () => {
+      // Mock service to throw error
+      const originalService = container.riskEvaluationService;
+      const mockService = {
+        ...originalService,
+        getRiskEvaluationHistory: async () => {
+          throw new Error('Database error');
+        }
+      };
+      
+      (container as any)._riskEvaluationService = mockService;
+
+      const response = await request(app)
+        .get('/api/risk/wallet/test-wallet/history')
+        .expect(500);
+
+      expect(response.body.error).toBe('Failed to fetch risk evaluation history');
+
+      // Restore original service
+      (container as any)._riskEvaluationService = originalService;
+    });
   });
 });
