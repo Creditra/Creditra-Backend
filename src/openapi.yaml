@@ -25,6 +25,8 @@ tags:
     description: Credit line management
   - name: Risk
     description: On-chain risk evaluation
+  - name: Webhooks
+    description: Draw confirmation webhook management
 
 paths:
   /health:
@@ -248,6 +250,76 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: Validation failed
+
+  /api/webhooks/config:
+    get:
+      tags: [Webhooks]
+      operationId: getWebhookConfig
+      summary: Get webhook configuration
+      description: Returns the current webhook configuration (excluding sensitive data)
+      responses:
+        "200":
+          description: Webhook configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookConfigResponse"
+              example:
+                urls: ["https://example.com/webhook"]
+                maxRetries: 3
+                initialBackoffMs: 1000
+                backoffMultiplier: 2.0
+                timeoutMs: 10000
+                configured: true
+
+  /api/webhooks/test:
+    post:
+      tags: [Webhooks]
+      operationId: testWebhooks
+      summary: Test webhook connectivity
+      description: Sends a test payload to all configured webhook endpoints
+      responses:
+        "200":
+          description: Test results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookTestResponse"
+              example:
+                total: 2
+                reachable: 1
+                unreachable: 1
+                results:
+                  - url: "https://example.com/webhook"
+                    reachable: true
+                  - url: "https://test.com/hook"
+                    reachable: false
+                    error: "Connection refused"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/webhooks/health:
+    get:
+      tags: [Webhooks]
+      operationId: getWebhookHealth
+      summary: Webhook service health check
+      description: Returns the health status of the webhook service
+      responses:
+        "200":
+          description: Webhook service health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookHealthResponse"
+              example:
+                status: active
+                urls: 2
+                maxRetries: 3
+                timeoutMs: 10000
 
 components:
   schemas:
