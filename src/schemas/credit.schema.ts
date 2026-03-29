@@ -1,5 +1,11 @@
 import { z } from 'zod';
+import { TransactionType } from '../models/Transaction.js';
 import { isValidStellarAddress } from '../utils/stellarAddress.js';
+
+const numericString = /^\d+(\.\d+)?$/;
+const isoDateTime = z.string().datetime({ offset: true });
+const positiveIntString = z.coerce.number().int().positive();
+const nonNegativeIntString = z.coerce.number().int().min(0);
 
 const stellarAddressField = z
   .string()
@@ -9,17 +15,26 @@ export const createCreditLineSchema = z.object({
   walletAddress: stellarAddressField,
   requestedLimit: z
     .string()
-    .regex(/^\d+(\.\d+)?$/, 'requestedLimit must be a numeric string'),
-});
+    .min(1, 'requestedLimit is required')
+    .regex(numericString, 'requestedLimit must be a numeric string'),
+}).strict();
 
 export type CreateCreditLineBody = z.infer<typeof createCreditLineSchema>;
+
+export const creditLinesQuerySchema = z.object({
+  offset: nonNegativeIntString.optional(),
+  limit: positiveIntString.max(100).optional(),
+}).strict();
+
+export type CreditLinesQuery = z.infer<typeof creditLinesQuerySchema>;
 
 export const drawSchema = z.object({
   walletAddress: stellarAddressField,
   amount: z
     .string()
-    .regex(/^\d+(\.\d+)?$/, 'amount must be a numeric string'),
-});
+    .min(1, 'amount is required')
+    .regex(numericString, 'amount must be a numeric string'),
+}).strict();
 
 export type DrawBody = z.infer<typeof drawSchema>;
 
@@ -27,8 +42,9 @@ export const repaySchema = z.object({
   walletAddress: stellarAddressField,
   amount: z
     .string()
-    .regex(/^\d+(\.\d+)?$/, 'amount must be a numeric string'),
-});
+    .min(1, 'amount is required')
+    .regex(numericString, 'amount must be a numeric string'),
+}).strict();
 
 export type RepayBody = z.infer<typeof repaySchema>;
 

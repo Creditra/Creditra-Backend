@@ -41,12 +41,12 @@ describe('riskEvaluateSchema', () => {
   });
 
   it('accepts optional forceRefresh', () => {
-    const result = riskEvaluateSchema.safeParse({ walletAddress: 'GABCDEF', forceRefresh: true });
+    const result = riskEvaluateSchema.safeParse({ walletAddress: VALID_ADDRESS, forceRefresh: true });
     expect(result.success).toBe(true);
   });
 
   it('rejects unknown keys', () => {
-    const result = riskEvaluateSchema.safeParse({ walletAddress: 'GABCDEF', extra: 'nope' });
+    const result = riskEvaluateSchema.safeParse({ walletAddress: VALID_ADDRESS, extra: 'nope' });
     expect(result.success).toBe(false);
   });
 });

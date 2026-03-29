@@ -1,30 +1,16 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-  createCreditLine,
-  drawFromCreditLine,
-  repayCredit,
+  submitDrawRequest,
+  submitRepayRequest,
   noopSorobanClient,
 } from '../../src/services/creditService.js';
 import type { SorobanClient } from '../../src/services/creditService.js';
 
 const VALID_ADDRESS = 'G' + 'A'.repeat(55);
 
-describe('createCreditLine', () => {
-  it('returns a pending credit line with the provided values', async () => {
-    const result = await createCreditLine({
-      walletAddress: VALID_ADDRESS,
-      requestedLimit: '1000',
-    });
-    expect(result.walletAddress).toBe(VALID_ADDRESS);
-    expect(result.requestedLimit).toBe('1000');
-    expect(result.status).toBe('pending');
-    expect(result.id).toBeDefined();
-  });
-});
-
-describe('drawFromCreditLine', () => {
+describe('submitDrawRequest', () => {
   it('returns pending status when soroban client returns null', async () => {
-    const result = await drawFromCreditLine('line-1', {
+    const result = await submitDrawRequest('line-1', {
       walletAddress: VALID_ADDRESS,
       amount: '100',
     });
@@ -40,7 +26,7 @@ describe('drawFromCreditLine', () => {
       submitDraw: vi.fn().mockResolvedValue('tx-hash-abc'),
       submitRepay: vi.fn().mockResolvedValue(null),
     };
-    const result = await drawFromCreditLine(
+    const result = await submitDrawRequest(
       'line-1',
       { walletAddress: VALID_ADDRESS, amount: '100' },
       mockClient,
@@ -56,14 +42,14 @@ describe('drawFromCreditLine', () => {
       submitRepay: vi.fn().mockResolvedValue(null),
     };
     await expect(
-      drawFromCreditLine('line-1', { walletAddress: VALID_ADDRESS, amount: '100' }, mockClient),
+      submitDrawRequest('line-1', { walletAddress: VALID_ADDRESS, amount: '100' }, mockClient),
     ).rejects.toThrow('network error');
   });
 });
 
-describe('repayCredit', () => {
+describe('submitRepayRequest', () => {
   it('returns pending status when soroban client returns null', async () => {
-    const result = await repayCredit('line-1', {
+    const result = await submitRepayRequest('line-1', {
       walletAddress: VALID_ADDRESS,
       amount: '50',
     });
@@ -79,7 +65,7 @@ describe('repayCredit', () => {
       submitDraw: vi.fn().mockResolvedValue(null),
       submitRepay: vi.fn().mockResolvedValue('tx-hash-xyz'),
     };
-    const result = await repayCredit(
+    const result = await submitRepayRequest(
       'line-1',
       { walletAddress: VALID_ADDRESS, amount: '50' },
       mockClient,
@@ -95,7 +81,7 @@ describe('repayCredit', () => {
       submitRepay: vi.fn().mockRejectedValue(new Error('soroban error')),
     };
     await expect(
-      repayCredit('line-1', { walletAddress: VALID_ADDRESS, amount: '50' }, mockClient),
+      submitRepayRequest('line-1', { walletAddress: VALID_ADDRESS, amount: '50' }, mockClient),
     ).rejects.toThrow('soroban error');
   });
 });

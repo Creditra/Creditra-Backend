@@ -27,7 +27,7 @@ webhookRouter.get('/config', (_req: Request, res: Response) => {
         configured: config.urls.length > 0
     };
 
-    res.status(200).json(safeConfig);
+    return res.status(200).json(safeConfig);
 });
 
 /**
@@ -67,7 +67,7 @@ webhookRouter.get('/health', (_req: Request, res: Response) => {
         });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
         status: 'active',
         urls: config.urls.length,
         maxRetries: config.maxRetries,
