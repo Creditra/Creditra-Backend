@@ -1,26 +1,25 @@
-import express, { type Response, type Express } from "express";
+
+import express, { Express } from "express";
 import request from "supertest";
-import { jest } from "@jest/globals";
 import {
   _resetStore,
   createCreditLine,
   suspendCreditLine,
   closeCreditLine,
 } from "../services/creditService.js";
+import { TransactionType } from "../models/Transaction.js";
 
 // Mock adminAuth so we can control auth pass/fail from within tests
-jest.mock("../../middleware/adminAuth.js", () => ({
-  adminAuth: jest.fn((_req: unknown, _res: unknown, next: () => void) =>
-    next(),
-  ),
+vi.mock("../middleware/adminAuth.js", () => ({
+  adminAuth: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
   ADMIN_KEY_HEADER: "x-admin-api-key",
 }));
 
-import { creditRouter } from "../routes/credit.js";
+import creditRouter from "../routes/credit.js";
 import { adminAuth } from "../middleware/adminAuth.js";
-import { afterEach, beforeEach } from "node:test";
+import { afterEach, beforeEach, vi } from "vitest";
 
-const mockAdminAuth = adminAuth as jest.MockedFunction<typeof adminAuth>;
+const mockAdminAuth = vi.mocked(adminAuth);
 
 function buildApp(): Express {
   const app = express();
@@ -38,12 +37,11 @@ function allowAdmin() {
 }
 
 function denyAdmin() {
-  mockAdminAuth.mockImplementation((_req, res: Response, _next) => {
-    res.status(401).json({
-      error: "Unauthorized: valid X-Admin-Api-Key header is required.",
-    });
+  mockAdminAuth.mockImplementation((_req, res: any, _next) => {
+    res.status(401).json({ error: "Unauthorized: valid X-Admin-Api-Key header is required." });
   });
 }
+
 
 beforeEach(() => {
   _resetStore();
@@ -53,6 +51,7 @@ beforeEach(() => {
 afterEach(() => {
   mockAdminAuth.mockReset();
 });
+
 
 describe("GET /api/credit/lines", () => {
   it("returns 200 with an empty array when store is empty", async () => {
@@ -74,6 +73,7 @@ describe("GET /api/credit/lines", () => {
   });
 });
 
+
 describe("GET /api/credit/lines/:id", () => {
   it("returns 200 with the credit line for a known id", async () => {
     createCreditLine(VALID_ID);
@@ -83,17 +83,13 @@ describe("GET /api/credit/lines/:id", () => {
   });
 
   it("returns 404 for an unknown id", async () => {
-    const res = await request(buildApp()).get(
-      `/api/credit/lines/${MISSING_ID}`,
-    );
+    const res = await request(buildApp()).get(`/api/credit/lines/${MISSING_ID}`);
     expect(res.status).toBe(404);
     expect(res.body.error).toContain(MISSING_ID);
   });
 
   it("returns JSON content-type on 404", async () => {
-    const res = await request(buildApp()).get(
-      `/api/credit/lines/${MISSING_ID}`,
-    );
+    const res = await request(buildApp()).get(`/api/credit/lines/${MISSING_ID}`);
     expect(res.headers["content-type"]).toMatch(/application\/json/);
   });
 });
@@ -102,9 +98,8 @@ describe("POST /api/credit/lines/:id/suspend — authorization", () => {
   it("returns 401 when admin auth is denied", async () => {
     denyAdmin();
     createCreditLine(VALID_ID);
-    const res = await request(buildApp()).post(
-      `/api/credit/lines/${VALID_ID}/suspend`,
-    );
+    const res = await request(buildApp())
+      .post(`/api/credit/lines/${VALID_ID}/suspend`);
     expect(res.status).toBe(401);
   });
 
@@ -175,9 +170,8 @@ describe("POST /api/credit/lines/:id/close — authorization", () => {
   it("returns 401 when admin auth is denied", async () => {
     denyAdmin();
     createCreditLine(VALID_ID);
-    const res = await request(buildApp()).post(
-      `/api/credit/lines/${VALID_ID}/close`,
-    );
+    const res = await request(buildApp())
+      .post(`/api/credit/lines/${VALID_ID}/close`);
     expect(res.status).toBe(401);
   });
 
@@ -255,18 +249,15 @@ describe("POST /api/credit/lines/:id/close — business logic", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe("closed");
-    expect(
-      res.body.data.events.map((e: { action: string }) => e.action),
-    ).toContain("suspended");
+    expect(res.body.data.events.map((e: { action: string }) => e.action)).toContain("suspended");
   });
 });
+
 
 describe("GET /api/credit/lines/:id/transactions", () => {
   it("returns 200 with the response envelope", async () => {
     createCreditLine(VALID_ID);
-    const res = await request(buildApp()).get(
-      `/api/credit/lines/${VALID_ID}/transactions`,
-    );
+    const res = await request(buildApp()).get(`/api/credit/lines/${VALID_ID}/transactions`);
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty("data");
     expect(res.body.error).toBeNull();
@@ -274,9 +265,7 @@ describe("GET /api/credit/lines/:id/transactions", () => {
 
   it("returns pagination metadata in the response", async () => {
     createCreditLine(VALID_ID);
-    const res = await request(buildApp()).get(
-      `/api/credit/lines/${VALID_ID}/transactions`,
-    );
+    const res = await request(buildApp()).get(`/api/credit/lines/${VALID_ID}/transactions`);
     expect(res.body.data).toMatchObject({
       transactions: expect.any(Array),
       total: expect.any(Number),
@@ -288,11 +277,9 @@ describe("GET /api/credit/lines/:id/transactions", () => {
 
   it("returns the status_change transaction recorded on line creation", async () => {
     createCreditLine(VALID_ID);
-    const res = await request(buildApp()).get(
-      `/api/credit/lines/${VALID_ID}/transactions`,
-    );
+    const res = await request(buildApp()).get(`/api/credit/lines/${VALID_ID}/transactions`);
     expect(res.body.data.transactions).toHaveLength(1);
-    expect(res.body.data.transactions[0].type).toBe("status_change");
+    expect(res.body.data.transactions[0].type).toBe(TransactionType.STATUS_CHANGE);
     expect(res.body.data.transactions[0].metadata.action).toBe("created");
   });
 
@@ -300,25 +287,24 @@ describe("GET /api/credit/lines/:id/transactions", () => {
     createCreditLine(VALID_ID);
     suspendCreditLine(VALID_ID);
     closeCreditLine(VALID_ID);
-    const res = await request(buildApp()).get(
-      `/api/credit/lines/${VALID_ID}/transactions`,
-    );
+    const res = await request(buildApp()).get(`/api/credit/lines/${VALID_ID}/transactions`);
     expect(res.body.data.total).toBe(3);
     expect(res.body.data.transactions).toHaveLength(3);
+    expect(res.body.data.transactions.map((tx: { metadata: { action: string } }) => tx.metadata.action)).toEqual([
+      "closed",
+      "suspended",
+      "created",
+    ]);
   });
 
   it("returns 404 with error containing id for an unknown credit line", async () => {
-    const res = await request(buildApp()).get(
-      `/api/credit/lines/${MISSING_ID}/transactions`,
-    );
+    const res = await request(buildApp()).get(`/api/credit/lines/${MISSING_ID}/transactions`);
     expect(res.status).toBe(404);
     expect(res.body.error).toContain(MISSING_ID);
   });
 
   it("returns 404 with JSON content-type", async () => {
-    const res = await request(buildApp()).get(
-      `/api/credit/lines/${MISSING_ID}/transactions`,
-    );
+    const res = await request(buildApp()).get(`/api/credit/lines/${MISSING_ID}/transactions`);
     expect(res.headers["content-type"]).toMatch(/application\/json/);
   });
 
@@ -326,12 +312,12 @@ describe("GET /api/credit/lines/:id/transactions", () => {
     createCreditLine(VALID_ID);
     suspendCreditLine(VALID_ID);
     const res = await request(buildApp()).get(
-      `/api/credit/lines/${VALID_ID}/transactions?type=status_change`,
+      `/api/credit/lines/${VALID_ID}/transactions?type=${TransactionType.STATUS_CHANGE}`,
     );
     expect(res.status).toBe(200);
     expect(
       res.body.data.transactions.every(
-        (tx: { type: string }) => tx.type === "status_change",
+        (tx: { type: string }) => tx.type === TransactionType.STATUS_CHANGE,
       ),
     ).toBe(true);
   });
@@ -339,7 +325,7 @@ describe("GET /api/credit/lines/:id/transactions", () => {
   it("returns empty transactions array when type filter has no matches", async () => {
     createCreditLine(VALID_ID);
     const res = await request(buildApp()).get(
-      `/api/credit/lines/${VALID_ID}/transactions?type=draw`,
+      `/api/credit/lines/${VALID_ID}/transactions?type=${TransactionType.BORROW}`,
     );
     expect(res.status).toBe(200);
     expect(res.body.data.transactions).toHaveLength(0);
@@ -438,7 +424,7 @@ describe("GET /api/credit/lines/:id/transactions", () => {
     );
     expect(res.status).toBe(200);
     expect(res.body.data.transactions).toHaveLength(1);
-    expect(res.body.data.transactions[0].metadata.action).toBe("closed");
+    expect(res.body.data.transactions[0].metadata.action).toBe("created");
   });
 
   it("filters by valid 'from' date excluding older transactions", async () => {
