@@ -31,8 +31,9 @@ describe('Credit Routes', () => {
         .get('/api/credit/lines')
         .expect(200);
 
-      expect(response.body.creditLines).toEqual([]);
-      expect(response.body.pagination.total).toBe(0);
+      expect(response.body.data.creditLines).toEqual([]);
+      expect(response.body.data.pagination.total).toBe(0);
+      expect(response.body.error).toBeNull();
     });
 
     it('should return credit lines with pagination', async () => {
@@ -53,10 +54,11 @@ describe('Credit Routes', () => {
         .get('/api/credit/lines?offset=0&limit=10')
         .expect(200);
 
-      expect(response.body.creditLines).toHaveLength(2);
-      expect(response.body.pagination.total).toBe(2);
-      expect(response.body.pagination.offset).toBe(0);
-      expect(response.body.pagination.limit).toBe(10);
+      expect(response.body.data.creditLines).toHaveLength(2);
+      expect(response.body.data.pagination.total).toBe(2);
+      expect(response.body.data.pagination.offset).toBe(0);
+      expect(response.body.data.pagination.limit).toBe(10);
+      expect(response.body.error).toBeNull();
     });
 
     it('should return 400 for negative offset', async () => {
@@ -64,6 +66,7 @@ describe('Credit Routes', () => {
         .get('/api/credit/lines?offset=-1')
         .expect(400);
       expect(response.body.error).toBe('Offset cannot be negative');
+      expect(response.body.data).toBeNull();
     });
 
     it('should return 400 for zero limit', async () => {
@@ -71,6 +74,7 @@ describe('Credit Routes', () => {
         .get('/api/credit/lines?limit=0')
         .expect(400);
       expect(response.body.error).toBe('Limit must be greater than 0');
+      expect(response.body.data).toBeNull();
     });
 
     it('should return 400 for oversized limit', async () => {
@@ -78,6 +82,7 @@ describe('Credit Routes', () => {
         .get('/api/credit/lines?limit=101')
         .expect(400);
       expect(response.body.error).toBe('Limit cannot exceed 100');
+      expect(response.body.data).toBeNull();
     });
 
     it('should handle server errors gracefully', async () => {
@@ -92,6 +97,7 @@ describe('Credit Routes', () => {
         .expect(400);
 
       expect(response.body.error).toBe('Database error');
+      expect(response.body.data).toBeNull();
 
       // Restore original method
       container.creditLineService.getAllCreditLines = originalMethod;
@@ -217,8 +223,9 @@ describe('Credit Routes', () => {
         .get(`/api/credit/lines/${created.id}`)
         .expect(200);
 
-      expect(response.body.id).toBe(created.id);
-      expect(response.body.walletAddress).toBe('wallet123');
+      expect(response.body.data.id).toBe(created.id);
+      expect(response.body.data.walletAddress).toBe('wallet123');
+      expect(response.body.error).toBeNull();
     });
 
     it('should return 404 when credit line not found', async () => {
@@ -227,7 +234,7 @@ describe('Credit Routes', () => {
         .expect(404);
 
       expect(response.body.error).toBe('Credit line not found');
-      expect(response.body.id).toBe('nonexistent');
+      expect(response.body.data).toBeNull();
     });
 
     it('should handle server errors gracefully', async () => {
@@ -246,7 +253,8 @@ describe('Credit Routes', () => {
         .get('/api/credit/lines/test-id')
         .expect(500);
 
-      expect(response.body.error).toBe('Failed to fetch credit line');
+      expect(response.body.error).toBe('Internal server error');
+      expect(response.body.data).toBeNull();
 
       // Restore original service
       (container as any)._creditLineService = originalService;
@@ -266,11 +274,12 @@ describe('Credit Routes', () => {
         .send(requestBody)
         .expect(201);
 
-      expect(response.body.id).toBeDefined();
-      expect(response.body.walletAddress).toBe(requestBody.walletAddress);
-      expect(response.body.creditLimit).toBe(requestBody.creditLimit);
-      expect(response.body.interestRateBps).toBe(requestBody.interestRateBps);
-      expect(response.body.status).toBe(CreditLineStatus.ACTIVE);
+      expect(response.body.data.id).toBeDefined();
+      expect(response.body.data.walletAddress).toBe(requestBody.walletAddress);
+      expect(response.body.data.creditLimit).toBe(requestBody.creditLimit);
+      expect(response.body.data.interestRateBps).toBe(requestBody.interestRateBps);
+      expect(response.body.data.status).toBe(CreditLineStatus.ACTIVE);
+      expect(response.body.error).toBeNull();
     });
 
     it('should return 400 for missing required fields', async () => {
@@ -283,6 +292,7 @@ describe('Credit Routes', () => {
         .expect(400);
 
       expect(response.body.error).toBe('Missing required fields: walletAddress, creditLimit, interestRateBps');
+      expect(response.body.data).toBeNull();
     });
 
     it('should return 400 for invalid data', async () => {
@@ -296,6 +306,7 @@ describe('Credit Routes', () => {
         .expect(400);
 
       expect(response.body.error).toBe('Missing required fields: walletAddress, creditLimit, interestRateBps');
+      expect(response.body.data).toBeNull();
     });
 
     it('should handle service errors with generic message', async () => {
@@ -319,7 +330,8 @@ describe('Credit Routes', () => {
         })
         .expect(400);
 
-      expect(response.body.error).toBe('Failed to create credit line');
+      expect(response.body.error).toBe('Bad request');
+      expect(response.body.data).toBeNull();
 
       // Restore original service
       (container as any)._creditLineService = originalService;
@@ -345,9 +357,10 @@ describe('Credit Routes', () => {
         .send(updateData)
         .expect(200);
 
-      expect(response.body.creditLimit).toBe('2000.00');
-      expect(response.body.interestRateBps).toBe(600);
-      expect(response.body.status).toBe(CreditLineStatus.SUSPENDED);
+      expect(response.body.data.creditLimit).toBe('2000.00');
+      expect(response.body.data.interestRateBps).toBe(600);
+      expect(response.body.data.status).toBe(CreditLineStatus.SUSPENDED);
+      expect(response.body.error).toBeNull();
     });
 
     it('should return 404 when credit line not found', async () => {
@@ -359,6 +372,7 @@ describe('Credit Routes', () => {
         .expect(404);
 
       expect(response.body.error).toBe('Credit line not found');
+      expect(response.body.data).toBeNull();
     });
 
     it('should return 400 for invalid update data', async () => {
@@ -376,6 +390,7 @@ describe('Credit Routes', () => {
         .expect(400);
 
       expect(response.body.error).toBe('Credit limit must be greater than 0');
+      expect(response.body.data).toBeNull();
     });
 
     it('should handle service errors with generic message', async () => {
@@ -401,7 +416,8 @@ describe('Credit Routes', () => {
         .send({ creditLimit: '2000.00' })
         .expect(400);
 
-      expect(response.body.error).toBe('Failed to update credit line');
+      expect(response.body.error).toBe('Bad request');
+      expect(response.body.data).toBeNull();
 
       // Restore original service
       (container as any)._creditLineService = originalService;
@@ -431,6 +447,7 @@ describe('Credit Routes', () => {
         .expect(404);
 
       expect(response.body.error).toBe('Credit line not found');
+      expect(response.body.data).toBeNull();
     });
 
     it('should handle service errors gracefully', async () => {
@@ -449,7 +466,8 @@ describe('Credit Routes', () => {
         .delete('/api/credit/lines/test-id')
         .expect(500);
 
-      expect(response.body.error).toBe('Failed to delete credit line');
+      expect(response.body.error).toBe('Internal server error');
+      expect(response.body.data).toBeNull();
 
       // Restore original service
       (container as any)._creditLineService = originalService;
@@ -483,8 +501,9 @@ describe('Credit Routes', () => {
         .get(`/api/credit/wallet/${walletAddress}/lines`)
         .expect(200);
 
-      expect(response.body.creditLines).toHaveLength(2);
-      expect(response.body.creditLines.every((cl: any) => cl.walletAddress === walletAddress)).toBe(true);
+      expect(response.body.data.creditLines).toHaveLength(2);
+      expect(response.body.data.creditLines.every((cl: any) => cl.walletAddress === walletAddress)).toBe(true);
+      expect(response.body.error).toBeNull();
     });
 
     it('should return empty array when no credit lines found for wallet', async () => {
@@ -492,7 +511,8 @@ describe('Credit Routes', () => {
         .get('/api/credit/wallet/nonexistent/lines')
         .expect(200);
 
-      expect(response.body.creditLines).toEqual([]);
+      expect(response.body.data.creditLines).toEqual([]);
+      expect(response.body.error).toBeNull();
     });
 
     it('should handle service errors gracefully', async () => {
@@ -511,7 +531,8 @@ describe('Credit Routes', () => {
         .get('/api/credit/wallet/test-wallet/lines')
         .expect(500);
 
-      expect(response.body.error).toBe('Failed to fetch credit lines for wallet');
+      expect(response.body.error).toBe('Internal server error');
+      expect(response.body.data).toBeNull();
 
       // Restore original service
       (container as any)._creditLineService = originalService;
