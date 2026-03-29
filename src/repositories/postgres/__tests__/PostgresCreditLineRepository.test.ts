@@ -32,7 +32,7 @@ function createMockClient(): DbClient {
   const generateId = () => `test-id-${mockData.nextId++}`;
 
   return {
-    query: async (text: string, values: unknown[] = []) => {
+    query: async (text: string, values: unknown[] = []): Promise<{ rows: unknown[] } | { rowCount: number }> => {
       const sql = text.trim().toLowerCase();
       
       // Handle borrower operations
@@ -144,7 +144,7 @@ function createMockClient(): DbClient {
         const id = values[0] as string;
         const existed = mockData.creditLines.has(id);
         mockData.creditLines.delete(id);
-        return { rowCount: existed ? 1 : 0 } as { rowCount: number };
+        return { rowCount: existed ? 1 : 0 };
       }
 
       if (sql.includes('select 1 from credit_lines where id')) {

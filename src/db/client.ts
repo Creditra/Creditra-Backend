@@ -5,7 +5,7 @@ import { createRequire } from 'module';
  * Allows tests to inject a mock without requiring a real PostgreSQL connection.
  */
 export interface DbClient {
-  query(text: string, values?: unknown[]): Promise<{ rows: unknown[] }>;
+  query(text: string, values?: unknown[]): Promise<{ rows: unknown[] } | { rowCount: number }>;
   connect?(): Promise<void>;
   end(): Promise<void>;
 }

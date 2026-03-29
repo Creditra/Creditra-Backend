@@ -53,8 +53,14 @@ export async function getAppliedVersions(client: DbClient): Promise<string[]> {
   const result = await client.query(
     'SELECT version FROM schema_migrations ORDER BY version'
   );
-  const rows = result.rows as { version: string }[];
-  return rows.map((r) => r.version);
+  
+  // Handle the union type - SELECT returns rows
+  if ('rows' in result) {
+    const rows = result.rows as { version: string }[];
+    return rows.map((r) => r.version);
+  }
+  
+  return [];
 }
 
 /**

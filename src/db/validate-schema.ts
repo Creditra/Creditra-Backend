@@ -15,11 +15,18 @@ export async function missingTables(
      WHERE table_schema = 'public' AND table_name IN (${placeholders})`,
     [...tables]
   );
-  const found = (result.rows as { table_name: string }[]).map(
-    (r) => r.table_name
-  );
-  const foundSet = new Set(found);
-  return tables.filter((t) => !foundSet.has(t));
+  
+  // Handle the union type - SELECT returns rows
+  if ('rows' in result) {
+    const found = (result.rows as { table_name: string }[]).map(
+      (r) => r.table_name
+    );
+    const foundSet = new Set(found);
+    return tables.filter((t) => !foundSet.has(t));
+  }
+  
+  // If no rows returned, all tables are missing
+  return [...tables];
 }
 
 /**

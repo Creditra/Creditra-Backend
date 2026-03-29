@@ -42,9 +42,14 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
     ];
 
     const result = await this.client.query(query, values);
-    const row = result.rows[0] as CreditLineRow;
-
-    return this.mapRowToCreditLine(row, request.walletAddress, request.interestRateBps);
+    
+    // Handle the union type - INSERT with RETURNING returns rows
+    if ('rows' in result) {
+      const row = result.rows[0] as CreditLineRow;
+      return this.mapRowToCreditLine(row, request.walletAddress, request.interestRateBps);
+    }
+    
+    throw new Error('Unexpected result type from INSERT query');
   }
 
   async findById(id: string): Promise<CreditLine | null> {
@@ -60,12 +65,17 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
 
     const result = await this.client.query(query, [id]);
     
-    if (result.rows.length === 0) {
+    // Handle the union type - SELECT returns rows
+    if ('rows' in result && result.rows.length === 0) {
       return null;
     }
-
-    const row = result.rows[0] as CreditLineRow;
-    return this.mapRowToCreditLine(row, row.wallet_address!);
+    
+    if ('rows' in result) {
+      const row = result.rows[0] as CreditLineRow;
+      return this.mapRowToCreditLine(row, row.wallet_address!);
+    }
+    
+    return null;
   }
 
   async findByWalletAddress(walletAddress: string): Promise<CreditLine[]> {
@@ -82,9 +92,14 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
 
     const result = await this.client.query(query, [walletAddress]);
     
-    return result.rows.map((row) => 
-      this.mapRowToCreditLine(row as CreditLineRow, walletAddress)
-    );
+    // Handle the union type - SELECT returns rows
+    if ('rows' in result) {
+      return result.rows.map((row) => 
+        this.mapRowToCreditLine(row as CreditLineRow, walletAddress)
+      );
+    }
+    
+    return [];
   }
 
   async findAll(offset = 0, limit = 100): Promise<CreditLine[]> {
@@ -101,10 +116,15 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
 
     const result = await this.client.query(query, [limit, offset]);
     
-    return result.rows.map((row) => {
-      const typedRow = row as CreditLineRow;
-      return this.mapRowToCreditLine(typedRow, typedRow.wallet_address!);
-    });
+    // Handle the union type - SELECT returns rows
+    if ('rows' in result) {
+      return result.rows.map((row) => {
+        const typedRow = row as CreditLineRow;
+        return this.mapRowToCreditLine(typedRow, typedRow.wallet_address!);
+      });
+    }
+    
+    return [];
   }
 
   async update(id: string, request: UpdateCreditLineRequest): Promise<CreditLine | null> {
@@ -140,38 +160,64 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
 
     const result = await this.client.query(query, values);
     
-    if (result.rows.length === 0) {
+    // Handle the union type - UPDATE with RETURNING returns rows
+    if ('rows' in result && result.rows.length === 0) {
       return null;
     }
-
-    const row = result.rows[0] as CreditLineRow;
     
-    // Get wallet address
-    const walletQuery = `
-      SELECT wallet_address FROM borrowers WHERE id = $1
-    `;
-    const walletResult = await this.client.query(walletQuery, [row.borrower_id]);
-    const walletAddress = (walletResult.rows[0] as BorrowerRow).wallet_address;
-
-    return this.mapRowToCreditLine(row, walletAddress);
+    if ('rows' in result) {
+      const row = result.rows[0] as CreditLineRow;
+      
+      // Get wallet address
+      const walletQuery = `
+        SELECT wallet_address FROM borrowers WHERE id = $1
+      `;
+      const walletResult = await this.client.query(walletQuery, [row.borrower_id]);
+      
+      if ('rows' in walletResult && walletResult.rows.length > 0) {
+        const walletAddress = (walletResult.rows[0] as BorrowerRow).wallet_address;
+        return this.mapRowToCreditLine(row, walletAddress);
+      }
+    }
+    
+    return null;
   }
 
   async delete(id: string): Promise<boolean> {
     const query = `DELETE FROM credit_lines WHERE id = $1`;
     const result = await this.client.query(query, [id]);
-    return (result as { rowCount: number }).rowCount > 0;
+    
+    // Handle the union type - DELETE operations return rowCount
+    if ('rowCount' in result) {
+      return result.rowCount > 0;
+    }
+    
+    // Fallback for unexpected result type
+    return false;
   }
 
   async exists(id: string): Promise<boolean> {
     const query = `SELECT 1 FROM credit_lines WHERE id = $1`;
     const result = await this.client.query(query, [id]);
-    return result.rows.length > 0;
+    
+    // Handle the union type - SELECT returns rows
+    if ('rows' in result) {
+      return result.rows.length > 0;
+    }
+    
+    return false;
   }
 
   async count(): Promise<number> {
     const query = `SELECT COUNT(*) as count FROM credit_lines`;
     const result = await this.client.query(query);
-    return parseInt((result.rows[0] as { count: string }).count, 10);
+    
+    // Handle the union type - SELECT returns rows
+    if ('rows' in result && result.rows.length > 0) {
+      return parseInt((result.rows[0] as { count: string }).count, 10);
+    }
+    
+    return 0;
   }
 
   /**
@@ -182,7 +228,7 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
     const findQuery = `SELECT id FROM borrowers WHERE wallet_address = $1`;
     const findResult = await this.client.query(findQuery, [walletAddress]);
     
-    if (findResult.rows.length > 0) {
+    if ('rows' in findResult && findResult.rows.length > 0) {
       return (findResult.rows[0] as BorrowerRow).id;
     }
 
@@ -193,7 +239,12 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
       RETURNING id
     `;
     const createResult = await this.client.query(createQuery, [walletAddress]);
-    return (createResult.rows[0] as BorrowerRow).id;
+    
+    if ('rows' in createResult && createResult.rows.length > 0) {
+      return (createResult.rows[0] as BorrowerRow).id;
+    }
+    
+    throw new Error('Failed to create borrower');
   }
 
   /**
@@ -213,10 +264,14 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
     `;
     
     const result = await this.client.query(query, [creditLineId]);
-    const usedCredit = parseFloat((result.rows[0] as { used_credit: string }).used_credit || '0');
-    const limit = parseFloat(creditLimit);
     
-    return Math.max(0, limit - usedCredit).toString();
+    if ('rows' in result && result.rows.length > 0) {
+      const usedCredit = parseFloat((result.rows[0] as { used_credit: string }).used_credit || '0');
+      const limit = parseFloat(creditLimit);
+      return Math.max(0, limit - usedCredit).toString();
+    }
+    
+    return creditLimit; // If no transactions, full credit is available
   }
 
   /**
