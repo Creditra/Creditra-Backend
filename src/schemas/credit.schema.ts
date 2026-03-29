@@ -6,7 +6,6 @@ const isoDateTime = z.string().datetime({ offset: true });
 const positiveIntString = z.coerce.number().int().positive();
 const nonNegativeIntString = z.coerce.number().int().min(0);
 
-/** Schema for POST /api/credit/lines — create a credit line */
 export const createCreditLineSchema = z.object({
   walletAddress: z
     .string()
@@ -20,7 +19,6 @@ export const createCreditLineSchema = z.object({
 
 export type CreateCreditLineBody = z.infer<typeof createCreditLineSchema>;
 
-/** Schema for GET /api/credit/lines (pagination query) */
 export const creditLinesQuerySchema = z.object({
   offset: nonNegativeIntString.optional(),
   limit: positiveIntString.max(100).optional(),
@@ -28,7 +26,6 @@ export const creditLinesQuerySchema = z.object({
 
 export type CreditLinesQuery = z.infer<typeof creditLinesQuerySchema>;
 
-/** Schema for POST /api/credit/lines/:id/draw — draw from a credit line */
 export const drawSchema = z.object({
   amount: z
     .string()
@@ -38,7 +35,6 @@ export const drawSchema = z.object({
 
 export type DrawBody = z.infer<typeof drawSchema>;
 
-/** Schema for POST /api/credit/lines/:id/repay — repay a credit line */
 export const repaySchema = z.object({
   amount: z
     .string()
@@ -48,7 +44,6 @@ export const repaySchema = z.object({
 
 export type RepayBody = z.infer<typeof repaySchema>;
 
-/** Schema for GET /api/credit/lines/:id/transactions (filters + pagination query) */
 export const transactionHistoryQuerySchema = z.object({
   type: z.nativeEnum(TransactionType).optional(),
   from: isoDateTime.optional(),

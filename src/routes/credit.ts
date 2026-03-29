@@ -1,16 +1,13 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { validateBody, validateQuery } from '../middleware/validate.js';
 import {
   createCreditLineSchema,
   transactionHistoryQuerySchema,
-  drawSchema,
-  repaySchema,
 } from '../schemas/index.js';
-import type { CreateCreditLineBody, DrawBody, RepayBody } from '../schemas/index.js';
 import { Container } from '../container/Container.js';
 import { createApiKeyMiddleware } from '../middleware/auth.js';
 import { loadApiKeys } from '../config/apiKeys.js';
-import { ok, fail } from "../utils/response.js";
+import { ok, fail } from '../utils/response.js';
 import {
   CreditLineNotFoundError,
   TransactionType,
@@ -18,9 +15,6 @@ import {
 
 export const creditRouter = Router();
 const container = Container.getInstance();
-
-// Use a resolver function so API_KEYS is read lazily per-request,
-// allowing the env var to be set after module import (e.g. in tests).
 const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
 
 const VALID_TRANSACTION_TYPES = Object.values(TransactionType);
@@ -30,13 +24,10 @@ function handleServiceError(err: unknown, res: Response): void {
     fail(res, err.message, 404);
     return;
   }
+
   const message = err instanceof Error ? err.message : 'Internal server error';
   res.status(500).json({ error: message });
 }
-
-// ---------------------------------------------------------------------------
-// Public endpoints
-// ---------------------------------------------------------------------------
 
 creditRouter.get('/lines', async (req, res) => {
   try {
@@ -44,7 +35,16 @@ creditRouter.get('/lines', async (req, res) => {
     const offsetNum = offset ? parseInt(offset as string) : undefined;
     const limitNum = limit ? parseInt(limit as string) : undefined;
 
-    const creditLines = await container.creditLineService.getAllCreditLines(offsetNum, limitNum);
+    const offsetNum =
+      typeof offset === 'string' ? Number.parseInt(offset, 10) : undefined;
+    const limitNum =
+      typeof limit === 'string' ? Number.parseInt(limit, 10) : undefined;
+
+    const creditLines = await container.creditLineService.getAllCreditLines(
+      offsetNum,
+      limitNum,
+    );
+
     const total = await container.creditLineService.getCreditLineCount();
 
     res.json({
@@ -56,7 +56,8 @@ creditRouter.get('/lines', async (req, res) => {
       }
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch credit lines';
+    const message =
+      error instanceof Error ? error.message : 'Failed to fetch credit lines';
     res.status(400).json({ error: message });
   }
 });
@@ -69,32 +70,31 @@ creditRouter.get('/lines/:id', async (req, res) => {
       return res.status(404).json({ error: 'Credit line not found', id: req.params.id });
     }
 
-    res.json(creditLine);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch credit line' });
+    return res.json(creditLine);
+  } catch {
+    return res.status(500).json({ error: 'Failed to fetch credit line' });
   }
 });
 
-creditRouter.post('/lines', async (req, res) => {
+creditRouter.post('/lines', validateBody(createCreditLineSchema), async (req, res) => {
   try {
-    const { walletAddress, creditLimit, interestRateBps } = req.body;
+    const { walletAddress, requestedLimit } = req.body ?? {};
 
-    if (!walletAddress || !creditLimit || interestRateBps === undefined) {
-      return res.status(400).json({
-        error: 'Missing required fields: walletAddress, creditLimit, interestRateBps'
-      });
+    if (!walletAddress || !requestedLimit) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
     const creditLine = await container.creditLineService.createCreditLine({
       walletAddress,
-      creditLimit,
-      interestRateBps
+      creditLimit: requestedLimit,
+      interestRateBps: 0,
     });
 
-    res.status(201).json(creditLine);
+    return res.status(201).json(creditLine);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to create credit line';
-    res.status(400).json({ error: message });
+    const message =
+      error instanceof Error ? error.message : 'Failed to create credit line';
+    return res.status(400).json({ error: message });
   }
 });
 
@@ -114,8 +114,9 @@ creditRouter.put('/lines/:id', async (req, res) => {
 
     res.json(creditLine);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to update credit line';
-    res.status(400).json({ error: message });
+    const message =
+      error instanceof Error ? error.message : 'Failed to update credit line';
+    return res.status(400).json({ error: message });
   }
 });
 
@@ -127,24 +128,83 @@ creditRouter.delete('/lines/:id', async (req, res) => {
       return res.status(404).json({ error: 'Credit line not found', id: req.params.id });
     }
 
-    res.status(204).send();
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete credit line' });
+    return res.status(204).send();
+  } catch {
+    return res.status(500).json({ error: 'Failed to delete credit line' });
   }
 });
 
 creditRouter.get('/wallet/:walletAddress/lines', async (req, res) => {
   try {
-    const creditLines = await container.creditLineService.getCreditLinesByWallet(req.params.walletAddress);
+    const creditLines = await container.creditLineService.getCreditLinesByWallet(
+      req.params.walletAddress,
+    );
+
     res.json({ creditLines });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch credit lines for wallet' });
+  } catch {
+    res.status(500).json({
+      error: 'Failed to fetch credit lines for wallet',
+    });
   }
 });
 
-// ---------------------------------------------------------------------------
-// Admin endpoints – require a valid API key via `X-API-Key` header
-// ---------------------------------------------------------------------------
+creditRouter.get(
+  '/lines/:id/transactions',
+  validateQuery(transactionHistoryQuerySchema),
+  async (req: Request, res: Response): Promise<void> => {
+    const id = req.params.id;
+    const { type, from, to, page: pageParam, limit: limitParam } = req.query;
+
+    if (type !== undefined && !VALID_TRANSACTION_TYPES.includes(type as TransactionType)) {
+      fail(
+        res,
+        `Invalid type filter. Must be one of: ${VALID_TRANSACTION_TYPES.join(', ')}.`,
+        400,
+      );
+      return;
+    }
+
+    if (from !== undefined && isNaN(new Date(from as string).getTime())) {
+      fail(res, "Invalid 'from' date. Must be a valid ISO 8601 date.", 400);
+      return;
+    }
+
+    if (to !== undefined && isNaN(new Date(to as string).getTime())) {
+      fail(res, "Invalid 'to' date. Must be a valid ISO 8601 date.", 400);
+      return;
+    }
+
+    const page = pageParam !== undefined ? parseInt(pageParam as string, 10) : 1;
+    const limit = limitParam !== undefined ? parseInt(limitParam as string, 10) : 20;
+
+    if (isNaN(page) || page < 1) {
+      fail(res, "Invalid 'page'. Must be a positive integer.", 400);
+      return;
+    }
+
+    if (isNaN(limit) || limit < 1 || limit > 100) {
+      fail(res, "Invalid 'limit'. Must be between 1 and 100.", 400);
+      return;
+    }
+
+    try {
+      const { getTransactions: serviceGetTransactions } = await import('../services/creditService.js');
+      const result = serviceGetTransactions(
+        id,
+        {
+          type: type as TransactionType | undefined,
+          from: from as string | undefined,
+          to: to as string | undefined,
+        },
+        { page, limit },
+      );
+
+      ok(res, result);
+    } catch (err) {
+      handleServiceError(err, res);
+    }
+  },
+);
 
 creditRouter.get("/lines/:id/transactions", validateQuery(transactionHistoryQuerySchema), async (req: Request, res: Response): Promise<void> => {
   const id = req.params["id"] as string;
@@ -202,13 +262,13 @@ creditRouter.get("/lines/:id/transactions", validateQuery(transactionHistoryQuer
 });
 
 creditRouter.post(
-  "/lines/:id/suspend",
+  '/lines/:id/suspend',
   requireApiKey,
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const { suspendCreditLine: serviceSuspend } = await import("../services/creditService.js");
-      const line = serviceSuspend(req.params["id"] as string);
-      ok(res, { line, message: "Credit line suspended." });
+      const { suspendCreditLine: serviceSuspend } = await import('../services/creditService.js');
+      const line = serviceSuspend(req.params.id);
+      ok(res, { line, message: 'Credit line suspended.' });
     } catch (err) {
       handleServiceError(err, res);
     }
@@ -216,13 +276,13 @@ creditRouter.post(
 );
 
 creditRouter.post(
-  "/lines/:id/close",
+  '/lines/:id/close',
   requireApiKey,
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const { closeCreditLine: serviceClose } = await import("../services/creditService.js");
-      const line = serviceClose(req.params["id"] as string);
-      ok(res, { line, message: "Credit line closed." });
+      const { closeCreditLine: serviceClose } = await import('../services/creditService.js');
+      const line = serviceClose(req.params.id);
+      ok(res, { line, message: 'Credit line closed.' });
     } catch (err) {
       handleServiceError(err, res);
     }

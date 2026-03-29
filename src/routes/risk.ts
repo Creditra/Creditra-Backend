@@ -14,10 +14,7 @@ import {
 export const riskRouter = Router();
 const container = Container.getInstance();
 const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
-/**
- * POST /api/risk/evaluate
- * Evaluate risk for a wallet. Uses schema validation as the single entrypoint.
- */
+
 riskRouter.post(
   '/evaluate',
   validateBody(riskEvaluateSchema),
@@ -46,7 +43,7 @@ riskRouter.get('/evaluations/:id', async (req: Request, res: Response): Promise<
     }
 
     ok(res, evaluation);
-  } catch (_error) {
+  } catch {
     fail(res, 'Failed to fetch risk evaluation', 500);
   }
 });
@@ -61,7 +58,7 @@ riskRouter.get('/wallet/:walletAddress/latest', async (req: Request, res: Respon
     }
 
     ok(res, evaluation);
-  } catch (_error) {
+  } catch {
     fail(res, 'Failed to fetch latest risk evaluation', 500);
   }
 });
@@ -79,7 +76,7 @@ riskRouter.get(
       );
 
       ok(res, { evaluations });
-    } catch (_error) {
+    } catch {
       fail(res, 'Failed to fetch risk evaluation history', 500);
     }
   },

@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-/** Schema for POST /api/risk/evaluate */
 export const riskEvaluateSchema = z.object({
   walletAddress: z
     .string()
@@ -11,7 +10,6 @@ export const riskEvaluateSchema = z.object({
 
 export type RiskEvaluateBody = z.infer<typeof riskEvaluateSchema>;
 
-/** Schema for GET /api/risk/wallet/:walletAddress/history (pagination query) */
 export const riskHistoryQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).optional(),
   limit: z.coerce.number().int().positive().max(100).optional(),
