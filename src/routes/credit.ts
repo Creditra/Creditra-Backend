@@ -39,12 +39,33 @@ function handleServiceError(err: unknown, res: Response): void {
 
 creditRouter.get("/lines", async (req, res) => {
   try {
-    const { offset, limit } = req.query;
+    const { offset, limit, cursor } = req.query;
 
-    const offsetNum =
-      typeof offset === "string" ? Number.parseInt(offset, 10) : undefined;
     const limitNum =
       typeof limit === "string" ? Number.parseInt(limit, 10) : undefined;
+
+    // Use cursor pagination if cursor is provided
+    if (cursor !== undefined) {
+      const cursorStr = typeof cursor === "string" ? cursor : undefined;
+      
+      const result = await container.creditLineService.getAllCreditLinesWithCursor(
+        cursorStr,
+        limitNum,
+      );
+
+      return res.json({
+        creditLines: result.items,
+        pagination: {
+          limit: limitNum ?? 100,
+          nextCursor: result.nextCursor,
+          hasMore: result.hasMore,
+        },
+      });
+    }
+
+    // Fall back to offset pagination for backward compatibility
+    const offsetNum =
+      typeof offset === "string" ? Number.parseInt(offset, 10) : undefined;
 
     const creditLines = await container.creditLineService.getAllCreditLines(
       offsetNum,

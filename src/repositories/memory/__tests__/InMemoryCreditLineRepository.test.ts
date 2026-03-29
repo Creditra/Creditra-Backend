@@ -215,4 +215,154 @@ describe('InMemoryCreditLineRepository', () => {
       expect(await repository.count()).toBe(2);
     });
   });
+
+  describe('findAllWithCursor', () => {
+    it('should return first page with cursor', async () => {
+      // Create 5 credit lines with small delays to ensure different timestamps
+      for (let i = 0; i < 5; i++) {
+        await repository.create({
+          walletAddress: `wallet${i}`,
+          creditLimit: '1000.00',
+          interestRateBps: 500
+        });
+        await new Promise(resolve => setTimeout(resolve, 2));
+      }
+
+      const result = await repository.findAllWithCursor(undefined, 3);
+
+      expect(result.items).toHaveLength(3);
+      expect(result.hasMore).toBe(true);
+      expect(result.nextCursor).toBeDefined();
+      expect(result.nextCursor).not.toBeNull();
+    });
+
+    it('should return next page using cursor', async () => {
+      // Create 5 credit lines
+      for (let i = 0; i < 5; i++) {
+        await repository.create({
+          walletAddress: `wallet${i}`,
+          creditLimit: '1000.00',
+          interestRateBps: 500
+        });
+        await new Promise(resolve => setTimeout(resolve, 2));
+      }
+
+      // Get first page
+      const firstPage = await repository.findAllWithCursor(undefined, 2);
+      expect(firstPage.items).toHaveLength(2);
+      expect(firstPage.hasMore).toBe(true);
+
+      // Get second page using cursor
+      const secondPage = await repository.findAllWithCursor(firstPage.nextCursor!, 2);
+      expect(secondPage.items).toHaveLength(2);
+      expect(secondPage.hasMore).toBe(true);
+
+      // Verify no overlap
+      const firstIds = firstPage.items.map(cl => cl.id);
+      const secondIds = secondPage.items.map(cl => cl.id);
+      expect(firstIds.some(id => secondIds.includes(id))).toBe(false);
+    });
+
+    it('should return last page with no next cursor', async () => {
+      // Create 3 credit lines
+      for (let i = 0; i < 3; i++) {
+        await repository.create({
+          walletAddress: `wallet${i}`,
+          creditLimit: '1000.00',
+          interestRateBps: 500
+        });
+        await new Promise(resolve => setTimeout(resolve, 2));
+      }
+
+      const result = await repository.findAllWithCursor(undefined, 5);
+
+      expect(result.items).toHaveLength(3);
+      expect(result.hasMore).toBe(false);
+      expect(result.nextCursor).toBeNull();
+    });
+
+    it('should handle exhausted cursor', async () => {
+      // Create 3 credit lines
+      for (let i = 0; i < 3; i++) {
+        await repository.create({
+          walletAddress: `wallet${i}`,
+          creditLimit: '1000.00',
+          interestRateBps: 500
+        });
+        await new Promise(resolve => setTimeout(resolve, 2));
+      }
+
+      // Get all items
+      const firstPage = await repository.findAllWithCursor(undefined, 3);
+      expect(firstPage.items).toHaveLength(3);
+      expect(firstPage.nextCursor).toBeNull();
+
+      // Try to get next page (should be empty)
+      if (firstPage.nextCursor) {
+        const secondPage = await repository.findAllWithCursor(firstPage.nextCursor, 3);
+        expect(secondPage.items).toHaveLength(0);
+        expect(secondPage.hasMore).toBe(false);
+      }
+    });
+
+    it('should handle invalid cursor gracefully', async () => {
+      await repository.create({
+        walletAddress: 'wallet1',
+        creditLimit: '1000.00',
+        interestRateBps: 500
+      });
+
+      // Invalid base64 cursor should start from beginning
+      const result = await repository.findAllWithCursor('invalid-cursor', 10);
+      expect(result.items).toHaveLength(1);
+    });
+
+    it('should maintain stable ordering across pages', async () => {
+      // Create credit lines
+      const created = [];
+      for (let i = 0; i < 10; i++) {
+        const cl = await repository.create({
+          walletAddress: `wallet${i}`,
+          creditLimit: '1000.00',
+          interestRateBps: 500
+        });
+        created.push(cl);
+        await new Promise(resolve => setTimeout(resolve, 2));
+      }
+
+      // Fetch all pages
+      const allItems = [];
+      let cursor: string | null = undefined;
+      
+      do {
+        const result = await repository.findAllWithCursor(cursor || undefined, 3);
+        allItems.push(...result.items);
+        cursor = result.nextCursor;
+      } while (cursor);
+
+      expect(allItems).toHaveLength(10);
+      
+      // Verify ordering by createdAt and id
+      for (let i = 1; i < allItems.length; i++) {
+        const prev = allItems[i - 1];
+        const curr = allItems[i];
+        const prevTime = prev.createdAt.getTime();
+        const currTime = curr.createdAt.getTime();
+        
+        if (prevTime === currTime) {
+          expect(prev.id.localeCompare(curr.id)).toBeLessThan(0);
+        } else {
+          expect(prevTime).toBeLessThan(currTime);
+        }
+      }
+    });
+
+    it('should return empty result for empty repository', async () => {
+      const result = await repository.findAllWithCursor(undefined, 10);
+      
+      expect(result.items).toHaveLength(0);
+      expect(result.hasMore).toBe(false);
+      expect(result.nextCursor).toBeNull();
+    });
+  });
 });

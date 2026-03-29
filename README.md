@@ -242,14 +242,13 @@ npm run test:watch
 
 ## API (current)
 
-- `GET /health` — Service health
-- `GET /api/credit/lines` — List credit lines (placeholder)
-- `GET /api/credit/lines/:id` — Get credit line by id (placeholder)
-- `POST /api/risk/evaluate` — Request risk evaluation; body: `{ "walletAddress": "..." }`; returns `400` with `{ "error": "Invalid wallet address format." }` for invalid Stellar addresses
 ### Public
 
 - `GET  /health` — Service health
-- `GET  /api/credit/lines` — List credit lines (placeholder)
+- `GET  /api/credit/lines` — List credit lines with pagination support
+  - **Cursor pagination** (recommended): `?cursor&limit=50` or `?cursor=<token>&limit=50`
+  - **Offset pagination** (legacy): `?offset=0&limit=50`
+  - See [Cursor Pagination Guide](docs/cursor-pagination.md) for details
 - `GET  /api/credit/lines/:id` — Get credit line by id (placeholder)
 - `POST /api/risk/evaluate` — Risk evaluation; body: `{ "walletAddress": "..." }`
 
@@ -258,6 +257,26 @@ npm run test:watch
 - `POST /api/credit/lines/:id/suspend` — Suspend a credit line
 - `POST /api/credit/lines/:id/close` — Close a credit line
 - `POST /api/risk/admin/recalibrate` — Trigger risk model recalibration
+
+### Pagination
+
+The `/api/credit/lines` endpoint supports two pagination modes:
+
+1. **Cursor-based** (recommended for production): Provides stable pagination for large datasets
+   ```bash
+   # First page
+   curl "http://localhost:3000/api/credit/lines?cursor&limit=10"
+   
+   # Next page (use nextCursor from response)
+   curl "http://localhost:3000/api/credit/lines?cursor=<nextCursor>&limit=10"
+   ```
+
+2. **Offset-based** (legacy): Traditional pagination with total count
+   ```bash
+   curl "http://localhost:3000/api/credit/lines?offset=0&limit=10"
+   ```
+
+For detailed documentation, examples, and migration guide, see [docs/cursor-pagination.md](docs/cursor-pagination.md).
 
 ## Running tests
 
