@@ -1,0 +1,590 @@
+openapi: 3.0.3
+info:
+  title: Creditra API
+  version: 0.1.0
+  description: |
+    Backend API for Creditra – on-chain credit scoring and risk evaluation.
+
+    Browser clients are restricted by a CORS allowlist. Production deployments
+    must set `CORS_ORIGINS` to a comma-separated list of exact origins; local
+    development falls back to loopback origins when the variable is unset.
+
+    ## Keeping the spec in sync
+    - Every new route **must** have a corresponding entry here before merging.
+    - Run `npm run validate:spec` in CI to catch YAML/structural errors early.
+    - Use path-level `operationId` values as the source of truth for client generation.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+tags:
+  - name: Health
+    description: Service liveness check
+  - name: Credit
+    description: Credit line management
+  - name: Risk
+    description: On-chain risk evaluation
+  - name: Webhooks
+    description: Draw confirmation webhook management
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Liveness check
+      responses:
+        "200":
+          description: Service is running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                service: creditra-backend
+
+  /api/credit/lines:
+    get:
+      tags: [Credit]
+      operationId: listCreditLines
+      summary: List all credit lines
+      parameters:
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Pagination offset
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+          description: Number of credit lines per page
+      responses:
+        "200":
+          description: Array of credit lines (may be empty)
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests allowed per window
+              schema:
+                type: integer
+                example: 100
+            X-RateLimit-Remaining:
+              description: Requests remaining in current window
+              schema:
+                type: integer
+                example: 95
+            X-RateLimit-Reset:
+              description: Unix timestamp when the rate limit window resets
+              schema:
+                type: integer
+                example: 1700000060
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditLinesResponse"
+              example:
+                creditLines: []
+                pagination:
+                  total: 0
+                  offset: 0
+                  limit: 100
+        "400":
+          description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              schema:
+                type: integer
+                example: 47
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateLimitErrorResponse"
+
+  /api/credit/lines/{id}:
+    get:
+      tags: [Credit]
+      operationId: getCreditLineById
+      summary: Get a credit line by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Credit line identifier
+      responses:
+        "200":
+          description: Credit line found
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditLine"
+        "404":
+          description: Credit line not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Credit line not found
+                id: "abc123"
+        "429":
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateLimitErrorResponse"
+
+  /api/credit/lines/{id}/transactions:
+    get:
+      tags: [Credit]
+      operationId: getCreditLineTransactions
+      summary: List transaction history for a credit line
+      description: |
+        Returns a paginated list of transactions for the given credit line.
+        Supports optional filtering by
+        transaction type and date range.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Credit line identifier
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [borrow, repay, interest_accrual, fee, status_change]
+          description: Filter by transaction type
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Include only transactions at or after this ISO 8601 timestamp (inclusive)
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Include only transactions at or before this ISO 8601 timestamp (inclusive)
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number (1-indexed)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of transactions per page
+      responses:
+        "200":
+          description: Paginated list of transactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionHistoryResponse"
+              example:
+                data:
+                  transactions:
+                    - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                      creditLineId: "line-abc"
+                      type: status_change
+                      amount: null
+                      currency: null
+                      timestamp: "2024-01-15T10:00:00.000Z"
+                      metadata:
+                        action: created
+                  total: 1
+                  page: 1
+                  limit: 20
+                  totalPages: 1
+                error: null
+        "400":
+          description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                data: null
+                error: "Invalid type filter. Must be one of: borrow, repay, interest_accrual, fee, status_change."
+        "404":
+          description: Credit line not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                data: null
+                error: 'Credit line "line-abc" not found.'
+
+  /api/risk/evaluate:
+    post:
+      tags: [Risk]
+      operationId: evaluateRisk
+      summary: Evaluate on-chain risk for a wallet
+      description: |
+        Rate limited: default 10 requests per minute per IP address.
+        Configure via RATE_LIMIT_MAX_EVALUATE and RATE_LIMIT_WINDOW_MS env vars.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RiskEvaluateRequest"
+            example:
+              walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
+              forceRefresh: false
+      responses:
+        "200":
+          description: Risk evaluation result
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests allowed per window
+              schema:
+                type: integer
+                example: 10
+            X-RateLimit-Remaining:
+              description: Requests remaining in current window
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              description: Unix timestamp when the rate limit window resets
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskEvaluateApiResponse"
+              example:
+                data:
+                  walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
+                  riskScore: 72
+                  creditLimit: "720"
+                  interestRateBps: 640
+                  message: New risk evaluation completed
+                error: null
+        "400":
+          description: Missing required field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Validation failed
+
+  /api/webhooks/config:
+    get:
+      tags: [Webhooks]
+      operationId: getWebhookConfig
+      summary: Get webhook configuration
+      description: Returns the current webhook configuration (excluding sensitive data)
+      responses:
+        "200":
+          description: Webhook configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookConfigResponse"
+              example:
+                urls: ["https://example.com/webhook"]
+                maxRetries: 3
+                initialBackoffMs: 1000
+                backoffMultiplier: 2.0
+                timeoutMs: 10000
+                configured: true
+
+  /api/webhooks/test:
+    post:
+      tags: [Webhooks]
+      operationId: testWebhooks
+      summary: Test webhook connectivity
+      description: Sends a test payload to all configured webhook endpoints
+      responses:
+        "200":
+          description: Test results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookTestResponse"
+              example:
+                total: 2
+                reachable: 1
+                unreachable: 1
+                results:
+                  - url: "https://example.com/webhook"
+                    reachable: true
+                  - url: "https://test.com/hook"
+                    reachable: false
+                    error: "Connection refused"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/webhooks/health:
+    get:
+      tags: [Webhooks]
+      operationId: getWebhookHealth
+      summary: Webhook service health check
+      description: Returns the health status of the webhook service
+      responses:
+        "200":
+          description: Webhook service health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookHealthResponse"
+              example:
+                status: active
+                urls: 2
+                maxRetries: 3
+                timeoutMs: 10000
+
+  /api/risk/evaluations/{id}:
+    get:
+      tags: [Risk]
+      operationId: getRiskEvaluationById
+      summary: Fetch a stored risk evaluation by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Risk evaluation identifier
+      responses:
+        "200":
+          description: Risk evaluation found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskEvaluation"
+        "404":
+          description: Risk evaluation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Risk evaluation not found
+                id: "abc123"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service]
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: creditra-backend
+
+    CreditLine:
+      type: object
+      description: Placeholder – expand as the credit engine is built out
+      properties:
+        id:
+          type: string
+        owner:
+          type: string
+        limit:
+          type: string
+
+    CreditLinesResponse:
+      type: object
+      required: [creditLines, pagination]
+      properties:
+        creditLines:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreditLine"
+        pagination:
+          type: object
+          properties:
+            total:
+              type: integer
+            offset:
+              type: integer
+            limit:
+              type: integer
+          required: [total, offset, limit]
+
+    RiskEvaluateRequest:
+      type: object
+      required: [walletAddress]
+      properties:
+        walletAddress:
+          type: string
+          description: EVM-compatible wallet address
+          example: "0xAbC1234567890abcdef1234567890abcdef123456"
+        forceRefresh:
+          type: boolean
+          description: Optional hint to bypass cache and recalculate risk
+          default: false
+
+    RiskEvaluateResponse:
+      type: object
+      required: [walletAddress, riskScore, creditLimit, interestRateBps, message]
+      properties:
+        walletAddress:
+          type: string
+        riskScore:
+          type: number
+        creditLimit:
+          type: string
+        interestRateBps:
+          type: number
+        message:
+          type: string
+
+    RiskEvaluateApiResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          $ref: "#/components/schemas/RiskEvaluateResponse"
+        error:
+          type: string
+          nullable: true
+
+    Transaction:
+      type: object
+      required: [id, creditLineId, type, amount, currency, timestamp, metadata]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique transaction identifier
+        creditLineId:
+          type: string
+          description: ID of the credit line this transaction belongs to
+        type:
+          type: string
+          enum: [borrow, repay, interest_accrual, fee, status_change]
+          description: Transaction type
+        amount:
+          type: string
+          nullable: true
+          description: Transaction amount as a decimal string; null for status changes
+          example: "500.00000000"
+        currency:
+          type: string
+          nullable: true
+          description: Currency code (e.g. USDC); null for status changes
+          example: USDC
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the transaction occurred
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional context; status changes include an 'action' field
+          example:
+            action: created
+
+    TransactionHistoryResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          type: object
+          required: [transactions, total, page, limit, totalPages]
+          properties:
+            transactions:
+              type: array
+              items:
+                $ref: "#/components/schemas/Transaction"
+            total:
+              type: integer
+              description: Total number of transactions matching the applied filters
+            page:
+              type: integer
+              description: Current page number (1-indexed)
+            limit:
+              type: integer
+              description: Maximum number of transactions per page
+            totalPages:
+              type: integer
+              description: Total number of pages available
+        error:
+          type: string
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        id:
+          type: string
+          description: Present on 404 responses that reference a specific resource

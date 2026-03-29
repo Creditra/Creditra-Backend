@@ -31,3 +31,13 @@ export const repaySchema = z.object({
 });
 
 export type RepayBody = z.infer<typeof repaySchema>;
+
+export const transactionHistoryQuerySchema = z.object({
+  type: z.nativeEnum(TransactionType).optional(),
+  from: isoDateTime.optional(),
+  to: isoDateTime.optional(),
+  page: positiveIntString.optional(),
+  limit: positiveIntString.max(100).optional(),
+}).strict();
+
+export type TransactionHistoryQuery = z.infer<typeof transactionHistoryQuerySchema>;

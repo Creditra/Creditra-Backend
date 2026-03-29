@@ -8,3 +8,10 @@ export const riskEvaluateSchema = z.object({
 });
 
 export type RiskEvaluateBody = z.infer<typeof riskEvaluateSchema>;
+
+export const riskHistoryQuerySchema = z.object({
+  offset: z.coerce.number().int().min(0).optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+}).strict();
+
+export type RiskHistoryQuery = z.infer<typeof riskHistoryQuerySchema>;
