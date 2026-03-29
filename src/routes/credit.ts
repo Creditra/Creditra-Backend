@@ -11,11 +11,12 @@ import { ok, fail } from '../utils/response.js';
 import {
   CreditLineNotFoundError,
   TransactionType,
-} from '../services/creditService.js';
+} from "../services/creditService.js";
 
 export const creditRouter = Router();
 const container = Container.getInstance();
 const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
+
 const VALID_TRANSACTION_TYPES = Object.values(TransactionType);
 
 function handleServiceError(err: unknown, res: Response): void {
