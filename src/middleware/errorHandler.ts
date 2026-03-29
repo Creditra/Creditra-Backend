@@ -1,4 +1,5 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from "express";
+import { logger } from "../utils/logger.js";
 
 /**
  * Global error-handling middleware.
@@ -12,6 +13,6 @@ export function errorHandler(
   res: Response,
   _next: NextFunction,
 ): void {
-  console.error('[errorHandler]', err);
-  res.status(500).json({ error: 'Internal server error' });
+  logger.error({ err }, "unhandled_error");
+  res.status(500).json({ error: "Internal server error" });
 }

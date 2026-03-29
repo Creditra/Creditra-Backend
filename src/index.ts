@@ -11,6 +11,7 @@ import { riskRouter } from "./routes/risk.js";
 import { healthRouter } from "./routes/health.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { Container } from "./container/Container.js";
+import { requestLogger } from "./middleware/requestLogger.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const openapiSpec = yaml.parse(
@@ -30,6 +31,8 @@ const SHUTDOWN_TIMEOUT_MS = parseInt(
 
 app.use(cors());
 app.use(express.json());
+
+app.use(requestLogger);
 
 app.use("/health", healthRouter);
 
