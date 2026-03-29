@@ -32,7 +32,7 @@ describe("InMemoryJobQueue", () => {
 
   it("processes an enqueued job when a handler is registered", async () => {
     const queue = createQueue();
-    const handler = vi.fn((job: Job<{ value: number }>) => {});
+    const handler = vi.fn((_job: Job<{ value: number }>) => {});
 
     queue.registerHandler<{ value: number }>("test", handler);
     queue.start();
