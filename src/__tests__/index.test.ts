@@ -1,16 +1,8 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 
 // We need to test the actual index.ts file, so let's create a separate test
 describe('Main Application', () => {
-  const server: { close: () => void } | null = null;
-
-  afterEach(() => {
-    if (server) {
-      server.close();
-    }
-  });
-
   it('should start server and respond to health check', async () => {
     // Mock process.env.PORT
     const originalPort = process.env.PORT;
