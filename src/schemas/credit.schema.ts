@@ -1,31 +1,32 @@
 import { z } from 'zod';
+import { isValidStellarAddress } from '../utils/stellarAddress.js';
 
-/** Schema for POST /api/credit/lines — create a credit line */
+const stellarAddressField = z
+  .string()
+  .refine(isValidStellarAddress, 'walletAddress must be a valid Stellar address');
+
 export const createCreditLineSchema = z.object({
-  walletAddress: z
-    .string({ required_error: 'walletAddress is required' })
-    .min(1, 'walletAddress must not be empty')
-    .max(256, 'walletAddress must be at most 256 characters'),
+  walletAddress: stellarAddressField,
   requestedLimit: z
-    .string({ required_error: 'requestedLimit is required' })
+    .string()
     .regex(/^\d+(\.\d+)?$/, 'requestedLimit must be a numeric string'),
 });
 
 export type CreateCreditLineBody = z.infer<typeof createCreditLineSchema>;
 
-/** Schema for POST /api/credit/lines/:id/draw — draw from a credit line */
 export const drawSchema = z.object({
+  walletAddress: stellarAddressField,
   amount: z
-    .string({ required_error: 'amount is required' })
+    .string()
     .regex(/^\d+(\.\d+)?$/, 'amount must be a numeric string'),
 });
 
 export type DrawBody = z.infer<typeof drawSchema>;
 
-/** Schema for POST /api/credit/lines/:id/repay — repay a credit line */
 export const repaySchema = z.object({
+  walletAddress: stellarAddressField,
   amount: z
-    .string({ required_error: 'amount is required' })
+    .string()
     .regex(/^\d+(\.\d+)?$/, 'amount must be a numeric string'),
 });
 

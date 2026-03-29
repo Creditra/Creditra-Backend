@@ -6,6 +6,11 @@ import {
   repaySchema,
 } from '../schemas/index.js';
 import type { CreateCreditLineBody, DrawBody, RepayBody } from '../schemas/index.js';
+import {
+  createCreditLine,
+  drawFromCreditLine,
+  repayCredit,
+} from '../services/creditService.js';
 
 export const creditRouter = Router();
 
@@ -17,34 +22,29 @@ creditRouter.get('/lines/:id', (req, res) => {
   res.status(404).json({ error: 'Credit line not found', id: req.params.id });
 });
 
-/** Create a new credit line */
-creditRouter.post('/lines', validateBody(createCreditLineSchema), (req, res) => {
-  const { walletAddress, requestedLimit } = req.body as CreateCreditLineBody;
-  res.status(201).json({
-    id: 'placeholder-id',
-    walletAddress,
-    requestedLimit,
-    status: 'pending',
-    message: 'Credit line creation not yet implemented; placeholder response.',
-  });
+creditRouter.post('/lines', validateBody(createCreditLineSchema), async (req, res, next) => {
+  try {
+    const result = await createCreditLine(req.body as CreateCreditLineBody);
+    res.status(201).json(result);
+  } catch (err) {
+    next(err);
+  }
 });
 
-/** Draw from a credit line */
-creditRouter.post('/lines/:id/draw', validateBody(drawSchema), (req, res) => {
-  const { amount } = req.body as DrawBody;
-  res.json({
-    id: req.params.id,
-    amount,
-    message: 'Draw not yet implemented; placeholder response.',
-  });
+creditRouter.post('/lines/:id/draw', validateBody(drawSchema), async (req, res, next) => {
+  try {
+    const result = await drawFromCreditLine(req.params.id, req.body as DrawBody);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
 });
 
-/** Repay a credit line */
-creditRouter.post('/lines/:id/repay', validateBody(repaySchema), (req, res) => {
-  const { amount } = req.body as RepayBody;
-  res.json({
-    id: req.params.id,
-    amount,
-    message: 'Repay not yet implemented; placeholder response.',
-  });
+creditRouter.post('/lines/:id/repay', validateBody(repaySchema), async (req, res, next) => {
+  try {
+    const result = await repayCredit(req.params.id, req.body as RepayBody);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
 });
