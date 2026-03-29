@@ -52,7 +52,7 @@ creditRouter.get('/lines', async (req, res) => {
 
     const total = await container.creditLineService.getCreditLineCount();
 
-    res.json({
+    return ok(res, {
       creditLines,
       pagination: {
         total,
