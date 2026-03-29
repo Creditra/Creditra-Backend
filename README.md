@@ -299,6 +299,12 @@ HTTP status codes follow REST conventions:
 - `POST /api/credit/lines/:id/suspend` — Suspend a credit line
 - `POST /api/credit/lines/:id/close` — Close a credit line
 - `POST /api/risk/admin/recalibrate` — Trigger risk model recalibration
+- `POST /api/webhooks/test` — Test webhook connectivity
+
+### Webhooks (public)
+
+- `GET /api/webhooks/config` — Get webhook configuration
+- `GET /api/webhooks/health` — Webhook service health check
 
 ## Running tests
 
@@ -336,6 +342,7 @@ src/
     health.ts                               # GET /health
     credit.ts                               # credit-line endpoints (public + admin)
     risk.ts                                 # risk endpoints (public + admin)
+    webhook.ts                              # webhook management endpoints
   schemas/                                  # Zod request-body schemas
   services/
     creditService.ts                        # credit-line state machine + draw logic
@@ -343,6 +350,7 @@ src/
     riskService.ts                          # wallet risk evaluation
     RiskEvaluationService.ts               # repo-backed risk service
     horizonListener.ts                      # Stellar Horizon event poller
+    drawWebhookService.ts                   # draw confirmation webhook delivery
     jobQueue.ts                             # background job scheduler
   utils/
     response.ts                             # ok() / fail() envelope helpers
@@ -496,6 +504,82 @@ setInterval(pollOnce, POLL_INTERVAL_MS)
 
 > **Soroban contract dependency (high level)**
 > Creditra credit lines, draw authorisations, and repayments are ultimately settled against **Soroban smart contracts** deployed on the Stellar network. The backend treats these contracts as an external source of truth: the `HorizonListener` consumes contract events (`credit_line_created`, `draw_authorised`, etc.) and propagates them into the service layer. The actual contract addresses are configured via `CONTRACT_IDS` and are **not** hardcoded. No private keys or signing operations are performed by this service.
+
+---
+
+### Draw Confirmation Webhooks
+
+The backend provides optional webhook notifications when draw confirmations are detected via Horizon polling. Webhooks are delivered with HMAC signatures and include retry logic with exponential backoff.
+
+#### Configuration
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `WEBHOOK_URLS` | No | _(empty)_ | Comma-separated webhook endpoint URLs |
+| `WEBHOOK_SECRET` | Yes (if URLs configured) | _(empty)_ | HMAC secret for payload signing |
+| `WEBHOOK_MAX_RETRIES` | No | `3` | Maximum retry attempts |
+| `WEBHOOK_INITIAL_BACKOFF_MS` | No | `1000` | Initial backoff delay in milliseconds |
+| `WEBHOOK_BACKOFF_MULTIPLIER` | No | `2.0` | Exponential backoff multiplier |
+| `WEBHOOK_TIMEOUT_MS` | No | `10000` | Request timeout in milliseconds |
+
+#### Webhook Payload
+
+When a draw confirmation event is detected, the following payload is sent:
+
+```json
+{
+  "event": "draw_confirmed",
+  "timestamp": "2024-01-15T10:00:00.000Z",
+  "data": {
+    "ledger": 12345,
+    "contractId": "CC7P3M7JZB3J5K5L5M5N5O5P5Q5R5S5T5U5V5W5X5Y5Z",
+    "drawAmount": "1000.00000000",
+    "drawId": "draw_abc123",
+    "borrowerWallet": "GABC1234567890DEF1234567890DEF1234567890",
+    "creditLineId": "credit_line_456",
+    "horizonTimestamp": "2024-01-15T09:59:58.000Z"
+  }
+}
+```
+
+#### Security
+
+- **HMAC Signature**: Each webhook includes an `X-Webhook-Signature` header with format `sha256=<hex-signature>`
+- **Signature Verification**: Verify signatures using your configured `WEBHOOK_SECRET`:
+  ```bash
+  echo -n "<payload>" | openssl dgst -sha256 -hmac "<your-secret>"
+  ```
+- **Timestamp**: `X-Webhook-Timestamp` header helps prevent replay attacks
+- **User Agent**: `Creditra-Webhook/1.0` identifies legitimate webhook requests
+
+#### Retry Logic
+
+Failed webhook deliveries are retried with exponential backoff:
+- Initial delay: `WEBHOOK_INITIAL_BACKOFF_MS` (default 1000ms)
+- Subsequent delays: `previous_delay * WEBHOOK_BACKOFF_MULTIPLIER` (default 2.0x)
+- Maximum attempts: `WEBHOOK_MAX_RETRIES` (default 3)
+
+#### Management Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/webhooks/config` | Get current webhook configuration (excludes secrets) |
+| `POST` | `/api/webhooks/test` | Test connectivity to all configured webhook URLs |
+| `GET` | `/api/webhooks/health` | Check webhook service health status |
+
+#### Example Usage
+
+```bash
+# Test webhook connectivity
+curl -X POST http://localhost:3000/api/webhooks/test \
+  -H "X-API-Key: your-api-key"
+
+# Check webhook configuration
+curl http://localhost:3000/api/webhooks/config
+
+# Check webhook service health
+curl http://localhost:3000/api/webhooks/health
+```
 
 ---
 
