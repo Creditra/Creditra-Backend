@@ -1,14 +1,31 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { PostgresCreditLineRepository } from '../PostgresCreditLineRepository.js';
 import { CreditLineStatus } from '../../../models/CreditLine.js';
 import type { DbClient } from '../../../db/client.js';
 
 // Mock database client
 function createMockClient(): DbClient {
+  interface MockBorrower {
+    id: string;
+    wallet_address: string;
+    created_at: Date;
+    updated_at: Date;
+  }
+
+  interface MockCreditLine {
+    id: string;
+    borrower_id: string;
+    credit_limit: string;
+    currency: string;
+    status: string;
+    created_at: Date;
+    updated_at: Date;
+  }
+
   const mockData = {
-    borrowers: new Map<string, any>(),
-    creditLines: new Map<string, any>(),
-    transactions: new Map<string, any>(),
+    borrowers: new Map<string, MockBorrower>(),
+    creditLines: new Map<string, MockCreditLine>(),
+    transactions: new Map<string, unknown>(),
     nextId: 1
   };
 
@@ -42,12 +59,12 @@ function createMockClient(): DbClient {
       // Handle credit line operations
       if (sql.includes('insert into credit_lines')) {
         const id = generateId();
-        const creditLine = {
+        const creditLine: MockCreditLine = {
           id,
-          borrower_id: values[0],
-          credit_limit: values[1],
-          currency: values[2],
-          status: values[3],
+          borrower_id: values[0] as string,
+          credit_limit: values[1] as string,
+          currency: values[2] as string,
+          status: values[3] as string,
           created_at: new Date(),
           updated_at: new Date()
         };
@@ -127,7 +144,7 @@ function createMockClient(): DbClient {
         const id = values[0] as string;
         const existed = mockData.creditLines.has(id);
         mockData.creditLines.delete(id);
-        return { rowCount: existed ? 1 : 0 } as any;
+        return { rowCount: existed ? 1 : 0 } as { rowCount: number };
       }
 
       if (sql.includes('select 1 from credit_lines where id')) {
