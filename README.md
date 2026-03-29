@@ -125,6 +125,9 @@ docker build --target runner -t creditra-backend:latest .
 | `API_KEYS`  | **Yes**  | Comma-separated list of valid admin API keys (see below) |
 | `CORS_ORIGINS` | Prod   | Comma-separated allowlist of exact browser origins        |
 | `DATABASE_URL` | No    | PostgreSQL connection string (required for migrations)   |
+| `SOROBAN_RPC_URL` | No | Soroban RPC endpoint (default: testnet)                  |
+| `CREDIT_CONTRACT_ID` | No | Credit contract ID for reconciliation                 |
+| `RECONCILIATION_INTERVAL_MS` | No | Reconciliation frequency (default: 1 hour)     |
 
 Optional later: `REDIS_URL`, `HORIZON_URL`, etc.
 
@@ -257,6 +260,8 @@ npm run test:watch
 - `POST /api/credit/lines/:id/suspend` — Suspend a credit line
 - `POST /api/credit/lines/:id/close` — Close a credit line
 - `POST /api/risk/admin/recalibrate` — Trigger risk model recalibration
+- `POST /api/reconciliation/trigger` — Manually trigger credit reconciliation job
+- `GET  /api/reconciliation/status` — Get reconciliation worker status
 
 ### Pagination
 
@@ -322,6 +327,9 @@ src/
     RiskEvaluationService.ts               # repo-backed risk service
     horizonListener.ts                      # Stellar Horizon event poller
     jobQueue.ts                             # background job scheduler
+    reconciliationService.ts                # chain vs DB reconciliation
+    reconciliationWorker.ts                 # scheduled reconciliation worker
+    sorobanClient.ts                        # Soroban RPC client
   utils/
     response.ts                             # ok() / fail() envelope helpers
     stellarAddress.ts                       # Stellar public-key validation
@@ -474,6 +482,46 @@ setInterval(pollOnce, POLL_INTERVAL_MS)
 
 > **Soroban contract dependency (high level)**
 > Creditra credit lines, draw authorisations, and repayments are ultimately settled against **Soroban smart contracts** deployed on the Stellar network. The backend treats these contracts as an external source of truth: the `HorizonListener` consumes contract events (`credit_line_created`, `draw_authorised`, etc.) and propagates them into the service layer. The actual contract addresses are configured via `CONTRACT_IDS` and are **not** hardcoded. No private keys or signing operations are performed by this service.
+
+---
+
+### Credit Reconciliation
+
+The reconciliation worker (`src/services/reconciliationWorker.ts`) periodically compares on-chain Credit contract records with database credit lines to detect and flag drift.
+
+**How it works:**
+1. Worker runs on a scheduled interval (default: 1 hour)
+2. Fetches all credit lines from database
+3. Fetches all credit records from Soroban contract via RPC
+4. Compares records field-by-field
+5. Flags mismatches with severity levels (critical vs warning)
+6. Alerts on persistent mismatches via logging and job failure
+
+**Mismatch severity:**
+- **Critical**: existence, walletAddress, creditLimit, status → job fails, enters retry/dead-letter
+- **Warning**: availableCredit, interestRateBps → logged but job succeeds
+
+**Configuration:**
+```bash
+SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
+CREDIT_CONTRACT_ID=<your-contract-id>
+RECONCILIATION_INTERVAL_MS=3600000  # 1 hour
+RECONCILIATION_RUN_IMMEDIATELY=true
+```
+
+**Manual trigger:**
+```bash
+curl -X POST http://localhost:3000/api/reconciliation/trigger \
+  -H "X-API-Key: your-api-key"
+```
+
+**Check status:**
+```bash
+curl http://localhost:3000/api/reconciliation/status \
+  -H "X-API-Key: your-api-key"
+```
+
+For detailed documentation, see [docs/reconciliation.md](docs/reconciliation.md).
 
 ---
 

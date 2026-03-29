@@ -133,7 +133,103 @@ paths:
               schema:
                 $ref: '#/components/schemas/FailureResponse'
 
+  /api/reconciliation/trigger:
+    post:
+      summary: Trigger Credit Reconciliation
+      description: |
+        Manually trigger a reconciliation job that compares on-chain Credit contract 
+        records with database credit lines and flags any drift.
+        
+        Requires admin authentication via X-API-Key header.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '202':
+          description: Reconciliation job scheduled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      jobId:
+                        type: string
+                        description: Unique identifier for the scheduled job
+                      message:
+                        type: string
+                        example: 'Reconciliation job scheduled'
+                  error:
+                    type: "null"
+        '401':
+          description: Unauthorized (Missing or invalid API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FailureResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FailureResponse'
+
+  /api/reconciliation/status:
+    get:
+      summary: Get Reconciliation Status
+      description: |
+        Returns the current status of the reconciliation worker including:
+        - Whether the worker is running
+        - Number of jobs in the queue
+        - Number of failed jobs
+        
+        Requires admin authentication via X-API-Key header.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Reconciliation status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      workerRunning:
+                        type: boolean
+                        description: Whether the reconciliation worker is active
+                      queueSize:
+                        type: integer
+                        description: Number of pending jobs in the queue
+                      failedJobs:
+                        type: integer
+                        description: Number of jobs that have failed
+                  error:
+                    type: "null"
+        '401':
+          description: Unauthorized (Missing or invalid API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FailureResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FailureResponse'
+
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for admin endpoints
+
   schemas:
     SuccessResponse:
       type: object
