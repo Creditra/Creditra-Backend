@@ -11,7 +11,6 @@ import {
   resetMetrics,
   type HorizonEvent,
   type HorizonListenerConfig,
-  type HorizonListenerMetrics,
 } from "../services/horizonListener.js";
 import { vi, type Mock } from "vitest";
 
@@ -535,7 +534,7 @@ describe("Resilience Features", () => {
       });
       
       // Simulate the same event being processed twice
-      const mockEvent: HorizonEvent = {
+      const _mockEvent: HorizonEvent = {
         ledger: 1000,
         timestamp: new Date().toISOString(),
         contractId: "DUPE_CONTRACT",
@@ -545,7 +544,7 @@ describe("Resilience Features", () => {
       
       // First dispatch should succeed
       await pollOnce(config);
-      const initialCount = events.length;
+      const _initialCount = events.length;
       
       // Second dispatch of same event should be ignored
       // (This tests the internal idempotency logic)

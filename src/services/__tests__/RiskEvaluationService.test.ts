@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RiskEvaluationService } from '../RiskEvaluationService.js';
-import { RiskEvaluationRepository } from '../../repositories/interfaces/RiskEvaluationRepository.js';
-import { RiskEvaluation } from '../../models/RiskEvaluation.js';
+import type { RiskEvaluationRepository } from '../../repositories/interfaces/RiskEvaluationRepository.js';
+import type { RiskEvaluation } from '../../models/RiskEvaluation.js';
 
 describe('RiskEvaluationService', () => {
   let service: RiskEvaluationService;

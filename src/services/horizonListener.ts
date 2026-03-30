@@ -99,7 +99,7 @@ const metrics: HorizonListenerMetrics = {
 };
 
 /** Retry state for exponential backoff. */
-let retryState = {
+const retryState = {
     attempts: 0,
     lastErrorTime: 0,
     nextRetryTime: 0,
@@ -445,8 +445,6 @@ async function handleCursorGap(config: HorizonListenerConfig, gapStart: string):
 }
 
 export async function pollOnce(config: HorizonListenerConfig): Promise<void> {
-    const startTime = Date.now();
-    
     try {
         // Check if we're in a backoff period
         if (retryState.nextRetryTime > Date.now()) {
