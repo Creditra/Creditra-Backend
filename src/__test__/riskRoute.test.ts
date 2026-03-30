@@ -31,9 +31,9 @@ const VALID_ADDRESS =
   "GCKFBEIYV2U22IO2BJ4KVJOIP7XPWQGZBW3JXDC55CYIXB5NAXMCEKJA";
 const MOCK_RESULT = {
   walletAddress: VALID_ADDRESS,
-  score: null,
-  riskLevel: null,
-  message: "Risk evaluation placeholder - engine not yet integrated.",
+  score: 65,
+  riskLevel: "medium" as const,
+  message: "Risk evaluation completed via 'static' provider.",
   evaluatedAt: "2026-02-26T00:00:00.000Z",
 };
 
