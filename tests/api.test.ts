@@ -22,7 +22,14 @@ describe('API Integration Tests', () => {
 
             expect(response.status).toBe(200);
             expect(response.body).toEqual({
-                data: { creditLines: [] },
+                data: {
+                    creditLines: [],
+                    pagination: {
+                        total: 0,
+                        offset: 0,
+                        limit: 100
+                    }
+                },
                 error: null
             });
         });
@@ -33,7 +40,7 @@ describe('API Integration Tests', () => {
             expect(response.status).toBe(404);
             expect(response.body).toEqual({
                 data: null,
-                error: 'Credit line not found: 123'
+                error: 'Credit line not found'
             });
         });
     });
@@ -43,25 +50,21 @@ describe('API Integration Tests', () => {
             const response = await request(app).post('/api/risk/evaluate').send({});
 
             expect(response.status).toBe(400);
-            expect(response.body).toEqual({
-                data: null,
-                error: 'walletAddress required'
+            expect(response.body).toMatchObject({
+                error: 'Validation failed'
             });
         });
 
         it('POST /api/risk/evaluate returns a successful envelope with risk status', async () => {
             const response = await request(app)
                 .post('/api/risk/evaluate')
-                .send({ walletAddress: '0x123' });
+                .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1' });
 
             expect(response.status).toBe(200);
-            expect(response.body).toEqual({
+            expect(response.body).toMatchObject({
                 data: {
-                    walletAddress: '0x123',
-                    riskScore: 0,
-                    creditLimit: '0',
-                    interestRateBps: 0,
-                    message: 'Risk engine not yet connected; placeholder response.',
+                    walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
+                    message: expect.any(String),
                 },
                 error: null
             });

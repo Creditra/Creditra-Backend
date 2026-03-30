@@ -1,8 +1,11 @@
 import { Router, type Request, type Response } from 'express';
-import { validateBody, validateQuery } from '../middleware/validate.js';
+import { validateBody, validateQuery, validateParams } from '../middleware/validate.js';
 import {
   createCreditLineSchema,
   transactionHistoryQuerySchema,
+  walletAddressParamSchema,
+  drawSchema,
+  repaySchema,
 } from '../schemas/index.js';
 import { Container } from '../container/Container.js';
 import { createApiKeyMiddleware } from '../middleware/auth.js';
@@ -37,9 +40,6 @@ function handleServiceError(err: unknown, res: Response): void {
 creditRouter.get('/lines', async (req, res) => {
   try {
     const { offset, limit } = req.query;
-    const offsetNum = offset ? parseInt(offset as string) : undefined;
-    const limitNum = limit ? parseInt(limit as string) : undefined;
-
     const offsetNum =
       typeof offset === 'string' ? Number.parseInt(offset, 10) : undefined;
     const limitNum =
@@ -63,7 +63,7 @@ creditRouter.get('/lines', async (req, res) => {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to fetch credit lines';
-    res.status(400).json({ error: message });
+    return fail(res, message, 400);
   }
 });
 
@@ -72,34 +72,35 @@ creditRouter.get('/lines/:id', async (req, res) => {
     const creditLine = await container.creditLineService.getCreditLine(req.params.id);
 
     if (!creditLine) {
-      return res.status(404).json({ error: 'Credit line not found', id: req.params.id });
+      return fail(res, 'Credit line not found', 404);
     }
 
-    return res.json(creditLine);
+    return ok(res, creditLine);
   } catch {
-    return res.status(500).json({ error: 'Failed to fetch credit line' });
+    return fail(res, 'Internal server error', 500);
   }
 });
 
 creditRouter.post('/lines', validateBody(createCreditLineSchema), async (req, res) => {
   try {
-    const { walletAddress, requestedLimit } = req.body ?? {};
+    const { walletAddress, creditLimit, requestedLimit, interestRateBps } = req.body;
+    const finalLimit = creditLimit || requestedLimit;
 
-    if (!walletAddress || !requestedLimit) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!walletAddress || !finalLimit) {
+      return fail(res, 'Missing required fields: walletAddress and either creditLimit or requestedLimit', 400);
     }
 
     const creditLine = await container.creditLineService.createCreditLine({
       walletAddress,
-      creditLimit: requestedLimit,
-      interestRateBps: 0,
+      creditLimit: finalLimit,
+      interestRateBps: interestRateBps ?? 0,
     });
 
-    return res.status(201).json(creditLine);
+    return ok(res, creditLine, 201);
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : 'Failed to create credit line';
-    return res.status(400).json({ error: message });
+      error instanceof Error ? error.message : 'Bad request';
+    return fail(res, message, 400);
   }
 });
 
@@ -114,14 +115,14 @@ creditRouter.put('/lines/:id', async (req, res) => {
     });
 
     if (!creditLine) {
-      return res.status(404).json({ error: 'Credit line not found', id: req.params.id });
+      return fail(res, 'Credit line not found', 404);
     }
 
-    res.json(creditLine);
+    return ok(res, creditLine);
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : 'Failed to update credit line';
-    return res.status(400).json({ error: message });
+      error instanceof Error ? error.message : 'Bad request';
+    return fail(res, message, 400);
   }
 });
 
@@ -130,26 +131,27 @@ creditRouter.delete('/lines/:id', async (req, res) => {
     const deleted = await container.creditLineService.deleteCreditLine(req.params.id);
 
     if (!deleted) {
-      return res.status(404).json({ error: 'Credit line not found', id: req.params.id });
+      return fail(res, 'Credit line not found', 404);
     }
 
     return res.status(204).send();
   } catch {
-    return res.status(500).json({ error: 'Failed to delete credit line' });
+    return fail(res, 'Internal server error', 500);
   }
 });
 
-creditRouter.get('/wallet/:walletAddress/lines', async (req, res) => {
+creditRouter.get(
+  '/wallet/:walletAddress/lines',
+  validateParams(walletAddressParamSchema),
+  async (req, res) => {
   try {
     const creditLines = await container.creditLineService.getCreditLinesByWallet(
       req.params.walletAddress,
     );
 
-    res.json({ creditLines });
+    return ok(res, { creditLines });
   } catch {
-    res.status(500).json({
-      error: 'Failed to fetch credit lines for wallet',
-    });
+    return fail(res, 'Internal server error', 500);
   }
 });
 
@@ -211,60 +213,35 @@ creditRouter.get(
   },
 );
 
-creditRouter.get("/lines/:id/transactions", validateQuery(transactionHistoryQuerySchema), async (req: Request, res: Response): Promise<void> => {
-  const id = req.params["id"] as string;
-  const { type, from, to, page: pageParam, limit: limitParam } = req.query;
+creditRouter.post(
+  '/lines/:id/draw',
+  validateBody(drawSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { borrowerId, amount } = req.body;
+      const creditLine = await container.creditLineService.draw(req.params.id, borrowerId, amount);
+      ok(res, { creditLine, amount });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to draw from credit line';
+      const status = message === 'Unauthorized' ? 403 : 400;
+      fail(res, message, status);
+    }
+  },
+);
 
-  if (type !== undefined && !VALID_TRANSACTION_TYPES.includes(type as TransactionType)) {
-    fail(
-      res,
-      `Invalid type filter. Must be one of: ${VALID_TRANSACTION_TYPES.join(", ")}.`,
-      400,
-    );
-    return;
-  }
-
-  if (from !== undefined && isNaN(new Date(from as string).getTime())) {
-    fail(res, "Invalid 'from' date. Must be a valid ISO 8601 date.", 400);
-    return;
-  }
-
-  if (to !== undefined && isNaN(new Date(to as string).getTime())) {
-    fail(res, "Invalid 'to' date. Must be a valid ISO 8601 date.", 400);
-    return;
-  }
-
-  const page = pageParam !== undefined ? parseInt(pageParam as string, 10) : 1;
-  const limit = limitParam !== undefined ? parseInt(limitParam as string, 10) : 20;
-
-  if (isNaN(page) || page < 1) {
-    fail(res, "Invalid 'page'. Must be a positive integer.", 400);
-    return;
-  }
-
-  if (isNaN(limit) || limit < 1 || limit > 100) {
-    fail(res, "Invalid 'limit'. Must be between 1 and 100.", 400);
-    return;
-  }
-
-  try {
-    // Note: getTransactions is imported from creditService but uses a functional style.
-    // In a real refactor we might move this to the container/service as well.
-    const { getTransactions: serviceGetTransactions } = await import("../services/creditService.js");
-    const result = serviceGetTransactions(
-      id,
-      {
-        type: type as TransactionType | undefined,
-        from: from as string | undefined,
-        to: to as string | undefined,
-      },
-      { page, limit },
-    );
-    ok(res, result);
-  } catch (err) {
-    handleServiceError(err, res);
-  }
-});
+creditRouter.post(
+  '/lines/:id/repay',
+  validateBody(repaySchema),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { walletAddress, amount } = req.body;
+      const creditLine = await container.creditLineService.repay(req.params.id, walletAddress, amount);
+      ok(res, { creditLine, amount });
+    } catch (err) {
+      fail(res, err instanceof Error ? err.message : 'Failed to repay credit line', 400);
+    }
+  },
+);
 
 creditRouter.post(
   '/lines/:id/suspend',

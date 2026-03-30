@@ -16,7 +16,7 @@ import {
 /* ------------------------------------------------------------------ */
 describe('riskEvaluateSchema', () => {
   it('accepts a valid walletAddress', () => {
-    const result = riskEvaluateSchema.safeParse({ walletAddress: 'GABCDEF' });
+    const result = riskEvaluateSchema.safeParse({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1' });
     expect(result.success).toBe(true);
   });
 
@@ -41,12 +41,12 @@ describe('riskEvaluateSchema', () => {
   });
 
   it('accepts optional forceRefresh', () => {
-    const result = riskEvaluateSchema.safeParse({ walletAddress: 'GABCDEF', forceRefresh: true });
+    const result = riskEvaluateSchema.safeParse({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1', forceRefresh: true });
     expect(result.success).toBe(true);
   });
 
   it('rejects unknown keys', () => {
-    const result = riskEvaluateSchema.safeParse({ walletAddress: 'GABCDEF', extra: 'nope' });
+    const result = riskEvaluateSchema.safeParse({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1', extra: 'nope' });
     expect(result.success).toBe(false);
   });
 });
@@ -57,7 +57,7 @@ describe('riskEvaluateSchema', () => {
 describe('createCreditLineSchema', () => {
   it('accepts valid body', () => {
     const result = createCreditLineSchema.safeParse({
-      walletAddress: 'GABCDEF',
+      walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
       requestedLimit: '1000',
     });
     expect(result.success).toBe(true);
@@ -65,7 +65,7 @@ describe('createCreditLineSchema', () => {
 
   it('accepts decimal requestedLimit', () => {
     const result = createCreditLineSchema.safeParse({
-      walletAddress: 'GABCDEF',
+      walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
       requestedLimit: '1000.50',
     });
     expect(result.success).toBe(true);
@@ -77,13 +77,13 @@ describe('createCreditLineSchema', () => {
   });
 
   it('rejects missing requestedLimit', () => {
-    const result = createCreditLineSchema.safeParse({ walletAddress: 'GABCDEF' });
+    const result = createCreditLineSchema.safeParse({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1' });
     expect(result.success).toBe(false);
   });
 
   it('rejects non-numeric requestedLimit', () => {
     const result = createCreditLineSchema.safeParse({
-      walletAddress: 'GABCDEF',
+      walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
       requestedLimit: 'abc',
     });
     expect(result.success).toBe(false);
@@ -91,7 +91,7 @@ describe('createCreditLineSchema', () => {
 
   it('rejects negative requestedLimit', () => {
     const result = createCreditLineSchema.safeParse({
-      walletAddress: 'GABCDEF',
+      walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
       requestedLimit: '-100',
     });
     expect(result.success).toBe(false);
@@ -99,7 +99,7 @@ describe('createCreditLineSchema', () => {
 
   it('rejects unknown keys', () => {
     const result = createCreditLineSchema.safeParse({
-      walletAddress: 'GABCDEF',
+      walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
       requestedLimit: '100',
       extra: 'nope',
     });

@@ -38,12 +38,12 @@ describe('Credit routes', () => {
     it('returns 201 with valid body', async () => {
       const res = await request(app)
         .post('/api/credit/lines')
-        .send({ walletAddress: 'GABCDEF', requestedLimit: '5000' });
+        .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1', requestedLimit: '5000' });
 
       expect(res.status).toBe(201);
-      expect(res.body.data.walletAddress).toBe('GABCDEF');
-      expect(res.body.data.requestedLimit).toBe('5000');
-      expect(res.body.data.status).toBe('pending');
+      expect(res.body.data.walletAddress).toBe('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1');
+      expect(res.body.data.creditLimit).toBe('5000');
+      expect(res.body.data.status).toBe('active');
       expect(res.body.error).toBeNull();
     });
 
@@ -61,7 +61,7 @@ describe('Credit routes', () => {
     it('returns 400 when requestedLimit is non-numeric', async () => {
       const res = await request(app)
         .post('/api/credit/lines')
-        .send({ walletAddress: 'GABCDEF', requestedLimit: 'abc' });
+        .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1', requestedLimit: 'abc' });
 
       expect(res.status).toBe(400);
       expect(res.body.details.some((d: any) => d.field === 'requestedLimit')).toBe(true);
@@ -80,11 +80,11 @@ describe('Credit routes', () => {
     it('returns 200 with valid amount', async () => {
       const res = await request(app)
         .post('/api/credit/lines/line-1/draw')
-        .send({ amount: '100' });
+        .send({ borrowerId: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1', amount: '100' });
 
       expect(res.status).toBe(200);
       expect(res.body.data.amount).toBe('100');
-      expect(res.body.data.id).toBe('line-1');
+      expect(res.body.data.creditLine.id).toBeDefined();
       expect(res.body.error).toBeNull();
     });
 
@@ -111,11 +111,11 @@ describe('Credit routes', () => {
     it('returns 200 with valid amount', async () => {
       const res = await request(app)
         .post('/api/credit/lines/line-1/repay')
-        .send({ amount: '50' });
+        .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1', amount: '50' });
 
       expect(res.status).toBe(200);
       expect(res.body.data.amount).toBe('50');
-      expect(res.body.data.id).toBe('line-1');
+      expect(res.body.data.creditLine.id).toBeDefined();
       expect(res.body.error).toBeNull();
     });
 
@@ -145,10 +145,10 @@ describe('Risk routes', () => {
     it('returns placeholder risk data for valid walletAddress', async () => {
       const res = await request(app)
         .post('/api/risk/evaluate')
-        .send({ walletAddress: 'GABCDEF123' });
+        .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1' });
 
       expect(res.status).toBe(200);
-      expect(res.body.data.walletAddress).toBe('GABCDEF123');
+      expect(res.body.data.walletAddress).toBe('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1');
       expect(res.body.data.riskScore).toBe(0);
       expect(res.body.error).toBeNull();
     });

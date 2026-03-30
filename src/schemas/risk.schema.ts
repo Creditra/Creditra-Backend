@@ -1,10 +1,8 @@
 import { z } from 'zod';
+import { walletAddressSchema } from './common.schema.js';
 
 export const riskEvaluateSchema = z.object({
-  walletAddress: z
-    .string()
-    .min(1, 'walletAddress is required')
-    .max(256, 'walletAddress must be at most 256 characters'),
+  walletAddress: walletAddressSchema,
   forceRefresh: z.boolean().optional(),
 }).strict();
 

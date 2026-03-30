@@ -17,8 +17,11 @@ describe('GET /health', () => {
           const res = await request(app).get('/health');
 
           expect(res.body).toEqual({
-               status: 'ok',
-               service: 'creditra-backend',
+               data: {
+                    status: 'ok',
+                    service: 'creditra-backend',
+               },
+               error: null
           });
      });
 

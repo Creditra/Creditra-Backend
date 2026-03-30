@@ -278,6 +278,37 @@ paths:
               example:
                 data: null
                 error: 'Credit line "line-abc" not found.'
+  /api/credit/wallet/{walletAddress}/lines:
+    get:
+      tags: [Credit]
+      operationId: getCreditLinesByWallet
+      summary: Get all credit lines for a wallet
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^G[A-Z2-7]{55}$'
+          description: Stellar public key
+      responses:
+        "200":
+          description: Array of credit lines
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  creditLines:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CreditLine"
+        "400":
+          description: Invalid wallet address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/risk/evaluate:
     post:
@@ -294,7 +325,7 @@ paths:
             schema:
               $ref: "#/components/schemas/RiskEvaluateRequest"
             example:
-              walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
+              walletAddress: "GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2"
               forceRefresh: false
       responses:
         "200":
@@ -319,7 +350,7 @@ paths:
                 $ref: "#/components/schemas/RiskEvaluateApiResponse"
               example:
                 data:
-                  walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
+                  walletAddress: "GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2"
                   riskScore: 72
                   creditLimit: "720"
                   interestRateBps: 640
@@ -434,6 +465,87 @@ paths:
                 error: Risk evaluation not found
                 id: "abc123"
 
+  /api/risk/wallet/{walletAddress}/latest:
+    get:
+      tags: [Risk]
+      operationId: getLatestRiskEvaluation
+      summary: Get the latest risk evaluation for a wallet
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^G[A-Z2-7]{55}$'
+          description: Stellar public key
+      responses:
+        "200":
+          description: Risk evaluation found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskEvaluateResponse"
+        "400":
+          description: Invalid wallet address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No risk evaluation found for wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/risk/wallet/{walletAddress}/history:
+    get:
+      tags: [Risk]
+      operationId: getRiskEvaluationHistory
+      summary: Get risk evaluation history for a wallet
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^G[A-Z2-7]{55}$'
+          description: Stellar public key
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: Pagination offset
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Pagination limit
+      responses:
+        "200":
+          description: Array of risk evaluations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  evaluations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RiskEvaluation"
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
 components:
   schemas:
     HealthResponse:
@@ -483,8 +595,9 @@ components:
       properties:
         walletAddress:
           type: string
-          description: EVM-compatible wallet address
-          example: "0xAbC1234567890abcdef1234567890abcdef123456"
+          description: Stellar public key (G...)
+          pattern: '^G[A-Z2-7]{55}$'
+          example: "GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2"
         forceRefresh:
           type: boolean
           description: Optional hint to bypass cache and recalculate risk

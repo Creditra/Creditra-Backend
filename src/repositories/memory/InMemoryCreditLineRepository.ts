@@ -14,6 +14,7 @@ export class InMemoryCreditLineRepository implements CreditLineRepository {
       walletAddress: request.walletAddress,
       creditLimit: request.creditLimit,
       availableCredit: request.creditLimit, // Initially full credit available
+      utilized: '0',
       interestRateBps: request.interestRateBps,
       status: CreditLineStatus.ACTIVE,
       createdAt: now,
@@ -50,6 +51,12 @@ export class InMemoryCreditLineRepository implements CreditLineRepository {
       updatedAt: new Date()
     };
 
+    // Keep availableCredit in sync if utilized changes
+    if (request.utilized !== undefined) {
+      const limit = parseFloat(updated.creditLimit);
+      const utilized = parseFloat(request.utilized);
+      updated.availableCredit = (limit - utilized).toString();
+    }
     // If credit limit changed, adjust available credit proportionally
     if (request.creditLimit && request.creditLimit !== existing.creditLimit) {
       const oldLimit = parseFloat(existing.creditLimit);

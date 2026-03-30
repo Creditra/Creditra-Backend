@@ -30,7 +30,7 @@ describe('RiskEvaluationService', () => {
     });
 
     it('should return cached evaluation when valid', async () => {
-      const walletAddress = 'wallet123';
+      const walletAddress = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1';
       const request = { walletAddress };
 
       const cachedEvaluation: RiskEvaluation = {
@@ -57,7 +57,7 @@ describe('RiskEvaluationService', () => {
     });
 
     it('should perform new evaluation when no valid cache', async () => {
-      const walletAddress = 'wallet123';
+      const walletAddress = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1';
       const request = { walletAddress };
 
       vi.mocked(mockRepository.isValid).mockResolvedValue(false);
@@ -83,7 +83,7 @@ describe('RiskEvaluationService', () => {
     });
 
     it('should force new evaluation when forceRefresh is true', async () => {
-      const walletAddress = 'wallet123';
+      const walletAddress = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1';
       const request = { walletAddress, forceRefresh: true };
 
       vi.mocked(mockRepository.save).mockResolvedValue({
@@ -110,7 +110,7 @@ describe('RiskEvaluationService', () => {
     it('should return evaluation when found', async () => {
       const evaluation: RiskEvaluation = {
         id: 'eval-123',
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         riskScore: 75,
         creditLimit: '1000.00',
         interestRateBps: 500,
@@ -140,7 +140,7 @@ describe('RiskEvaluationService', () => {
     it('should return latest evaluation for wallet', async () => {
       const evaluation: RiskEvaluation = {
         id: 'eval-123',
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         riskScore: 75,
         creditLimit: '1000.00',
         interestRateBps: 500,
@@ -151,9 +151,9 @@ describe('RiskEvaluationService', () => {
 
       vi.mocked(mockRepository.findLatestByWalletAddress).mockResolvedValue(evaluation);
 
-      const result = await service.getLatestRiskEvaluation('wallet123');
+      const result = await service.getLatestRiskEvaluation('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1');
 
-      expect(mockRepository.findLatestByWalletAddress).toHaveBeenCalledWith('wallet123');
+      expect(mockRepository.findLatestByWalletAddress).toHaveBeenCalledWith('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1');
       expect(result).toEqual(evaluation);
     });
   });
@@ -163,7 +163,7 @@ describe('RiskEvaluationService', () => {
       const evaluations: RiskEvaluation[] = [
         {
           id: 'eval-123',
-          walletAddress: 'wallet123',
+          walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
           riskScore: 75,
           creditLimit: '1000.00',
           interestRateBps: 500,
@@ -175,9 +175,9 @@ describe('RiskEvaluationService', () => {
 
       vi.mocked(mockRepository.findByWalletAddress).mockResolvedValue(evaluations);
 
-      const result = await service.getRiskEvaluationHistory('wallet123', 0, 10);
+      const result = await service.getRiskEvaluationHistory('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1', 0, 10);
 
-      expect(mockRepository.findByWalletAddress).toHaveBeenCalledWith('wallet123', 0, 10);
+      expect(mockRepository.findByWalletAddress).toHaveBeenCalledWith('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1', 0, 10);
       expect(result).toEqual(evaluations);
     });
   });
