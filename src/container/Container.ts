@@ -6,6 +6,7 @@ import { InMemoryRiskEvaluationRepository } from "../repositories/memory/InMemor
 import { InMemoryTransactionRepository } from "../repositories/memory/InMemoryTransactionRepository.js";
 import { CreditLineService } from "../services/CreditLineService.js";
 import { RiskEvaluationService } from "../services/RiskEvaluationService.js";
+import { createRiskProvider } from "../services/providers/providerFactory.js";
 
 export class Container {
   private static instance: Container;
@@ -29,6 +30,7 @@ export class Container {
     this._creditLineService = new CreditLineService(this._creditLineRepository);
     this._riskEvaluationService = new RiskEvaluationService(
       this._riskEvaluationRepository,
+      createRiskProvider(),
     );
   }
 
@@ -78,6 +80,7 @@ export class Container {
       this._riskEvaluationRepository = repositories.riskEvaluationRepository;
       this._riskEvaluationService = new RiskEvaluationService(
         this._riskEvaluationRepository,
+        createRiskProvider(),
       );
     }
 
