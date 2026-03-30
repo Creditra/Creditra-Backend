@@ -92,8 +92,11 @@ describe('ReconciliationWorker', () => {
       await vi.advanceTimersByTimeAsync(1000);
       expect(jobQueue.size()).toBe(1);
       
+      // Process the first job before advancing again
+      await jobQueue.drain();
+      
       await vi.advanceTimersByTimeAsync(1000);
-      expect(jobQueue.size()).toBe(2);
+      expect(jobQueue.size()).toBe(1);
     });
 
     it('is idempotent when called multiple times', () => {
@@ -170,11 +173,18 @@ describe('ReconciliationWorker', () => {
       mockClient.setRecords([]); // Missing on chain - critical
 
       worker.start({ runImmediately: true });
+      
+      // Process initial attempt
+      await jobQueue.drain();
+      
+      // Advance time for retry backoff and process retries
+      await vi.advanceTimersByTimeAsync(500);
+      await jobQueue.drain();
+      await vi.advanceTimersByTimeAsync(500);
       await jobQueue.drain();
 
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('ALERT'),
-        expect.anything()
+        '[ReconciliationWorker] ALERT: Reconciliation found 1 mismatches (1 critical, 0 warnings)'
       );
       expect(jobQueue.getFailedJobs()).toHaveLength(1);
     });
@@ -207,15 +217,16 @@ describe('ReconciliationWorker', () => {
       await jobQueue.drain();
 
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('ALERT'),
-        expect.anything()
+        '[ReconciliationWorker] ALERT: Reconciliation found 1 mismatches (0 critical, 1 warnings)'
       );
       expect(jobQueue.getFailedJobs()).toHaveLength(0); // Should succeed
     });
 
     it('retries failed jobs according to maxAttempts', async () => {
+      let attemptCount = 0;
       const errorClient = {
         async fetchAllCreditRecords(): Promise<OnChainCreditRecord[]> {
+          attemptCount++;
           throw new Error('RPC timeout');
         },
       };
@@ -229,8 +240,14 @@ describe('ReconciliationWorker', () => {
       const errorWorker = new ReconciliationWorker(errorService, jobQueue);
       errorWorker.start({ runImmediately: true });
       
+      // Process all attempts with retry backoff
+      await jobQueue.drain();
+      await vi.advanceTimersByTimeAsync(500);
+      await jobQueue.drain();
+      await vi.advanceTimersByTimeAsync(500);
       await jobQueue.drain();
 
+      expect(attemptCount).toBe(3);
       expect(jobQueue.getFailedJobs()).toHaveLength(1);
       expect(jobQueue.getFailedJobs()[0]?.attempts).toBe(3);
     });

@@ -10,18 +10,6 @@ import { ReconciliationService } from "../services/reconciliationService.js";
 import { ReconciliationWorker } from "../services/reconciliationWorker.js";
 import { MockSorobanClient, resolveSorobanConfig } from "../services/sorobanClient.js";
 import { defaultJobQueue } from "../services/jobQueue.js";
-import { ReconciliationService } from "../services/reconciliationService.js";
-import { ReconciliationWorker } from "../services/reconciliationWorker.js";
-import { MockSorobanClient, resolveSorobanConfig } from "../services/sorobanClient.js";
-import { defaultJobQueue } from "../services/jobQueue.js";
-
-import { type RiskEvaluationRepository } from "../repositories/interfaces/RiskEvaluationRepository.js";
-import { type TransactionRepository } from "../repositories/interfaces/TransactionRepository.js";
-import { InMemoryCreditLineRepository } from "../repositories/memory/InMemoryCreditLineRepository.js";
-import { InMemoryRiskEvaluationRepository } from "../repositories/memory/InMemoryRiskEvaluationRepository.js";
-import { InMemoryTransactionRepository } from "../repositories/memory/InMemoryTransactionRepository.js";
-import { CreditLineService } from "../services/CreditLineService.js";
-import { RiskEvaluationService } from "../services/RiskEvaluationService.js";
 
 export class Container {
   private static instance: Container;
