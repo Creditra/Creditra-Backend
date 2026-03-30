@@ -159,7 +159,7 @@ export class InMemoryJobQueue implements JobQueue {
     type: string,
     handler: JobHandler<Data>,
   ): void {
-    this.handlers.set(type, handler as JobHandler<any>);
+    this.handlers.set(type, handler as JobHandler<unknown>);
   }
 
   start(): void {
@@ -225,8 +225,8 @@ export class InMemoryJobQueue implements JobQueue {
     if (this.processing) return false;
 
     const now = Date.now();
-    const ready: InternalJob<any>[] = [];
-    const waiting: InternalJob<any>[] = [];
+    const ready: InternalJob<unknown>[] = [];
+    const waiting: InternalJob<unknown>[] = [];
 
     for (const job of this.pending) {
       (job.nextRunAt <= now ? ready : waiting).push(job);

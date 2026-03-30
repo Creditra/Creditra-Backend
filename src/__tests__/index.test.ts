@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import request from 'supertest';
+import type { Server } from 'http';
 
 // We need to test the actual index.ts file, so let's create a separate test
 describe('Main Application', () => {
-  let server: any;
+  let server: Server | undefined;
 
   afterEach(() => {
     if (server) {

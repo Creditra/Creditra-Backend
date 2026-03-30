@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { DbClient } from './client.js';
 import {
   ensureSchemaMigrations,
@@ -82,7 +82,7 @@ describe('applyMigration', () => {
     await applyMigration(client, migrationsDir, '001_initial_schema.sql');
     expect(client.query).toHaveBeenCalled();
     const insertCall = vi.mocked(client.query).mock.calls.find(
-      (c) => typeof c[0] === 'string' && c[0].includes('INSERT INTO schema_migrations')
+      (c: any[]) => typeof c[0] === 'string' && c[0].includes('INSERT INTO schema_migrations')
     );
     expect(insertCall).toBeDefined();
     expect(insertCall![1]).toEqual(['001_initial_schema']);

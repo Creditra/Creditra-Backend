@@ -99,7 +99,7 @@ const metrics: HorizonListenerMetrics = {
 };
 
 /** Retry state for exponential backoff. */
-let retryState = {
+const retryState = {
     attempts: 0,
     lastErrorTime: 0,
     nextRetryTime: 0,
@@ -206,31 +206,31 @@ export function resetMetrics(): void {
 // Error handling and classification
 // ---------------------------------------------------------------------------
 
-function classifyError(error: any): HorizonError {
+function classifyError(error: unknown): HorizonError {
     const horizonError = error as HorizonError;
     
     // Rate limit errors (HTTP 429)
-    if (error.status === 429 || horizonError.code === 'RATE_LIMIT_EXCEEDED') {
+    if (horizonError.status === 429 || horizonError.code === 'RATE_LIMIT_EXCEEDED') {
         horizonError.isRateLimit = true;
         horizonError.isTransient = true;
         return horizonError;
     }
     
     // Cursor gap errors
-    if (horizonError.code === 'CURSOR_GAP' || error.message?.includes('cursor gap')) {
+    if (horizonError.code === 'CURSOR_GAP' || (error instanceof Error && error.message?.includes('cursor gap'))) {
         horizonError.isCursorGap = true;
         horizonError.isTransient = true;
         return horizonError;
     }
     
     // Transient network errors (5xx, timeouts, connection issues)
-    if (error.status >= 500 || error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET') {
+    if ((horizonError.status !== undefined && horizonError.status >= 500) || horizonError.code === 'ETIMEDOUT' || horizonError.code === 'ECONNRESET') {
         horizonError.isTransient = true;
         return horizonError;
     }
     
     // Client errors (4xx except 429) are not transient
-    if (error.status >= 400 && error.status < 500 && error.status !== 429) {
+    if (horizonError.status !== undefined && horizonError.status >= 400 && horizonError.status < 500 && horizonError.status !== 429) {
         horizonError.isTransient = false;
         return horizonError;
     }
@@ -445,8 +445,6 @@ async function handleCursorGap(config: HorizonListenerConfig, gapStart: string):
 }
 
 export async function pollOnce(config: HorizonListenerConfig): Promise<void> {
-    const startTime = Date.now();
-    
     try {
         // Check if we're in a backoff period
         if (retryState.nextRetryTime > Date.now()) {

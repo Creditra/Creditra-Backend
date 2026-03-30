@@ -15,8 +15,9 @@ interface InvokeArgs {
 }
 
 async function invokeRoute(args: InvokeArgs): Promise<{ status: number; body: unknown }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const layer = riskRouter.stack.find(
-    (entry: any) =>
+    (entry: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
       entry.route?.path === args.path &&
       entry.route?.methods?.[args.method] === true,
   );
@@ -25,8 +26,9 @@ async function invokeRoute(args: InvokeArgs): Promise<{ status: number; body: un
     throw new Error(`Route not found: ${args.method.toUpperCase()} ${args.path}`);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handlers: Array<(req: Request, res: Response, next: NextFunction) => unknown> =
-    layer.route.stack.map((entry: any) => entry.handle);
+    layer.route!.stack.map((entry: any) => entry.handle);
 
   const req = {
     body: args.body ?? {},
@@ -129,7 +131,7 @@ describe('Risk Routes', () => {
         body: { walletAddress: 'wallet123' },
       });
 
-      expect((response.body as any).data.message).toBe('Using cached risk evaluation');
+      expect((response.body as { data: { message: string } }).data.message).toBe('Using cached risk evaluation');
     });
 
     it('forces refresh when requested', async () => {
@@ -145,7 +147,7 @@ describe('Risk Routes', () => {
         body: { walletAddress: 'wallet123', forceRefresh: true },
       });
 
-      expect((response.body as any).data.message).toBe('New risk evaluation completed');
+      expect((response.body as { data: { message: string } }).data.message).toBe('New risk evaluation completed');
     });
 
     it('rejects missing walletAddress via schema validation', async () => {
@@ -176,6 +178,7 @@ describe('Risk Routes', () => {
 
     it('returns 500 when service throws', async () => {
       const originalService = container.riskEvaluationService;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = {
         ...originalService,
         evaluateRisk: async () => {
@@ -192,6 +195,7 @@ describe('Risk Routes', () => {
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ data: null, error: 'Internal server error' });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = originalService;
     });
   });
@@ -208,7 +212,7 @@ describe('Risk Routes', () => {
       });
 
       expect(response.status).toBe(200);
-      expect((response.body as any).data.id).toBe(latest!.id);
+      expect((response.body as { data: { id: string } }).data.id).toBe(latest!.id);
     });
 
     it('returns 404 when evaluation is missing', async () => {
@@ -224,6 +228,7 @@ describe('Risk Routes', () => {
 
     it('returns 500 when evaluation fetch throws', async () => {
       const originalService = container.riskEvaluationService;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = {
         ...originalService,
         getRiskEvaluation: async () => {
@@ -239,6 +244,7 @@ describe('Risk Routes', () => {
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ data: null, error: 'Failed to fetch risk evaluation' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = originalService;
     });
 
@@ -252,7 +258,7 @@ describe('Risk Routes', () => {
       });
 
       expect(response.status).toBe(200);
-      expect((response.body as any).data.walletAddress).toBe('wallet123');
+      expect((response.body as { data: { walletAddress: string } }).data.walletAddress).toBe('wallet123');
     });
 
     it('returns 404 for missing latest evaluation', async () => {
@@ -268,6 +274,7 @@ describe('Risk Routes', () => {
 
     it('returns 500 when latest evaluation fetch throws', async () => {
       const originalService = container.riskEvaluationService;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = {
         ...originalService,
         getLatestRiskEvaluation: async () => {
@@ -283,6 +290,7 @@ describe('Risk Routes', () => {
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ data: null, error: 'Failed to fetch latest risk evaluation' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = originalService;
     });
 
@@ -299,7 +307,7 @@ describe('Risk Routes', () => {
       });
 
       expect(response.status).toBe(200);
-      expect((response.body as any).data.evaluations).toHaveLength(1);
+      expect((response.body as { data: { evaluations: unknown[] } }).data.evaluations).toHaveLength(1);
     });
 
     it('rejects invalid query types for history', async () => {
@@ -316,6 +324,7 @@ describe('Risk Routes', () => {
 
     it('returns 500 when history fetch throws', async () => {
       const originalService = container.riskEvaluationService;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = {
         ...originalService,
         getRiskEvaluationHistory: async () => {
@@ -331,6 +340,7 @@ describe('Risk Routes', () => {
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ data: null, error: 'Failed to fetch risk evaluation history' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = originalService;
     });
   });

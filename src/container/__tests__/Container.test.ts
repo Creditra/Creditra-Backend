@@ -9,7 +9,8 @@ describe('Container', () => {
 
   beforeEach(() => {
     // Reset singleton for each test
-    Container['instance'] = undefined as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (Container as any).instance = undefined;
     container = Container.getInstance();
   });
 

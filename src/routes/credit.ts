@@ -8,15 +8,7 @@ import { Container } from '../container/Container.js';
 import { createApiKeyMiddleware } from '../middleware/auth.js';
 import { loadApiKeys } from '../config/apiKeys.js';
 import { ok, fail } from '../utils/response.js';
-import {
-  CreditLineNotFoundError,
-  TransactionType,
-} from "../services/creditService.js";
-import { loadRateLimitConfig } from "../config/rateLimit.js";
-import {
-  createRateLimitMiddleware,
-  createIpKeyGenerator,
-} from "../middleware/rateLimit.js";
+import { CreditLineNotFoundError, TransactionType } from '../services/creditService.js';
 
 export const creditRouter = Router();
 const container = Container.getInstance();
@@ -60,7 +52,7 @@ creditRouter.get('/lines', async (req, res) => {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to fetch credit lines';
-    res.status(400).json({ error: message });
+    return res.status(400).json({ error: message });
   }
 });
 
@@ -114,7 +106,7 @@ creditRouter.put('/lines/:id', async (req, res) => {
       return res.status(404).json({ error: 'Credit line not found', id: req.params.id });
     }
 
-    res.json(creditLine);
+    return res.json(creditLine);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to update credit line';
