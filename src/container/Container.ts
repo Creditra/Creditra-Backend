@@ -4,32 +4,53 @@ import { type TransactionRepository } from "../repositories/interfaces/Transacti
 import { InMemoryCreditLineRepository } from "../repositories/memory/InMemoryCreditLineRepository.js";
 import { InMemoryRiskEvaluationRepository } from "../repositories/memory/InMemoryRiskEvaluationRepository.js";
 import { InMemoryTransactionRepository } from "../repositories/memory/InMemoryTransactionRepository.js";
+import { PostgresCreditLineRepository } from "../repositories/postgres/PostgresCreditLineRepository.js";
 import { CreditLineService } from "../services/CreditLineService.js";
 import { RiskEvaluationService } from "../services/RiskEvaluationService.js";
+import { getConnection, type DbClient } from "../db/client.js";
 
 export class Container {
   private static instance: Container;
 
+  // Database client
+  private _dbClient?: DbClient;
+
   // Repositories
-  private _creditLineRepository: CreditLineRepository;
-  private _riskEvaluationRepository: RiskEvaluationRepository;
-  private _transactionRepository: TransactionRepository;
+  private _creditLineRepository!: CreditLineRepository;
+  private _riskEvaluationRepository!: RiskEvaluationRepository;
+  private _transactionRepository!: TransactionRepository;
 
   // Services
   private _creditLineService: CreditLineService;
   private _riskEvaluationService: RiskEvaluationService;
 
   private constructor() {
-    // Initialize repositories (in-memory implementations for now)
-    this._creditLineRepository = new InMemoryCreditLineRepository();
-    this._riskEvaluationRepository = new InMemoryRiskEvaluationRepository();
-    this._transactionRepository = new InMemoryTransactionRepository();
+    // Initialize repositories based on environment
+    this.initializeRepositories();
 
     // Initialize services
     this._creditLineService = new CreditLineService(this._creditLineRepository);
     this._riskEvaluationService = new RiskEvaluationService(
       this._riskEvaluationRepository,
     );
+  }
+
+  private initializeRepositories(): void {
+    const useDatabase = process.env.DATABASE_URL && process.env.NODE_ENV !== 'test';
+    
+    if (useDatabase) {
+      // Use PostgreSQL repositories
+      this._dbClient = getConnection();
+      this._creditLineRepository = new PostgresCreditLineRepository(this._dbClient);
+      // TODO: Implement PostgreSQL versions of other repositories
+      this._riskEvaluationRepository = new InMemoryRiskEvaluationRepository();
+      this._transactionRepository = new InMemoryTransactionRepository();
+    } else {
+      // Use in-memory repositories (for development/testing)
+      this._creditLineRepository = new InMemoryCreditLineRepository();
+      this._riskEvaluationRepository = new InMemoryRiskEvaluationRepository();
+      this._transactionRepository = new InMemoryTransactionRepository();
+    }
   }
 
   public static getInstance(): Container {
@@ -92,8 +113,15 @@ export class Container {
   public async shutdown(): Promise<void> {
     console.log("[Container] Shutting down internal services...");
 
-    // In the future, close database pools here:
-    // await this.dbPool?.end();
+    // Close database connection if it exists
+    if (this._dbClient) {
+      try {
+        await this._dbClient.end();
+        console.log("[Container] Database connection closed.");
+      } catch (error) {
+        console.error("[Container] Error closing database connection:", error);
+      }
+    }
 
     console.log("[Container] All services shut down.");
   }

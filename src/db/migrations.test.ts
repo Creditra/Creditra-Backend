@@ -94,7 +94,7 @@ describe('runPendingMigrations', () => {
     const client = createMockClient();
     vi.mocked(client.query)
       .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ version: '001_initial_schema' }] });
+      .mockResolvedValueOnce({ rows: [{ version: '001_initial_schema' }, { version: '002_add_interest_rate_to_credit_lines' }] });
     const migrationsDir = await import('path').then((p) =>
       p.join(process.cwd(), 'migrations')
     );
@@ -112,7 +112,21 @@ describe('runPendingMigrations', () => {
     );
     const run = await runPendingMigrations(client, migrationsDir);
     expect(run).toContain('001_initial_schema');
-    expect(run.length).toBeGreaterThanOrEqual(1);
+    expect(run).toContain('002_add_interest_rate_to_credit_lines');
+    expect(run.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('applies only new migrations when some are already applied', async () => {
+    const client = createMockClient();
+    vi.mocked(client.query)
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ version: '001_initial_schema' }] });
+    const migrationsDir = await import('path').then((p) =>
+      p.join(process.cwd(), 'migrations')
+    );
+    const run = await runPendingMigrations(client, migrationsDir);
+    expect(run).toContain('002_add_interest_rate_to_credit_lines');
+    expect(run).not.toContain('001_initial_schema');
   });
 });
 
