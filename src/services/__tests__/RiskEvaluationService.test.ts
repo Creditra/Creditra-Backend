@@ -1,189 +1,201 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { RiskEvaluationService } from '../RiskEvaluationService.js';
-import { RiskEvaluationRepository } from '../../repositories/interfaces/RiskEvaluationRepository.js';
-import { RiskEvaluation } from '../../models/RiskEvaluation.js';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { RiskEvaluationService } from "../RiskEvaluationService.js";
+import type { RiskEvaluationRepository } from "../../repositories/interfaces/RiskEvaluationRepository.js";
+import type { IRiskProvider } from "../providers/IRiskProvider.js";
+import type { RiskEvaluation } from "../../models/RiskEvaluation.js";
 
-describe('RiskEvaluationService', () => {
+const WALLET = "wallet123";
+
+function buildMockRepo(): RiskEvaluationRepository {
+  return {
+    save: vi.fn(),
+    findLatestByWalletAddress: vi.fn(),
+    findById: vi.fn(),
+    findByWalletAddress: vi.fn(),
+    deleteExpired: vi.fn(),
+    isValid: vi.fn(),
+    findAll: vi.fn(),
+    count: vi.fn(),
+  };
+}
+
+function buildMockProvider(score = 70): IRiskProvider {
+  return {
+    name: "mock",
+    evaluate: vi.fn().mockResolvedValue({
+      score,
+      factors: [{ name: "mock_factor", value: score / 100, weight: 1.0 }],
+    }),
+  };
+}
+
+function buildCachedEval(
+  overrides: Partial<RiskEvaluation> = {},
+): RiskEvaluation {
+  return {
+    id: "eval-123",
+    walletAddress: WALLET,
+    riskScore: 75,
+    creditLimit: "750.00",
+    interestRateBps: 625,
+    factors: [],
+    evaluatedAt: new Date(),
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    ...overrides,
+  };
+}
+
+describe("RiskEvaluationService", () => {
   let service: RiskEvaluationService;
   let mockRepository: RiskEvaluationRepository;
+  let mockProvider: IRiskProvider;
 
   beforeEach(() => {
-    mockRepository = {
-      save: vi.fn(),
-      findLatestByWalletAddress: vi.fn(),
-      findById: vi.fn(),
-      findByWalletAddress: vi.fn(),
-      deleteExpired: vi.fn(),
-      isValid: vi.fn(),
-      findAll: vi.fn(),
-      count: vi.fn()
-    };
-    
-    service = new RiskEvaluationService(mockRepository);
+    mockRepository = buildMockRepo();
+    mockProvider = buildMockProvider(70);
+    service = new RiskEvaluationService(mockRepository, mockProvider);
   });
 
-  describe('evaluateRisk', () => {
-    it('should throw error for missing wallet address', async () => {
-      const request = { walletAddress: '' };
-
-      await expect(service.evaluateRisk(request)).rejects.toThrow('Wallet address is required');
+  describe("evaluateRisk", () => {
+    it("should throw error for missing wallet address", async () => {
+      await expect(service.evaluateRisk({ walletAddress: "" })).rejects.toThrow(
+        "Wallet address is required",
+      );
     });
 
-    it('should return cached evaluation when valid', async () => {
-      const walletAddress = 'wallet123';
-      const request = { walletAddress };
-
-      const cachedEvaluation: RiskEvaluation = {
-        id: 'eval-123',
-        walletAddress,
-        riskScore: 75,
-        creditLimit: '1000.00',
-        interestRateBps: 500,
-        factors: [],
-        evaluatedAt: new Date(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-      };
-
+    it("should return cached evaluation when valid", async () => {
+      const cached = buildCachedEval();
       vi.mocked(mockRepository.isValid).mockResolvedValue(true);
-      vi.mocked(mockRepository.findLatestByWalletAddress).mockResolvedValue(cachedEvaluation);
+      vi.mocked(mockRepository.findLatestByWalletAddress).mockResolvedValue(
+        cached,
+      );
 
-      const result = await service.evaluateRisk(request);
+      const result = await service.evaluateRisk({ walletAddress: WALLET });
 
-      expect(result.walletAddress).toBe(walletAddress);
+      expect(result.walletAddress).toBe(WALLET);
       expect(result.riskScore).toBe(75);
-      expect(result.creditLimit).toBe('1000.00');
-      expect(result.interestRateBps).toBe(500);
-      expect(result.message).toBe('Using cached risk evaluation');
+      expect(result.message).toBe("Using cached risk evaluation");
+      expect(mockProvider.evaluate).not.toHaveBeenCalled();
     });
 
-    it('should perform new evaluation when no valid cache', async () => {
-      const walletAddress = 'wallet123';
-      const request = { walletAddress };
-
+    it("should perform new evaluation when no valid cache", async () => {
       vi.mocked(mockRepository.isValid).mockResolvedValue(false);
-      vi.mocked(mockRepository.save).mockResolvedValue({
-        id: 'eval-123',
-        walletAddress,
-        riskScore: 70,
-        creditLimit: '700.00',
-        interestRateBps: 650,
-        factors: [],
-        evaluatedAt: new Date(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-      });
+      vi.mocked(mockRepository.save).mockResolvedValue(
+        buildCachedEval({ riskScore: 70 }),
+      );
 
-      const result = await service.evaluateRisk(request);
+      const result = await service.evaluateRisk({ walletAddress: WALLET });
 
-      expect(result.walletAddress).toBe(walletAddress);
-      expect(result.riskScore).toBeGreaterThan(0);
-      expect(result.creditLimit).toBeDefined();
-      expect(result.interestRateBps).toBeGreaterThan(0);
-      expect(result.message).toBe('New risk evaluation completed');
+      expect(result.walletAddress).toBe(WALLET);
+      expect(result.riskScore).toBe(70);
+      expect(result.message).toBe("New risk evaluation completed");
+      expect(mockProvider.evaluate).toHaveBeenCalledWith(WALLET);
       expect(mockRepository.save).toHaveBeenCalled();
     });
 
-    it('should force new evaluation when forceRefresh is true', async () => {
-      const walletAddress = 'wallet123';
-      const request = { walletAddress, forceRefresh: true };
+    it("should force new evaluation when forceRefresh is true", async () => {
+      vi.mocked(mockRepository.save).mockResolvedValue(
+        buildCachedEval({ riskScore: 80 }),
+      );
 
-      vi.mocked(mockRepository.save).mockResolvedValue({
-        id: 'eval-123',
-        walletAddress,
-        riskScore: 80,
-        creditLimit: '800.00',
-        interestRateBps: 550,
-        factors: [],
-        evaluatedAt: new Date(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      const result = await service.evaluateRisk({
+        walletAddress: WALLET,
+        forceRefresh: true,
       });
 
-      const result = await service.evaluateRisk(request);
-
-      expect(result.message).toBe('New risk evaluation completed');
-      expect(mockRepository.save).toHaveBeenCalled();
-      // Should not check cache when forceRefresh is true
+      expect(result.message).toBe("New risk evaluation completed");
       expect(mockRepository.isValid).not.toHaveBeenCalled();
+      expect(mockProvider.evaluate).toHaveBeenCalledWith(WALLET);
+    });
+
+    it("should derive creditLimit proportionally from score", async () => {
+      const provider = buildMockProvider(50);
+      const svc = new RiskEvaluationService(mockRepository, provider);
+      vi.mocked(mockRepository.isValid).mockResolvedValue(false);
+      const saved = buildCachedEval({ riskScore: 50, creditLimit: "500.00" });
+      vi.mocked(mockRepository.save).mockResolvedValue(saved);
+
+      const result = await svc.evaluateRisk({ walletAddress: WALLET });
+
+      expect(result.creditLimit).toBe("500.00");
+    });
+
+    it("should call provider evaluate exactly once per fresh evaluation", async () => {
+      vi.mocked(mockRepository.isValid).mockResolvedValue(false);
+      vi.mocked(mockRepository.save).mockResolvedValue(buildCachedEval());
+
+      await service.evaluateRisk({ walletAddress: WALLET });
+
+      expect(mockProvider.evaluate).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('getRiskEvaluation', () => {
-    it('should return evaluation when found', async () => {
-      const evaluation: RiskEvaluation = {
-        id: 'eval-123',
-        walletAddress: 'wallet123',
-        riskScore: 75,
-        creditLimit: '1000.00',
-        interestRateBps: 500,
-        factors: [],
-        evaluatedAt: new Date(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-      };
-
+  describe("getRiskEvaluation", () => {
+    it("should return evaluation when found", async () => {
+      const evaluation = buildCachedEval();
       vi.mocked(mockRepository.findById).mockResolvedValue(evaluation);
 
-      const result = await service.getRiskEvaluation('eval-123');
+      const result = await service.getRiskEvaluation("eval-123");
 
-      expect(mockRepository.findById).toHaveBeenCalledWith('eval-123');
+      expect(mockRepository.findById).toHaveBeenCalledWith("eval-123");
       expect(result).toEqual(evaluation);
     });
 
-    it('should return null when not found', async () => {
+    it("should return null when not found", async () => {
       vi.mocked(mockRepository.findById).mockResolvedValue(null);
 
-      const result = await service.getRiskEvaluation('nonexistent');
+      const result = await service.getRiskEvaluation("nonexistent");
 
       expect(result).toBeNull();
     });
   });
 
-  describe('getLatestRiskEvaluation', () => {
-    it('should return latest evaluation for wallet', async () => {
-      const evaluation: RiskEvaluation = {
-        id: 'eval-123',
-        walletAddress: 'wallet123',
-        riskScore: 75,
-        creditLimit: '1000.00',
-        interestRateBps: 500,
-        factors: [],
-        evaluatedAt: new Date(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-      };
+  describe("getLatestRiskEvaluation", () => {
+    it("should return latest evaluation for wallet", async () => {
+      const evaluation = buildCachedEval();
+      vi.mocked(mockRepository.findLatestByWalletAddress).mockResolvedValue(
+        evaluation,
+      );
 
-      vi.mocked(mockRepository.findLatestByWalletAddress).mockResolvedValue(evaluation);
+      const result = await service.getLatestRiskEvaluation(WALLET);
 
-      const result = await service.getLatestRiskEvaluation('wallet123');
-
-      expect(mockRepository.findLatestByWalletAddress).toHaveBeenCalledWith('wallet123');
+      expect(mockRepository.findLatestByWalletAddress).toHaveBeenCalledWith(
+        WALLET,
+      );
       expect(result).toEqual(evaluation);
+    });
+
+    it("should return null when no evaluation exists", async () => {
+      vi.mocked(mockRepository.findLatestByWalletAddress).mockResolvedValue(
+        null,
+      );
+
+      const result = await service.getLatestRiskEvaluation(WALLET);
+
+      expect(result).toBeNull();
     });
   });
 
-  describe('getRiskEvaluationHistory', () => {
-    it('should return evaluation history for wallet', async () => {
-      const evaluations: RiskEvaluation[] = [
-        {
-          id: 'eval-123',
-          walletAddress: 'wallet123',
-          riskScore: 75,
-          creditLimit: '1000.00',
-          interestRateBps: 500,
-          factors: [],
-          evaluatedAt: new Date(),
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-        }
-      ];
+  describe("getRiskEvaluationHistory", () => {
+    it("should return evaluation history for wallet", async () => {
+      const evaluations = [buildCachedEval()];
+      vi.mocked(mockRepository.findByWalletAddress).mockResolvedValue(
+        evaluations,
+      );
 
-      vi.mocked(mockRepository.findByWalletAddress).mockResolvedValue(evaluations);
+      const result = await service.getRiskEvaluationHistory(WALLET, 0, 10);
 
-      const result = await service.getRiskEvaluationHistory('wallet123', 0, 10);
-
-      expect(mockRepository.findByWalletAddress).toHaveBeenCalledWith('wallet123', 0, 10);
+      expect(mockRepository.findByWalletAddress).toHaveBeenCalledWith(
+        WALLET,
+        0,
+        10,
+      );
       expect(result).toEqual(evaluations);
     });
   });
 
-  describe('cleanupExpiredEvaluations', () => {
-    it('should cleanup expired evaluations', async () => {
+  describe("cleanupExpiredEvaluations", () => {
+    it("should cleanup expired evaluations", async () => {
       vi.mocked(mockRepository.deleteExpired).mockResolvedValue(5);
 
       const result = await service.cleanupExpiredEvaluations();
