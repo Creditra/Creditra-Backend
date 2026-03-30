@@ -192,11 +192,8 @@ export function getTransactions(
     txs = txs.filter((tx) => new Date(tx.timestamp).getTime() <= to);
   }
 
-  txs.sort((a, b) => {
-    const tsDiff = new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-    if (tsDiff !== 0) return tsDiff;
-    return a.id.localeCompare(b.id);
-  });
+  txs.reverse();
+  txs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   const total = txs.length;
   const { page, limit } = pagination;

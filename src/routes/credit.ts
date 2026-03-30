@@ -1,10 +1,9 @@
 import { Router, type Request, type Response } from 'express';
-import { validateBody, validateQuery } from '../middleware/validate.js';
+import { validateBody } from '../middleware/validate.js';
 import {
   createCreditLineSchema,
   drawSchema,
   repaySchema,
-  transactionHistoryQuerySchema,
 } from '../schemas/index.js';
 import type { DrawBody, RepayBody } from '../schemas/index.js';
 import { Container } from '../container/Container.js';
@@ -14,6 +13,8 @@ import {
   CreditLineNotFoundError,
   InvalidTransitionError,
   TransactionType,
+  listCreditLines,
+  getCreditLine,
   suspendCreditLine,
   closeCreditLine,
   getTransactions,
@@ -39,35 +40,16 @@ function handleServiceError(err: unknown, res: Response): void {
   res.status(500).json({ error: message });
 }
 
-creditRouter.get('/lines', async (req, res) => {
-  try {
-    const { offset, limit } = req.query;
-    const offsetNum = typeof offset === 'string' ? Number.parseInt(offset, 10) : undefined;
-    const limitNum = typeof limit === 'string' ? Number.parseInt(limit, 10) : undefined;
-
-    const creditLines = await container.creditLineService.getAllCreditLines(offsetNum, limitNum);
-    const total = await container.creditLineService.getCreditLineCount();
-
-    return ok(res, {
-      creditLines,
-      pagination: { total, offset: offsetNum ?? 0, limit: limitNum ?? 100 },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch credit lines';
-    return res.status(400).json({ error: message });
-  }
+creditRouter.get('/lines', (_req, res) => {
+  return ok(res, listCreditLines());
 });
 
-creditRouter.get('/lines/:id', async (req, res) => {
-  try {
-    const creditLine = await container.creditLineService.getCreditLine(req.params.id);
-    if (!creditLine) {
-      return fail(res, 'Credit line not found', 404);
-    }
-    return ok(res, creditLine);
-  } catch {
-    return fail(res, 'Failed to fetch credit line');
+creditRouter.get('/lines/:id', (req, res) => {
+  const line = getCreditLine(req.params.id);
+  if (!line) {
+    return fail(res, `Credit line "${req.params.id}" not found.`, 404);
   }
+  return ok(res, line);
 });
 
 creditRouter.post('/lines', validateBody(createCreditLineSchema), async (req, res) => {
@@ -128,7 +110,6 @@ creditRouter.get('/wallet/:walletAddress/lines', async (req, res) => {
 
 creditRouter.get(
   '/lines/:id/transactions',
-  validateQuery(transactionHistoryQuerySchema),
   async (req: Request, res: Response): Promise<void> => {
     const id = req.params.id;
     const { type, from, to, page: pageParam, limit: limitParam } = req.query;
@@ -174,10 +155,10 @@ creditRouter.get(
 creditRouter.post(
   '/lines/:id/suspend',
   adminAuth,
-  async (req: Request, res: Response): Promise<void> => {
+  (req: Request, res: Response): void => {
     try {
       const line = suspendCreditLine(req.params.id);
-      ok(res, { data: line, message: 'Credit line suspended.' });
+      res.status(200).json({ data: line, message: 'Credit line suspended.', error: null });
     } catch (err) {
       handleServiceError(err, res);
     }
@@ -187,10 +168,10 @@ creditRouter.post(
 creditRouter.post(
   '/lines/:id/close',
   adminAuth,
-  async (req: Request, res: Response): Promise<void> => {
+  (req: Request, res: Response): void => {
     try {
       const line = closeCreditLine(req.params.id);
-      ok(res, { data: line, message: 'Credit line closed.' });
+      res.status(200).json({ data: line, message: 'Credit line closed.', error: null });
     } catch (err) {
       handleServiceError(err, res);
     }
