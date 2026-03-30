@@ -245,6 +245,51 @@ npm run test:watch
 
 ## API (current)
 
+### Response Envelope
+
+All API endpoints use a standardized response envelope format for consistency:
+
+```typescript
+{
+  data: T | null,      // Success payload or null on error
+  error: string | null // Error message or null on success
+}
+```
+
+Examples:
+
+```json
+// Success response (200)
+{
+  "data": {
+    "id": "line-123",
+    "walletAddress": "GABCDEF...",
+    "creditLimit": "5000.00"
+  },
+  "error": null
+}
+
+// Error response (400)
+{
+  "data": null,
+  "error": "Credit line not found"
+}
+```
+
+The envelope is implemented via helper functions in `src/utils/response.ts`:
+- `ok(res, data, statusCode?)` - Send success response (default 200)
+- `fail(res, error, statusCode?)` - Send error response (default 500)
+
+HTTP status codes follow REST conventions:
+- `200` - Success
+- `201` - Created
+- `204` - No Content (DELETE operations)
+- `400` - Bad Request (client error)
+- `401` - Unauthorized (missing auth)
+- `403` - Forbidden (invalid auth)
+- `404` - Not Found
+- `500` - Internal Server Error
+
 ### Public
 
 - `GET  /health` — Service health
@@ -260,28 +305,12 @@ npm run test:watch
 - `POST /api/credit/lines/:id/suspend` — Suspend a credit line
 - `POST /api/credit/lines/:id/close` — Close a credit line
 - `POST /api/risk/admin/recalibrate` — Trigger risk model recalibration
-- `POST /api/reconciliation/trigger` — Manually trigger credit reconciliation job
-- `GET  /api/reconciliation/status` — Get reconciliation worker status
+- `POST /api/webhooks/test` — Test webhook connectivity
 
-### Pagination
+### Webhooks (public)
 
-The `/api/credit/lines` endpoint supports two pagination modes:
-
-1. **Cursor-based** (recommended for production): Provides stable pagination for large datasets
-   ```bash
-   # First page
-   curl "http://localhost:3000/api/credit/lines?cursor&limit=10"
-   
-   # Next page (use nextCursor from response)
-   curl "http://localhost:3000/api/credit/lines?cursor=<nextCursor>&limit=10"
-   ```
-
-2. **Offset-based** (legacy): Traditional pagination with total count
-   ```bash
-   curl "http://localhost:3000/api/credit/lines?offset=0&limit=10"
-   ```
-
-For detailed documentation, examples, and migration guide, see [docs/cursor-pagination.md](docs/cursor-pagination.md).
+- `GET /api/webhooks/config` — Get webhook configuration
+- `GET /api/webhooks/health` — Webhook service health check
 
 ## Running tests
 
@@ -319,6 +348,7 @@ src/
     health.ts                               # GET /health
     credit.ts                               # credit-line endpoints (public + admin)
     risk.ts                                 # risk endpoints (public + admin)
+    webhook.ts                              # webhook management endpoints
   schemas/                                  # Zod request-body schemas
   services/
     creditService.ts                        # credit-line state machine + draw logic
@@ -326,6 +356,7 @@ src/
     riskService.ts                          # wallet risk evaluation
     RiskEvaluationService.ts               # repo-backed risk service
     horizonListener.ts                      # Stellar Horizon event poller
+    drawWebhookService.ts                   # draw confirmation webhook delivery
     jobQueue.ts                             # background job scheduler
     reconciliationService.ts                # chain vs DB reconciliation
     reconciliationWorker.ts                 # scheduled reconciliation worker
@@ -485,43 +516,79 @@ setInterval(pollOnce, POLL_INTERVAL_MS)
 
 ---
 
-### Credit Reconciliation
+### Draw Confirmation Webhooks
 
-The reconciliation worker (`src/services/reconciliationWorker.ts`) periodically compares on-chain Credit contract records with database credit lines to detect and flag drift.
+The backend provides optional webhook notifications when draw confirmations are detected via Horizon polling. Webhooks are delivered with HMAC signatures and include retry logic with exponential backoff.
 
-**How it works:**
-1. Worker runs on a scheduled interval (default: 1 hour)
-2. Fetches all credit lines from database
-3. Fetches all credit records from Soroban contract via RPC
-4. Compares records field-by-field
-5. Flags mismatches with severity levels (critical vs warning)
-6. Alerts on persistent mismatches via logging and job failure
+#### Configuration
 
-**Mismatch severity:**
-- **Critical**: existence, walletAddress, creditLimit, status → job fails, enters retry/dead-letter
-- **Warning**: availableCredit, interestRateBps → logged but job succeeds
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `WEBHOOK_URLS` | No | _(empty)_ | Comma-separated webhook endpoint URLs |
+| `WEBHOOK_SECRET` | Yes (if URLs configured) | _(empty)_ | HMAC secret for payload signing |
+| `WEBHOOK_MAX_RETRIES` | No | `3` | Maximum retry attempts |
+| `WEBHOOK_INITIAL_BACKOFF_MS` | No | `1000` | Initial backoff delay in milliseconds |
+| `WEBHOOK_BACKOFF_MULTIPLIER` | No | `2.0` | Exponential backoff multiplier |
+| `WEBHOOK_TIMEOUT_MS` | No | `10000` | Request timeout in milliseconds |
 
-**Configuration:**
-```bash
-SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
-CREDIT_CONTRACT_ID=<your-contract-id>
-RECONCILIATION_INTERVAL_MS=3600000  # 1 hour
-RECONCILIATION_RUN_IMMEDIATELY=true
+#### Webhook Payload
+
+When a draw confirmation event is detected, the following payload is sent:
+
+```json
+{
+  "event": "draw_confirmed",
+  "timestamp": "2024-01-15T10:00:00.000Z",
+  "data": {
+    "ledger": 12345,
+    "contractId": "CC7P3M7JZB3J5K5L5M5N5O5P5Q5R5S5T5U5V5W5X5Y5Z",
+    "drawAmount": "1000.00000000",
+    "drawId": "draw_abc123",
+    "borrowerWallet": "GABC1234567890DEF1234567890DEF1234567890",
+    "creditLineId": "credit_line_456",
+    "horizonTimestamp": "2024-01-15T09:59:58.000Z"
+  }
+}
 ```
 
-**Manual trigger:**
+#### Security
+
+- **HMAC Signature**: Each webhook includes an `X-Webhook-Signature` header with format `sha256=<hex-signature>`
+- **Signature Verification**: Verify signatures using your configured `WEBHOOK_SECRET`:
+  ```bash
+  echo -n "<payload>" | openssl dgst -sha256 -hmac "<your-secret>"
+  ```
+- **Timestamp**: `X-Webhook-Timestamp` header helps prevent replay attacks
+- **User Agent**: `Creditra-Webhook/1.0` identifies legitimate webhook requests
+
+#### Retry Logic
+
+Failed webhook deliveries are retried with exponential backoff:
+- Initial delay: `WEBHOOK_INITIAL_BACKOFF_MS` (default 1000ms)
+- Subsequent delays: `previous_delay * WEBHOOK_BACKOFF_MULTIPLIER` (default 2.0x)
+- Maximum attempts: `WEBHOOK_MAX_RETRIES` (default 3)
+
+#### Management Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/webhooks/config` | Get current webhook configuration (excludes secrets) |
+| `POST` | `/api/webhooks/test` | Test connectivity to all configured webhook URLs |
+| `GET` | `/api/webhooks/health` | Check webhook service health status |
+
+#### Example Usage
+
 ```bash
-curl -X POST http://localhost:3000/api/reconciliation/trigger \
+# Test webhook connectivity
+curl -X POST http://localhost:3000/api/webhooks/test \
   -H "X-API-Key: your-api-key"
-```
 
-**Check status:**
-```bash
-curl http://localhost:3000/api/reconciliation/status \
-  -H "X-API-Key: your-api-key"
-```
+# Check webhook configuration
+curl http://localhost:3000/api/webhooks/config
 
-For detailed documentation, see [docs/reconciliation.md](docs/reconciliation.md).
+# Check webhook service health
+curl http://localhost:3000/api/webhooks/health
+```
 
 ---
 

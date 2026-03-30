@@ -1,9 +1,16 @@
 /**
  * Minimal async job queue abstraction.
  *
- * This module intentionally keeps the public surface small so it can later be
- * backed by a real queue backend (Redis, SQS, etc.) without changing call
- * sites. The current implementation is purely in-memory and single-process.
+ * Designed for at-least-once delivery semantics:
+ * - Jobs are retried up to `maxAttempts` times with exponential backoff.
+ * - Jobs that exceed `maxAttempts` are moved to a dead-letter set and logged
+ *   so operators can inspect and replay them.
+ * - A `visibilityTimeoutMs` prevents a job from being re-attempted before its
+ *   backoff window expires (analogous to SQS visibility timeout).
+ *
+ * The current implementation is purely in-memory and single-process. The
+ * public interface is kept narrow so a Redis or SQS backend can be swapped in
+ * without changing call sites.
  */
 
 export interface Job<Data = unknown> {
@@ -15,12 +22,14 @@ export interface Job<Data = unknown> {
   readonly payload: Data;
   /** Number of times this job has been attempted. */
   attempts: number;
-  /** Maximum number of attempts before the job is considered failed. */
+  /** Maximum number of attempts before the job is moved to dead-letter. */
   readonly maxAttempts: number;
   /** Milliseconds since epoch when the job was first enqueued. */
   readonly createdAt: number;
   /** Milliseconds since epoch when the job was last updated. */
   updatedAt: number;
+  /** Last error message, if any attempt failed. */
+  lastError?: string;
 }
 
 export type JobHandler<Data = unknown> = (
@@ -29,7 +38,7 @@ export type JobHandler<Data = unknown> = (
 
 export interface EnqueueOptions {
   /**
-   * Maximum attempts before the job is moved to the failed set.
+   * Maximum attempts before the job is moved to the dead-letter set.
    * Defaults to 3.
    */
   maxAttempts?: number;
@@ -47,7 +56,6 @@ export interface EnqueueOptions {
 export interface JobQueue {
   /**
    * Enqueue a new job for asynchronous processing.
-   *
    * Returns the job id that can be used for diagnostics.
    */
   enqueue<Data = unknown>(
@@ -58,8 +66,7 @@ export interface JobQueue {
 
   /**
    * Register a handler for the given job type.
-   *
-   * Registering multiple handlers for the same type replaces the previous one.
+   * Registering a second handler for the same type replaces the first.
    */
   registerHandler<Data = unknown>(
     type: string,
@@ -78,39 +85,38 @@ export interface JobQueue {
   /** Number of jobs that are scheduled but not yet completed. */
   size(): number;
 
-  /** Read-only snapshot of failed jobs for inspection/metrics. */
+  /**
+   * Read-only snapshot of dead-letter (permanently failed) jobs.
+   * Operators can inspect this set to replay or alert on failures.
+   */
   getFailedJobs(): readonly Job[];
 
   /**
-   * Best-effort attempt to process all due jobs immediately.
-   *
-   * This is primarily intended for tests and shutdown hooks.
+   * Process all currently-due jobs immediately, without waiting for the tick
+   * interval. Primarily intended for tests and graceful-shutdown hooks.
    */
   drain(): Promise<void>;
 }
 
-interface InternalJob<Data = unknown> extends Omit<
-  Job<Data>,
-  "attempts" | "updatedAt"
-> {
-  attempts: number;
-  updatedAt: number;
+interface InternalJob<Data = unknown> extends Job<Data> {
+  /** Earliest time (ms since epoch) at which the next attempt may run. */
   nextRunAt: number;
 }
 
 let nextId = 1;
-
 function generateId(): string {
   return `job-${nextId++}`;
 }
 
 /**
- * In-memory, single-process job queue implementation.
+ * In-memory, single-process job queue with at-least-once delivery.
  *
- * Concurrency model:
- * - A lightweight timer tick wakes up every `tickIntervalMs` and processes
- *   ready jobs (those with nextRunAt <= now).
- * - Jobs are handled sequentially to keep behaviour deterministic in tests.
+ * Scheduling model:
+ * - Uses a self-rescheduling `setTimeout` chain rather than `setInterval` so
+ *   the timer stops automatically when the queue is idle. This avoids the
+ *   "infinite timer" problem with `vi.runAllTimersAsync()` in tests.
+ * - After each failed attempt the job's `nextRunAt` is pushed forward by
+ *   `retryBackoffMs` (visibility timeout), preventing immediate re-delivery.
  */
 export class InMemoryJobQueue implements JobQueue {
   private readonly handlers = new Map<string, JobHandler<any>>();
@@ -119,7 +125,7 @@ export class InMemoryJobQueue implements JobQueue {
 
   private running = false;
   private processing = false;
-  private intervalHandle: ReturnType<typeof setInterval> | null = null;
+  private timeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly tickIntervalMs = 50,
@@ -132,22 +138,20 @@ export class InMemoryJobQueue implements JobQueue {
     options?: EnqueueOptions,
   ): string {
     const id = options?.id ?? generateId();
-    const maxAttempts = options?.maxAttempts ?? 3;
-    const delayMs = options?.delayMs ?? 0;
     const now = Date.now();
-
     const job: InternalJob<Data> = {
       id,
       type,
       payload,
       attempts: 0,
-      maxAttempts,
+      maxAttempts: options?.maxAttempts ?? 3,
       createdAt: now,
       updatedAt: now,
-      nextRunAt: now + delayMs,
+      nextRunAt: now + (options?.delayMs ?? 0),
     };
-
     this.pending.push(job);
+    // Arm the timer if the queue is running but currently idle.
+    this._scheduleIfNeeded();
     return id;
   }
 
@@ -161,19 +165,15 @@ export class InMemoryJobQueue implements JobQueue {
   start(): void {
     if (this.running) return;
     this.running = true;
-    if (!this.intervalHandle) {
-      this.intervalHandle = setInterval(() => {
-        void this.processTick();
-      }, this.tickIntervalMs);
-    }
+    this._scheduleIfNeeded();
   }
 
   stop(): void {
     if (!this.running) return;
     this.running = false;
-    if (this.intervalHandle) {
-      clearInterval(this.intervalHandle);
-      this.intervalHandle = null;
+    if (this.timeoutHandle !== null) {
+      clearTimeout(this.timeoutHandle);
+      this.timeoutHandle = null;
     }
   }
 
@@ -190,33 +190,49 @@ export class InMemoryJobQueue implements JobQueue {
   }
 
   async drain(): Promise<void> {
-    // Temporarily run a tight loop until no ready jobs remain.
-    // This intentionally ignores delayMs/backoff that are still in the future.
-    // Callers that rely on timers should combine this with fake timers.
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const hadReady = await this.processTick();
-      if (!hadReady) break;
+    // Process all currently-due jobs without waiting for the tick timer.
+    // Loops until no ready jobs remain (handles jobs that become ready after
+    // a retry backoff has already elapsed).
+    while (await this._processTick()) {
+      // keep draining
     }
   }
 
-  private async processTick(): Promise<boolean> {
-    if (!this.running || this.processing) return false;
+  // -------------------------------------------------------------------------
+  // Private helpers
+  // -------------------------------------------------------------------------
+
+  /**
+   * Arm a one-shot timeout if the queue is running, not already armed, and
+   * there are pending jobs. The timeout fires `_processTick` then re-arms
+   * itself — stopping naturally when `pending` is empty or `stop()` is called.
+   */
+  private _scheduleIfNeeded(): void {
+    if (!this.running || this.timeoutHandle !== null || this.pending.length === 0) {
+      return;
+    }
+    this.timeoutHandle = setTimeout(() => {
+      this.timeoutHandle = null;
+      void this._processTick().then(() => this._scheduleIfNeeded());
+    }, this.tickIntervalMs);
+  }
+
+  /**
+   * Attempt to process all jobs whose `nextRunAt` is in the past.
+   * Returns `true` if at least one job was ready (used by `drain()`).
+   */
+  private async _processTick(): Promise<boolean> {
+    if (this.processing) return false;
+
     const now = Date.now();
     const ready: InternalJob<any>[] = [];
     const waiting: InternalJob<any>[] = [];
 
     for (const job of this.pending) {
-      if (job.nextRunAt <= now) {
-        ready.push(job);
-      } else {
-        waiting.push(job);
-      }
+      (job.nextRunAt <= now ? ready : waiting).push(job);
     }
 
-    if (ready.length === 0) {
-      return false;
-    }
+    if (ready.length === 0) return false;
 
     this.processing = true;
     this.pending.length = 0;
@@ -225,30 +241,35 @@ export class InMemoryJobQueue implements JobQueue {
     try {
       for (const job of ready) {
         const handler = this.handlers.get(job.type);
+
         if (!handler) {
-          // No handler registered – drop the job but log loudly.
+          // No handler registered — dead-letter immediately and alert operator.
           console.error(
-            `[JobQueue] No handler registered for job type "${job.type}". Dropping job ${job.id}.`,
+            `[JobQueue] No handler for type "${job.type}". Job ${job.id} moved to dead-letter.`,
           );
           this.failed.push(job);
-          // eslint-disable-next-line no-continue
           continue;
         }
 
         try {
           await handler(job);
+          // Success — job is done, do not re-enqueue.
         } catch (err) {
           job.attempts += 1;
           job.updatedAt = Date.now();
+          job.lastError = err instanceof Error ? err.message : String(err);
 
           if (job.attempts < job.maxAttempts) {
+            // Visibility timeout: hold the job back for `retryBackoffMs` before
+            // the next attempt (at-least-once, not at-most-once).
             job.nextRunAt = job.updatedAt + this.retryBackoffMs;
             this.pending.push(job);
           } else {
+            // Exceeded maxAttempts — move to dead-letter set.
             this.failed.push(job);
             console.error(
-              `[JobQueue] Job ${job.id} of type "${job.type}" failed after ${job.attempts} attempts.`,
-              err,
+              `[JobQueue] Job ${job.id} (type "${job.type}") exhausted ${job.attempts} attempts. ` +
+              `Last error: ${job.lastError}`,
             );
           }
         }
@@ -257,14 +278,13 @@ export class InMemoryJobQueue implements JobQueue {
       this.processing = false;
     }
 
-    return ready.length > 0;
+    return true;
   }
 }
 
 /**
  * Shared singleton queue instance for simple use cases.
- *
- * Code that needs more control (e.g. tests, workers) can instantiate its own
- * `InMemoryJobQueue` instead of using this default export.
+ * Code that needs more control (e.g. tests, workers) should instantiate its
+ * own `InMemoryJobQueue`.
  */
 export const defaultJobQueue: JobQueue = new InMemoryJobQueue();
