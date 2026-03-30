@@ -6,7 +6,10 @@ describe('GET /health', () => {
   it('returns 200 with ok status', async () => {
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ status: 'ok', service: 'creditra-backend' });
+    expect(res.body).toEqual({ 
+      data: { status: 'ok', service: 'creditra-backend' },
+      error: null 
+    });
   });
 });
 
@@ -18,7 +21,7 @@ describe('Credit routes', () => {
     it('returns empty array', async () => {
       const res = await request(app).get('/api/credit/lines');
       expect(res.status).toBe(200);
-      expect(res.body).toEqual({ creditLines: [] });
+      expect(res.body.data.creditLines).toEqual([]);
     });
   });
 
@@ -27,6 +30,7 @@ describe('Credit routes', () => {
       const res = await request(app).get('/api/credit/lines/abc');
       expect(res.status).toBe(404);
       expect(res.body.error).toBe('Credit line not found');
+      expect(res.body.data).toBeNull();
     });
   });
 
@@ -37,9 +41,10 @@ describe('Credit routes', () => {
         .send({ walletAddress: 'GABCDEF', requestedLimit: '5000' });
 
       expect(res.status).toBe(201);
-      expect(res.body.walletAddress).toBe('GABCDEF');
-      expect(res.body.requestedLimit).toBe('5000');
-      expect(res.body.status).toBe('pending');
+      expect(res.body.data.walletAddress).toBe('GABCDEF');
+      expect(res.body.data.requestedLimit).toBe('5000');
+      expect(res.body.data.status).toBe('pending');
+      expect(res.body.error).toBeNull();
     });
 
     it('returns 400 when walletAddress is missing', async () => {
@@ -49,6 +54,7 @@ describe('Credit routes', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.error).toBe('Validation failed');
+      expect(res.body.data).toBeNull();
       expect(res.body.details.some((d: any) => d.field === 'walletAddress')).toBe(true);
     });
 
@@ -77,8 +83,9 @@ describe('Credit routes', () => {
         .send({ amount: '100' });
 
       expect(res.status).toBe(200);
-      expect(res.body.amount).toBe('100');
-      expect(res.body.id).toBe('line-1');
+      expect(res.body.data.amount).toBe('100');
+      expect(res.body.data.id).toBe('line-1');
+      expect(res.body.error).toBeNull();
     });
 
     it('returns 400 when amount is missing', async () => {
@@ -87,6 +94,7 @@ describe('Credit routes', () => {
         .send({});
 
       expect(res.status).toBe(400);
+      expect(res.body.data).toBeNull();
       expect(res.body.details.some((d: any) => d.field === 'amount')).toBe(true);
     });
 
@@ -106,8 +114,9 @@ describe('Credit routes', () => {
         .send({ amount: '50' });
 
       expect(res.status).toBe(200);
-      expect(res.body.amount).toBe('50');
-      expect(res.body.id).toBe('line-1');
+      expect(res.body.data.amount).toBe('50');
+      expect(res.body.data.id).toBe('line-1');
+      expect(res.body.error).toBeNull();
     });
 
     it('returns 400 when amount is missing', async () => {
@@ -139,8 +148,9 @@ describe('Risk routes', () => {
         .send({ walletAddress: 'GABCDEF123' });
 
       expect(res.status).toBe(200);
-      expect(res.body.walletAddress).toBe('GABCDEF123');
-      expect(res.body.riskScore).toBe(0);
+      expect(res.body.data.walletAddress).toBe('GABCDEF123');
+      expect(res.body.data.riskScore).toBe(0);
+      expect(res.body.error).toBeNull();
     });
 
     it('returns 400 when walletAddress is missing', async () => {
@@ -150,6 +160,7 @@ describe('Risk routes', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.error).toBe('Validation failed');
+      expect(res.body.data).toBeNull();
       expect(res.body.details.some((d: any) => d.field === 'walletAddress')).toBe(true);
     });
 
