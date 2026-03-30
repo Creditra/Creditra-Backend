@@ -5,6 +5,14 @@ import { randomUUID } from 'crypto';
 export class InMemoryCreditLineRepository implements CreditLineRepository {
   private creditLines: Map<string, CreditLine> = new Map();
 
+  private sortByNewest(creditLines: CreditLine[]): CreditLine[] {
+    return creditLines.sort((a, b) => {
+      const tsDiff = b.createdAt.getTime() - a.createdAt.getTime();
+      if (tsDiff !== 0) return tsDiff;
+      return a.id.localeCompare(b.id);
+    });
+  }
+
   async create(request: CreateCreditLineRequest): Promise<CreditLine> {
     const id = randomUUID();
     const now = new Date();
@@ -29,12 +37,12 @@ export class InMemoryCreditLineRepository implements CreditLineRepository {
   }
 
   async findByWalletAddress(walletAddress: string): Promise<CreditLine[]> {
-    return Array.from(this.creditLines.values())
-      .filter(cl => cl.walletAddress === walletAddress);
+    const filtered = Array.from(this.creditLines.values()).filter(cl => cl.walletAddress === walletAddress);
+    return this.sortByNewest(filtered);
   }
 
   async findAll(offset = 0, limit = 100): Promise<CreditLine[]> {
-    const all = Array.from(this.creditLines.values());
+    const all = this.sortByNewest(Array.from(this.creditLines.values()));
     return all.slice(offset, offset + limit);
   }
 

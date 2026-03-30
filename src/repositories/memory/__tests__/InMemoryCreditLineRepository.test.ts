@@ -77,6 +77,35 @@ describe('InMemoryCreditLineRepository', () => {
       expect(creditLines.every(cl => cl.walletAddress === walletAddress)).toBe(true);
     });
 
+    it('should return credit lines sorted by creation date (newest first)', async () => {
+      const walletAddress = 'wallet-sort';
+
+      const cl1 = await repository.create({ walletAddress, creditLimit: '1000.00', interestRateBps: 500 });
+      // ensure different timestamps
+      await new Promise((r) => setTimeout(r, 1));
+      const cl2 = await repository.create({ walletAddress, creditLimit: '2000.00', interestRateBps: 600 });
+
+      const results = await repository.findByWalletAddress(walletAddress);
+      expect(results).toHaveLength(2);
+      expect(results[0]).toEqual(cl2);
+      expect(results[1]).toEqual(cl1);
+    });
+
+    it('should use deterministic ordering when timestamps are equal', async () => {
+      const walletAddress = 'wallet-equal-ts';
+
+      const a = await repository.create({ walletAddress, creditLimit: '100.00', interestRateBps: 100 });
+      const b = await repository.create({ walletAddress, creditLimit: '200.00', interestRateBps: 200 });
+
+      const same = new Date('2026-01-01T00:00:00.000Z');
+      repository['creditLines'].set(a.id, { ...a, createdAt: same });
+      repository['creditLines'].set(b.id, { ...b, createdAt: same });
+
+      const results = await repository.findByWalletAddress(walletAddress);
+      const expectedOrder = [a.id, b.id].sort((x, y) => x.localeCompare(y));
+      expect(results.slice(0, 2).map(r => r.id)).toEqual(expectedOrder);
+    });
+
     it('should return empty array when no credit lines found', async () => {
       const creditLines = await repository.findByWalletAddress('nonexistent');
       expect(creditLines).toEqual([]);
@@ -99,6 +128,32 @@ describe('InMemoryCreditLineRepository', () => {
 
       const paginated = await repository.findAll(2, 2);
       expect(paginated).toHaveLength(2);
+    });
+
+    it('should return all credit lines sorted by creation date (newest first)', async () => {
+      // Create 3 credit lines with slight delays
+      const cls = [] as any[];
+      for (let i = 0; i < 3; i++) {
+        cls.push(await repository.create({ walletAddress: `w${i}`, creditLimit: '1000.00', interestRateBps: 500 }));
+        await new Promise(r => setTimeout(r, 1));
+      }
+
+      const all = await repository.findAll();
+      expect(all).toHaveLength(3);
+      expect(all[0].createdAt.getTime()).toBeGreaterThanOrEqual(all[1].createdAt.getTime());
+    });
+
+    it('should use deterministic ordering when timestamps are equal', async () => {
+      const a = await repository.create({ walletAddress: 'x', creditLimit: '10.00', interestRateBps: 10 });
+      const b = await repository.create({ walletAddress: 'y', creditLimit: '20.00', interestRateBps: 20 });
+
+      const same = new Date('2026-01-01T00:00:00.000Z');
+      repository['creditLines'].set(a.id, { ...a, createdAt: same });
+      repository['creditLines'].set(b.id, { ...b, createdAt: same });
+
+      const all = await repository.findAll();
+      const expectedOrder = [a.id, b.id].sort((x, y) => x.localeCompare(y));
+      expect(all.slice(0, 2).map(c => c.id)).toEqual(expectedOrder);
     });
   });
 
