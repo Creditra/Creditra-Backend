@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { redactLogArgs } from '../utils/logRedact.js';
 
 /**
  * Global error-handling middleware.
@@ -12,6 +13,6 @@ export function errorHandler(
   res: Response,
   _next: NextFunction,
 ): void {
-  console.error('[errorHandler]', err);
+  console.error(...redactLogArgs(['[errorHandler]', err]));
   res.status(500).json({ error: 'Internal server error' });
 }

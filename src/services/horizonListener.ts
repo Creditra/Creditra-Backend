@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { redactLogArgs } from "../utils/logRedact.js";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -104,6 +107,18 @@ let retryState = {
     lastErrorTime: 0,
     nextRetryTime: 0,
 };
+
+function logInfo(...args: unknown[]): void {
+    console.log(...redactLogArgs(args));
+}
+
+function logWarn(...args: unknown[]): void {
+    console.warn(...redactLogArgs(args));
+}
+
+function logError(...args: unknown[]): void {
+    console.error(...redactLogArgs(args));
+}
 
 // ---------------------------------------------------------------------------
 // Configuration helpers
@@ -253,7 +268,8 @@ function calculateBackoffDelay(attempt: number, config: HorizonListenerConfig): 
 }
 
 function generateEventId(event: HorizonEvent): string {
-    return `${event.ledger}-${event.contractId}-${event.topics.join('-')}-${event.data.slice(0, 50)}`;
+    const dataHash = createHash("sha256").update(event.data).digest("hex").slice(0, 16);
+    return `${event.ledger}-${event.contractId}-${event.topics.join('-')}-${dataHash}`;
 }
 
 function isEventProcessed(eventId: string): boolean {
@@ -274,7 +290,7 @@ function markEventProcessed(eventId: string): void {
 function logMetrics(config: HorizonListenerConfig): void {
     if (!config.enableMetrics) return;
     
-    console.log("[HorizonListener] Metrics:", {
+    logInfo("[HorizonListener] Metrics:", {
         ...metrics,
         processedEventIdsCount: processedEventIds.size,
         currentLedgerCursor,
@@ -290,7 +306,7 @@ async function dispatchEvent(event: HorizonEvent): Promise<void> {
     if (isEventProcessed(eventId)) {
         metrics.eventsDuplicated++;
         if (activeConfig?.enableMetrics) {
-            console.log("[HorizonListener] Skipping duplicate event:", eventId);
+            logInfo("[HorizonListener] Skipping duplicate event:", eventId);
         }
         return;
     }
@@ -302,7 +318,7 @@ async function dispatchEvent(event: HorizonEvent): Promise<void> {
         try {
             await handler(event);
         } catch (err) {
-            console.error(
+            logError(
                 "[HorizonListener] Event handler threw an error:",
                 err,
             );
@@ -420,7 +436,7 @@ async function handleCursorGap(config: HorizonListenerConfig, gapStart: string):
     const maxGap = config.maxCursorGap || 100;
     const startLedger = parseInt(gapStart);
     
-    console.log(`[HorizonListener] Cursor gap detected at ledger ${gapStart}, attempting recovery`);
+    logInfo(`[HorizonListener] Cursor gap detected at ledger ${gapStart}, attempting recovery`);
     
     // Try to fill the gap by querying individual ledgers
     for (let ledger = startLedger; ledger < startLedger + maxGap && ledger <= (currentLedgerCursor || startLedger) + maxGap; ledger++) {
@@ -429,13 +445,13 @@ async function handleCursorGap(config: HorizonListenerConfig, gapStart: string):
             await new Promise(resolve => setTimeout(resolve, 10)); // Simulate network delay
             
             if (Math.random() < 0.1) { // 10% chance of finding events in gap
-                console.log(`[HorizonListener] Recovered events at ledger ${ledger}`);
+                logInfo(`[HorizonListener] Recovered events at ledger ${ledger}`);
                 metrics.cursorGapsRecovered++;
                 break;
             }
         } catch (error) {
             // If we can't recover from gap, skip ahead
-            console.warn(`[HorizonListener] Failed to recover ledger ${ledger}, skipping`);
+            logWarn(`[HorizonListener] Failed to recover ledger ${ledger}, skipping`);
             break;
         }
     }
@@ -451,7 +467,7 @@ export async function pollOnce(config: HorizonListenerConfig): Promise<void> {
         // Check if we're in a backoff period
         if (retryState.nextRetryTime > Date.now()) {
             if (config.enableMetrics) {
-                console.log(`[HorizonListener] In backoff period, next retry at ${new Date(retryState.nextRetryTime).toISOString()}`);
+                logInfo(`[HorizonListener] In backoff period, next retry at ${new Date(retryState.nextRetryTime).toISOString()}`);
             }
             return;
         }
@@ -466,7 +482,7 @@ export async function pollOnce(config: HorizonListenerConfig): Promise<void> {
         const cursor = currentLedgerCursor ? `${currentLedgerCursor}` : config.startLedger;
         
         if (config.enableMetrics) {
-            console.log(
+            logInfo(
                 `[HorizonListener] Polling ${config.horizonUrl} ` +
                 `(contracts: ${config.contractIds.length > 0 ? config.contractIds.join(", ") : "none"}, ` +
                 `cursor: ${cursor})`,
@@ -492,7 +508,7 @@ export async function pollOnce(config: HorizonListenerConfig): Promise<void> {
             const rateLimitDelay = config.rateLimitDelayMs || 60000;
             retryState.nextRetryTime = Date.now() + rateLimitDelay;
             
-            console.warn(`[HorizonListener] Rate limit hit, waiting ${rateLimitDelay}ms`);
+            logWarn(`[HorizonListener] Rate limit hit, waiting ${rateLimitDelay}ms`);
             return;
         }
         
@@ -512,17 +528,17 @@ export async function pollOnce(config: HorizonListenerConfig): Promise<void> {
                 
                 metrics.retryAttempts++;
                 
-                console.warn(`[HorizonListener] Transient error (attempt ${retryState.attempts}/${maxRetries}), retrying in ${delay}ms:`, classifiedError.message);
+                logWarn(`[HorizonListener] Transient error (attempt ${retryState.attempts}/${maxRetries}), retrying in ${delay}ms:`, classifiedError.message);
                 return;
             } else {
-                console.error(`[HorizonListener] Max retries exceeded for transient error:`, classifiedError);
+                logError(`[HorizonListener] Max retries exceeded for transient error:`, classifiedError);
                 retryState.attempts = 0; // Reset for next time
                 return;
             }
         }
         
         // Non-transient error - log and continue
-        console.error("[HorizonListener] Non-transient error occurred:", classifiedError);
+        logError("[HorizonListener] Non-transient error occurred:", classifiedError);
     }
 }
 
@@ -540,7 +556,7 @@ export function getConfig(): HorizonListenerConfig | null {
 
 export async function start(): Promise<void> {
     if (running) {
-        console.warn("[HorizonListener] Already running — ignoring start() call.");
+        logWarn("[HorizonListener] Already running — ignoring start() call.");
         return;
     }
 
@@ -548,7 +564,7 @@ export async function start(): Promise<void> {
     activeConfig = config;
     running = true;
 
-    console.log("[HorizonListener] Starting with config:", {
+    logInfo("[HorizonListener] Starting with config:", {
         horizonUrl: config.horizonUrl,
         contractIds: config.contractIds,
         pollIntervalMs: config.pollIntervalMs,
@@ -561,14 +577,14 @@ export async function start(): Promise<void> {
         void pollOnce(config);
     }, config.pollIntervalMs);
 
-    console.log(
+    logInfo(
         `[HorizonListener] Started. Polling every ${config.pollIntervalMs}ms.`,
     );
 }
 
 export function stop(): void {
     if (!running) {
-        console.warn("[HorizonListener] Not running — ignoring stop() call.");
+        logWarn("[HorizonListener] Not running — ignoring stop() call.");
         return;
     }
 
@@ -580,5 +596,5 @@ export function stop(): void {
     running = false;
     activeConfig = null;
 
-    console.log("[HorizonListener] Stopped.");
+    logInfo("[HorizonListener] Stopped.");
 }

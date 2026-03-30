@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getWebhookConfig, testWebhookConnectivity } from '../services/drawWebhookService.js';
+import { redactLogArgs } from '../utils/logRedact.js';
 
 export const webhookRouter = Router();
 
@@ -46,7 +47,7 @@ webhookRouter.post('/test', async (_req: Request, res: Response) => {
 
         res.status(200).json(summary);
     } catch (error) {
-        console.error('[WebhookRoutes] Connectivity test failed:', error);
+        console.error(...redactLogArgs(['[WebhookRoutes] Connectivity test failed:', error]));
         res.status(500).json({
             error: 'Internal server error',
             message: 'Failed to test webhook connectivity'

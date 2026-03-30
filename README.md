@@ -125,6 +125,7 @@ docker build --target runner -t creditra-backend:latest .
 | `API_KEYS`  | **Yes**  | Comma-separated list of valid admin API keys (see below) |
 | `CORS_ORIGINS` | Prod   | Comma-separated allowlist of exact browser origins        |
 | `DATABASE_URL` | No    | PostgreSQL connection string (required for migrations)   |
+| `LOG_REDACTION_DEBUG` | No | Set to `true`/`1` to disable Stellar address redaction in logs for explicit debug sessions |
 
 Optional later: `REDIS_URL`, `HORIZON_URL`, etc.
 
