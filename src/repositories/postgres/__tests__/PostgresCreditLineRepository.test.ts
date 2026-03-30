@@ -302,7 +302,7 @@ describe('PostgresCreditLineRepository', () => {
   describe('delete', () => {
     it('should delete credit line and return true', async () => {
       const mockResult = { rowCount: 1 };
-      vi.mocked(mockClient.query).mockResolvedValueOnce(mockResult as any);
+      vi.mocked(mockClient.query).mockResolvedValueOnce(mockResult as unknown as { rows: unknown[] });
 
       const result = await repository.delete('credit-line-123');
 
@@ -315,7 +315,7 @@ describe('PostgresCreditLineRepository', () => {
 
     it('should return false when credit line not found', async () => {
       const mockResult = { rowCount: 0 };
-      vi.mocked(mockClient.query).mockResolvedValueOnce(mockResult as any);
+      vi.mocked(mockClient.query).mockResolvedValueOnce(mockResult as unknown as { rows: unknown[] });
 
       const result = await repository.delete('nonexistent');
 

@@ -17,7 +17,7 @@ describe('Container - PostgreSQL Integration', () => {
   beforeEach(() => {
     originalEnv = { ...process.env };
     // Reset the singleton instance
-    (Container as any).instance = undefined;
+    (Container as unknown as { instance: Container | undefined }).instance = undefined;
   });
 
   afterEach(() => {

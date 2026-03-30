@@ -240,7 +240,7 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
   async delete(id: string): Promise<boolean> {
     const query = 'DELETE FROM credit_lines WHERE id = $1';
     const result = await this.client.query(query, [id]);
-    return (result as any).rowCount > 0;
+    return (result as unknown as { rowCount: number }).rowCount > 0;
   }
 
   async exists(id: string): Promise<boolean> {
