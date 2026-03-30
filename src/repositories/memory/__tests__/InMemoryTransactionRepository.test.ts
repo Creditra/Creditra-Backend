@@ -239,6 +239,29 @@ describe('InMemoryTransactionRepository', () => {
       const paginated = await repository.findAll(2, 2);
       expect(paginated).toHaveLength(2);
     });
+
+    it('should use deterministic ordering when timestamps are equal', async () => {
+      const txA = await repository.create({
+        creditLineId: 'cl-1',
+        amount: '10.00',
+        type: TransactionType.BORROW
+      });
+
+      const txB = await repository.create({
+        creditLineId: 'cl-2',
+        amount: '20.00',
+        type: TransactionType.REPAY
+      });
+
+      const sameCreatedAt = new Date('2026-01-01T00:00:00.000Z');
+      repository['transactions'].set(txA.id, { ...txA, createdAt: sameCreatedAt });
+      repository['transactions'].set(txB.id, { ...txB, createdAt: sameCreatedAt });
+
+      const all = await repository.findAll();
+      const expectedOrder = [txA.id, txB.id].sort((a, b) => a.localeCompare(b));
+
+      expect(all.slice(0, 2).map((tx) => tx.id)).toEqual(expectedOrder);
+    });
   });
 
   describe('count', () => {
