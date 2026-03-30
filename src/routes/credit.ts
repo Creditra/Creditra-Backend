@@ -37,8 +37,6 @@ function handleServiceError(err: unknown, res: Response): void {
 creditRouter.get('/lines', async (req, res) => {
   try {
     const { offset, limit } = req.query;
-    const offsetNum = offset ? parseInt(offset as string) : undefined;
-    const limitNum = limit ? parseInt(limit as string) : undefined;
 
     const offsetNum =
       typeof offset === 'string' ? Number.parseInt(offset, 10) : undefined;
