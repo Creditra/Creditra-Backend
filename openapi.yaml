@@ -1,0 +1,200 @@
+openapi: 3.0.3
+info:
+  title: Creditra Backend API
+  version: 0.1.0
+  description: REST API for the Creditra adaptive credit protocol.
+
+servers:
+  - url: http://localhost:3000
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: creditra-backend
+
+  /api/credit/lines:
+    get:
+      summary: List credit lines
+      operationId: listCreditLines
+      responses:
+        '200':
+          description: List of credit lines
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  creditLines:
+                    type: array
+                    items: {}
+
+  /api/credit/lines/{id}:
+    get:
+      summary: Get credit line by ID
+      operationId: getCreditLine
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Credit line found
+        '404':
+          description: Credit line not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: NOT_FOUND
+                  message: Credit line not found
+
+  /api/risk/evaluate:
+    post:
+      summary: Request a risk evaluation
+      operationId: evaluateRisk
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - walletAddress
+              properties:
+                walletAddress:
+                  type: string
+                  example: '0xABCDEF1234567890'
+      responses:
+        '200':
+          description: Risk evaluation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskEvaluation'
+        '400':
+          description: Missing or invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: INVALID_INPUT
+                  message: walletAddress required
+
+  /api/risk/evaluations/{id}:
+    get:
+      summary: Get a risk evaluation by ID
+      operationId: getRiskEvaluation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID v4 of the risk evaluation
+          schema:
+            type: string
+            format: uuid
+            example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '200':
+          description: Risk evaluation found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  evaluation:
+                    $ref: '#/components/schemas/RiskEvaluation'
+              example:
+                evaluation:
+                  id: 11111111-1111-4111-8111-111111111111
+                  walletAddress: '0xABCDEF1234567890'
+                  riskScore: 42
+                  creditLimit: '1000'
+                  interestRateBps: 500
+        '400':
+          description: Invalid ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: INVALID_INPUT
+                  message: Invalid evaluation id format
+        '404':
+          description: Risk evaluation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: NOT_FOUND
+                  message: Risk evaluation not found
+        '500':
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: INTERNAL_ERROR
+                  message: Something went wrong
+
+components:
+  schemas:
+    RiskEvaluation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        walletAddress:
+          type: string
+        riskScore:
+          type: number
+        creditLimit:
+          type: string
+        interestRateBps:
+          type: number
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              enum:
+                - NOT_FOUND
+                - INVALID_INPUT
+                - INTERNAL_ERROR
+            message:
+              type: string

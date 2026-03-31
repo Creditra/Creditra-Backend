@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git stash:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm install:*)",
+      "Bash(cat .github/workflows/*.yml)"
+    ]
+  }
+}
