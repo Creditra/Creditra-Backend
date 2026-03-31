@@ -105,13 +105,13 @@ describe('Risk Routes', () => {
       const response = await invokeRoute({
         method: 'post',
         path: '/evaluate',
-        body: { walletAddress: 'wallet123' },
+        body: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
         data: {
-          walletAddress: 'wallet123',
+          walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2',
           message: 'New risk evaluation completed',
         },
         error: null,
@@ -122,13 +122,13 @@ describe('Risk Routes', () => {
       await invokeRoute({
         method: 'post',
         path: '/evaluate',
-        body: { walletAddress: 'wallet123' },
+        body: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       const response = await invokeRoute({
         method: 'post',
         path: '/evaluate',
-        body: { walletAddress: 'wallet123' },
+        body: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       expect((response.body as { data: { message: string } }).data.message).toBe('Using cached risk evaluation');
@@ -138,13 +138,13 @@ describe('Risk Routes', () => {
       await invokeRoute({
         method: 'post',
         path: '/evaluate',
-        body: { walletAddress: 'wallet123' },
+        body: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       const response = await invokeRoute({
         method: 'post',
         path: '/evaluate',
-        body: { walletAddress: 'wallet123', forceRefresh: true },
+        body: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2', forceRefresh: true },
       });
 
       expect((response.body as { data: { message: string } }).data.message).toBe('New risk evaluation completed');
@@ -167,7 +167,7 @@ describe('Risk Routes', () => {
       const response = await invokeRoute({
         method: 'post',
         path: '/evaluate',
-        body: { walletAddress: 'wallet123', unknown: 'x' },
+        body: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2', unknown: 'x' },
       });
 
       expect(response.status).toBe(400);
@@ -189,7 +189,7 @@ describe('Risk Routes', () => {
       const response = await invokeRoute({
         method: 'post',
         path: '/evaluate',
-        body: { walletAddress: 'wallet123' },
+        body: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       expect(response.status).toBe(500);
@@ -202,8 +202,8 @@ describe('Risk Routes', () => {
 
   describe('GET endpoints', () => {
     it('returns evaluation by id', async () => {
-      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123' });
-      const latest = await container.riskEvaluationRepository.findLatestByWalletAddress('wallet123');
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' });
+      const latest = await container.riskEvaluationRepository.findLatestByWalletAddress('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2');
 
       const response = await invokeRoute({
         method: 'get',
@@ -249,16 +249,16 @@ describe('Risk Routes', () => {
     });
 
     it('returns latest evaluation for wallet', async () => {
-      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123' });
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' });
 
       const response = await invokeRoute({
         method: 'get',
         path: '/wallet/:walletAddress/latest',
-        params: { walletAddress: 'wallet123' },
+        params: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       expect(response.status).toBe(200);
-      expect((response.body as { data: { walletAddress: string } }).data.walletAddress).toBe('wallet123');
+      expect((response.body as any).data.walletAddress).toBe('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2');
     });
 
     it('returns 404 for missing latest evaluation', async () => {
@@ -285,7 +285,7 @@ describe('Risk Routes', () => {
       const response = await invokeRoute({
         method: 'get',
         path: '/wallet/:walletAddress/latest',
-        params: { walletAddress: 'wallet123' },
+        params: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       expect(response.status).toBe(500);
@@ -295,14 +295,14 @@ describe('Risk Routes', () => {
     });
 
     it('returns history with pagination', async () => {
-      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123', forceRefresh: true });
-      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123', forceRefresh: true });
-      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123', forceRefresh: true });
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2', forceRefresh: true });
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2', forceRefresh: true });
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2', forceRefresh: true });
 
       const response = await invokeRoute({
         method: 'get',
         path: '/wallet/:walletAddress/history',
-        params: { walletAddress: 'wallet123' },
+        params: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
         query: { offset: '1', limit: '1' },
       });
 
@@ -314,7 +314,7 @@ describe('Risk Routes', () => {
       const response = await invokeRoute({
         method: 'get',
         path: '/wallet/:walletAddress/history',
-        params: { walletAddress: 'wallet123' },
+        params: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
         query: { offset: 'bad', limit: 'bad' },
       });
 
@@ -335,7 +335,7 @@ describe('Risk Routes', () => {
       const response = await invokeRoute({
         method: 'get',
         path: '/wallet/:walletAddress/history',
-        params: { walletAddress: 'wallet123' },
+        params: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       expect(response.status).toBe(500);

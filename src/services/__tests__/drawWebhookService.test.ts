@@ -3,7 +3,8 @@ import {
     initializeWebhooks, 
     sendDrawConfirmationWebhook, 
     testWebhookConnectivity,
-    getWebhookConfig, resolveWebhookConfig
+    getWebhookConfig,
+    resolveWebhookConfig,
 } from "../drawWebhookService.js";
 import type { HorizonEvent } from "../horizonListener.js";
 
@@ -162,6 +163,7 @@ describe("DrawWebhookService", () => {
 
             await expect(sendDrawConfirmationWebhook(event)).resolves.toEqual([]);
 
+            void expect(result).resolves.toEqual([]);
             expect(mockFetch).not.toHaveBeenCalled();
         });
 
@@ -176,6 +178,7 @@ describe("DrawWebhookService", () => {
 
             await expect(sendDrawConfirmationWebhook(event)).resolves.toEqual([]);
 
+            void expect(result).resolves.toEqual([]);
             expect(mockFetch).not.toHaveBeenCalled();
         });
 

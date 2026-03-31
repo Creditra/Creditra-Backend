@@ -41,13 +41,13 @@ describe('Credit Routes', () => {
     it('should return credit lines with pagination', async () => {
       // Create test credit lines
       await container.creditLineService.createCreditLine({
-        walletAddress: 'wallet1',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '1000.00',
         interestRateBps: 500
       });
 
       await container.creditLineService.createCreditLine({
-        walletAddress: 'wallet2',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2',
         creditLimit: '2000.00',
         interestRateBps: 600
       });
@@ -104,12 +104,119 @@ describe('Credit Routes', () => {
       // Restore original method
       container.creditLineService.getAllCreditLines = originalMethod;
     });
+
+    it('should return credit lines with cursor pagination', async () => {
+      // Create test credit lines
+      for (let i = 0; i < 5; i++) {
+        await container.creditLineService.createCreditLine({
+          walletAddress: `wallet${i}`,
+          creditLimit: '1000.00',
+          interestRateBps: 500
+        });
+        // Small delay to ensure different timestamps
+        await new Promise(resolve => setTimeout(resolve, 2));
+      }
+
+      const response = await request(app)
+        .get('/api/credit/lines?cursor&limit=3')
+        .expect(200);
+
+      expect(response.body.creditLines).toHaveLength(3);
+      expect(response.body.pagination.limit).toBe(3);
+      expect(response.body.pagination.nextCursor).toBeDefined();
+      expect(response.body.pagination.hasMore).toBe(true);
+      expect(response.body.pagination.total).toBeUndefined(); // No total in cursor mode
+    });
+
+    it('should paginate through all items with cursor', async () => {
+      // Create test credit lines
+      for (let i = 0; i < 7; i++) {
+        await container.creditLineService.createCreditLine({
+          walletAddress: `wallet${i}`,
+          creditLimit: '1000.00',
+          interestRateBps: 500
+        });
+        await new Promise(resolve => setTimeout(resolve, 2));
+      }
+
+      // Get first page
+      const firstPage = await request(app)
+        .get('/api/credit/lines?cursor&limit=3')
+        .expect(200);
+
+      expect(firstPage.body.creditLines).toHaveLength(3);
+      expect(firstPage.body.pagination.hasMore).toBe(true);
+      expect(firstPage.body.pagination.nextCursor).toBeDefined();
+
+      // Get second page
+      const secondPage = await request(app)
+        .get(`/api/credit/lines?cursor=${firstPage.body.pagination.nextCursor}&limit=3`)
+        .expect(200);
+
+      expect(secondPage.body.creditLines).toHaveLength(3);
+      expect(secondPage.body.pagination.hasMore).toBe(true);
+
+      // Verify no overlap
+      const firstIds = firstPage.body.creditLines.map((cl: any) => cl.id);
+      const secondIds = secondPage.body.creditLines.map((cl: any) => cl.id);
+      expect(firstIds.some((id: string) => secondIds.includes(id))).toBe(false);
+
+      // Get third page (last page)
+      const thirdPage = await request(app)
+        .get(`/api/credit/lines?cursor=${secondPage.body.pagination.nextCursor}&limit=3`)
+        .expect(200);
+
+      expect(thirdPage.body.creditLines).toHaveLength(1);
+      expect(thirdPage.body.pagination.hasMore).toBe(false);
+      expect(thirdPage.body.pagination.nextCursor).toBeNull();
+    });
+
+    it('should handle cursor with zero limit error', async () => {
+      const response = await request(app)
+        .get('/api/credit/lines?cursor&limit=0')
+        .expect(400);
+
+      expect(response.body.error).toBe('Limit must be greater than 0');
+    });
+
+    it('should handle cursor with oversized limit error', async () => {
+      const response = await request(app)
+        .get('/api/credit/lines?cursor&limit=101')
+        .expect(400);
+
+      expect(response.body.error).toBe('Limit cannot exceed 100');
+    });
+
+    it('should return empty result with cursor when no items exist', async () => {
+      const response = await request(app)
+        .get('/api/credit/lines?cursor&limit=10')
+        .expect(200);
+
+      expect(response.body.creditLines).toHaveLength(0);
+      expect(response.body.pagination.hasMore).toBe(false);
+      expect(response.body.pagination.nextCursor).toBeNull();
+    });
+
+    it('should handle invalid cursor gracefully', async () => {
+      await container.creditLineService.createCreditLine({
+        walletAddress: 'wallet1',
+        creditLimit: '1000.00',
+        interestRateBps: 500
+      });
+
+      const response = await request(app)
+        .get('/api/credit/lines?cursor=invalid-cursor&limit=10')
+        .expect(200);
+
+      // Should start from beginning with invalid cursor
+      expect(response.body.creditLines).toHaveLength(1);
+    });
   });
 
   describe('GET /api/credit/lines/:id', () => {
     it('should return credit line when found', async () => {
       const created = await container.creditLineService.createCreditLine({
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S3',
         creditLimit: '1000.00',
         interestRateBps: 500
       });
@@ -119,7 +226,7 @@ describe('Credit Routes', () => {
         .expect(200);
 
       expect(response.body.data.id).toBe(created.id);
-      expect(response.body.data.walletAddress).toBe('wallet123');
+      expect(response.body.data.walletAddress).toBe('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S3');
       expect(response.body.error).toBeNull();
     });
 
@@ -161,7 +268,7 @@ describe('Credit Routes', () => {
   describe('POST /api/credit/lines', () => {
     it('should create credit line successfully', async () => {
       const requestBody = {
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S3',
         creditLimit: '1000.00',
         interestRateBps: 500
       };
@@ -174,7 +281,7 @@ describe('Credit Routes', () => {
       expect(response.body.data.id).toBeDefined();
       expect(response.body.data.walletAddress).toBe(requestBody.walletAddress);
       expect(response.body.data.creditLimit).toBe(requestBody.creditLimit);
-      expect(response.body.data.interestRateBps).toBe(requestBody.interestRateBps);
+      expect(response.body.data.interestRateBps).toBe(requestBody.interestRateBps ?? 0);
       expect(response.body.data.status).toBe(CreditLineStatus.ACTIVE);
       expect(response.body.error).toBeNull();
     });
@@ -183,12 +290,12 @@ describe('Credit Routes', () => {
       const response = await request(app)
         .post('/api/credit/lines')
         .send({
-          walletAddress: 'wallet123'
+          walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S3'
           // Missing creditLimit and interestRateBps
         })
         .expect(400);
 
-      expect(response.body.error).toBe('Missing required fields: walletAddress, creditLimit, interestRateBps');
+      expect(response.body.error).toBe('Validation failed');
       expect(response.body.data).toBeNull();
     });
 
@@ -202,7 +309,7 @@ describe('Credit Routes', () => {
         })
         .expect(400);
 
-      expect(response.body.error).toBe('Missing required fields: walletAddress, creditLimit, interestRateBps');
+      expect(response.body.error).toBe('Validation failed');
       expect(response.body.data).toBeNull();
     });
 
@@ -222,7 +329,7 @@ describe('Credit Routes', () => {
       const response = await request(app)
         .post('/api/credit/lines')
         .send({
-          walletAddress: 'wallet123',
+          walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S3',
           creditLimit: '1000.00',
           interestRateBps: 500
         })
@@ -240,7 +347,7 @@ describe('Credit Routes', () => {
   describe('PUT /api/credit/lines/:id', () => {
     it('should update credit line successfully', async () => {
       const created = await container.creditLineService.createCreditLine({
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S3',
         creditLimit: '1000.00',
         interestRateBps: 500
       });
@@ -276,7 +383,7 @@ describe('Credit Routes', () => {
 
     it('should return 400 for invalid update data', async () => {
       const created = await container.creditLineService.createCreditLine({
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S3',
         creditLimit: '1000.00',
         interestRateBps: 500
       });
@@ -294,7 +401,7 @@ describe('Credit Routes', () => {
 
     it('should handle service errors with generic message', async () => {
       const created = await container.creditLineService.createCreditLine({
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S3',
         creditLimit: '1000.00',
         interestRateBps: 500
       });
@@ -328,7 +435,7 @@ describe('Credit Routes', () => {
   describe('DELETE /api/credit/lines/:id', () => {
     it('should delete credit line successfully', async () => {
       const created = await container.creditLineService.createCreditLine({
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S3',
         creditLimit: '1000.00',
         interestRateBps: 500
       });
@@ -379,7 +486,7 @@ describe('Credit Routes', () => {
 
   describe('GET /api/credit/wallet/:walletAddress/lines', () => {
     it('should return credit lines for wallet', async () => {
-      const walletAddress = 'wallet123';
+      const walletAddress = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S3';
 
       await container.creditLineService.createCreditLine({
         walletAddress,
@@ -395,7 +502,7 @@ describe('Credit Routes', () => {
 
       // Create credit line for different wallet
       await container.creditLineService.createCreditLine({
-        walletAddress: 'other-wallet',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S4',
         creditLimit: '500.00',
         interestRateBps: 400
       });
@@ -411,7 +518,7 @@ describe('Credit Routes', () => {
 
     it('should return empty array when no credit lines found for wallet', async () => {
       const response = await request(app)
-        .get('/api/credit/wallet/nonexistent/lines')
+        .get('/api/credit/wallet/GBAHQCUPC7G2B4D2F2I2K2M2O2Q2W2Y2A2C2E2G2I2K2M2O2Q2S5/lines')
         .expect(200);
 
       expect(response.body.data.creditLines).toEqual([]);
@@ -432,7 +539,7 @@ describe('Credit Routes', () => {
       (container as any)._creditLineService = mockService;
 
       const response = await request(app)
-        .get('/api/credit/wallet/test-wallet/lines')
+        .get('/api/credit/wallet/GBAHQCUPC7G2B4D2F2I2K2M2O2Q2W2Y2A2C2E2G2I2K2M2O2Q2S6/lines')
         .expect(500);
 
       expect(response.body.error).toBe('Internal server error');

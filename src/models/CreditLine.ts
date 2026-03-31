@@ -3,6 +3,7 @@ export interface CreditLine {
   walletAddress: string;
   creditLimit: string; // Using string for precise decimal handling
   availableCredit: string;
+  utilized: string;
   interestRateBps: number; // Basis points (e.g., 500 = 5%)
   status: CreditLineStatus;
   createdAt: Date;
@@ -26,4 +27,5 @@ export interface UpdateCreditLineRequest {
   creditLimit?: string;
   interestRateBps?: number;
   status?: CreditLineStatus;
+  utilized?: string;
 }

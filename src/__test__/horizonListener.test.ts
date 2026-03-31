@@ -9,9 +9,17 @@ import {
   resolveConfig,
   getMetrics,
   resetMetrics,
-  type HorizonEvent, type HorizonListenerConfig
+  type HorizonEvent,
+  type HorizonListenerConfig,
 } from "../services/horizonListener.js";
-import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
+import { vi, type Mock } from "vitest";
+
+const baseConfig: HorizonListenerConfig = {
+  horizonUrl: "https://horizon-testnet.stellar.org",
+  contractIds: [],
+  pollIntervalMs: 5000,
+  startLedger: "latest",
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -25,9 +33,9 @@ function silenceConsole() {
 }
 
 function restoreConsole() {
-  (console.log as Mock).mockRestore?.();
-  (console.warn as Mock).mockRestore?.();
-  (console.error as Mock).mockRestore?.();
+  (console.log as unknown as Mock).mockRestore?.();
+  (console.warn as unknown as Mock).mockRestore?.();
+  (console.error as unknown as Mock).mockRestore?.();
 }
 
 /** Save and restore env vars. */
@@ -217,7 +225,7 @@ describe("start()", () => {
   it("is a no-op (warns) if called when already running", async () => {
     vi.useFakeTimers();
     await start();
-    const warnSpy = console.warn as Mock;
+    const warnSpy = console.warn as unknown as Mock;
     warnSpy.mockClear();
     await start(); // second call
     expect(warnSpy).toHaveBeenCalledWith(
@@ -228,7 +236,7 @@ describe("start()", () => {
 
   it("logs startup config information", async () => {
     vi.useFakeTimers();
-    const logSpy = console.log as Mock;
+    const logSpy = console.log as unknown as Mock;
     await start();
     const calls = logSpy.mock.calls.flat().join(" ");
     expect(calls).toContain("Starting with config");
@@ -268,7 +276,7 @@ describe("stop()", () => {
   });
 
   it("is a no-op (warns) if called when not running", () => {
-    const warnSpy = console.warn as Mock;
+    const warnSpy = console.warn as unknown as Mock;
     stop();
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("Not running"),
@@ -278,10 +286,10 @@ describe("stop()", () => {
   it("logs a stopped message", async () => {
     vi.useFakeTimers();
     await start();
-    const logSpy = console.log as Mock;
+    const logSpy = console.log as unknown as Mock;
     logSpy.mockClear();
     stop();
-    expect((console.log as Mock).mock.calls.flat().join(" ")).toContain(
+    expect((console.log as unknown as Mock).mock.calls.flat().join(" ")).toContain(
       "Stopped",
     );
   });
@@ -359,7 +367,7 @@ describe("onEvent() / clearEventHandlers()", () => {
 
       expect(goodEvents.length).toBe(1);
       expect(
-        (console.error as Mock).mock.calls.flat().join(" "),
+        (console.error as unknown as Mock).mock.calls.flat().join(" "),
       ).toContain("handler threw an error");
     });
   });
@@ -398,7 +406,7 @@ describe("pollOnce()", () => {
   });
 
   it("logs a polling message on every call", async () => {
-    const logSpy = console.log as Mock;
+    const logSpy = console.log as unknown as Mock;
     logSpy.mockClear();
     await pollOnce(baseConfig);
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Polling"));
@@ -430,7 +438,7 @@ describe("pollOnce()", () => {
   });
 
   it("logs 'none' for contracts when contractIds is empty", async () => {
-    const logSpy = console.log as Mock;
+    const logSpy = console.log as unknown as Mock;
     logSpy.mockClear();
     await pollOnce(baseConfig);
     expect((logSpy.mock.calls.flat() as string[]).join(" ")).toContain("none");
@@ -526,9 +534,24 @@ describe("Resilience Features", () => {
         ...baseConfig,
         contractIds: ["DUPE_CONTRACT"],
       };
-
+      
+      const events: HorizonEvent[] = [];
+      onEvent((e) => {
+        events.push(e);
+      });
+      
+      // Simulate the same event being processed twice
+      const _mockEvent: HorizonEvent = {
+        ledger: 1000,
+        timestamp: new Date().toISOString(),
+        contractId: "DUPE_CONTRACT",
+        topics: ["test"],
+        data: JSON.stringify({ test: "data" }),
+      };
+      
       // First dispatch should succeed
       await pollOnce(config);
+      const _initialCount = events.length;
       
       // Second dispatch of same event should be ignored
       // (This tests the internal idempotency logic)
@@ -689,7 +712,7 @@ describe("Resilience Features", () => {
 
   describe("Structured Logging", () => {
     it("logs metrics when enabled", async () => {
-      const logSpy = console.log as Mock;
+      const logSpy = console.log as unknown as Mock;
       logSpy.mockClear();
       
       const config: HorizonListenerConfig = {
@@ -709,7 +732,7 @@ describe("Resilience Features", () => {
     });
 
     it("does not log metrics when disabled", async () => {
-      const logSpy = console.log as Mock;
+      const logSpy = console.log as unknown as Mock;
       logSpy.mockClear();
       
       const config: HorizonListenerConfig = {

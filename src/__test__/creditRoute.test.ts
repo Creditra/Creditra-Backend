@@ -1,5 +1,5 @@
 
-import express, { type Express, type Response } from "express";
+import express, { type Express } from "express";
 import request from "supertest";
 import {
   _resetStore,

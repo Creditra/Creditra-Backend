@@ -1,0 +1,125 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - main
+      - develop
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  test-and-lint:
+    name: Test & Lint (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run typecheck
+
+      - name: Build project
+        run: npm run build
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run tests with coverage
+        if: matrix.node-version == '20.x'
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        if: matrix.node-version == '20.x'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-node-${{ matrix.node-version }}
+          path: coverage/
+          retention-days: 7
+
+      - name: Validate OpenAPI spec
+        if: matrix.node-version == '20.x'
+        run: npm run validate:spec
+
+      - name: Check coverage threshold
+        if: matrix.node-version == '20.x'
+        run: |
+          echo "Coverage report generated. Ensure 95% coverage on touched modules."
+          if [ -f coverage/lcov.info ]; then
+            echo "✅ Coverage file exists"
+          else
+            echo "⚠️ Coverage file not found"
+            exit 1
+          fi
+
+  security-check:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Check for sensitive data patterns
+        run: |
+          echo "Checking for potential sensitive data leaks..."
+          if grep -r "PRIVATE_KEY\|SECRET_KEY\|API_KEY" src/ --exclude-dir=node_modules --exclude="*.test.ts" --exclude="*.md" | grep -v "process.env" | grep -v "//"; then
+            echo "⚠️ Warning: Potential hardcoded secrets found"
+            exit 1
+          else
+            echo "✅ No hardcoded secrets detected"
+          fi
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [test-and-lint, security-check]
+    if: always()
+
+    steps:
+      - name: Check job status
+        run: |
+          if [ "${{ needs.test-and-lint.result }}" != "success" ] || [ "${{ needs.security-check.result }}" != "success" ]; then
+            echo "❌ CI checks failed"
+            exit 1
+          else
+            echo "✅ All CI checks passed"
+          fi

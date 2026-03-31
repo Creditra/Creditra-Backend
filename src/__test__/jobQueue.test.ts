@@ -9,7 +9,7 @@ import {
 } from "vitest";
 import {
   InMemoryJobQueue,
-  type Job
+  type Job,
 } from "../services/jobQueue.js";
 
 function createQueue(): InMemoryJobQueue {

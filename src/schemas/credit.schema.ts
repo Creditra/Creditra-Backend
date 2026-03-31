@@ -1,21 +1,27 @@
 import { z } from 'zod';
 import { TransactionType } from '../models/Transaction.js';
+import { isValidStellarAddress } from '../utils/stellarAddress.js';
 
 const numericString = /^\d+(\.\d+)?$/;
 const isoDateTime = z.string().datetime({ offset: true });
 const positiveIntString = z.coerce.number().int().positive();
 const nonNegativeIntString = z.coerce.number().int().min(0);
 
+const stellarAddressField = z
+  .string()
+  .refine(isValidStellarAddress, 'walletAddress must be a valid Stellar address');
+
 export const createCreditLineSchema = z.object({
-  walletAddress: z
-    .string()
-    .min(1, 'walletAddress is required')
-    .max(256, 'walletAddress must be at most 256 characters'),
+  walletAddress: stellarAddressField,
   requestedLimit: z
     .string()
-    .min(1, 'requestedLimit is required')
-    .regex(numericString, 'requestedLimit must be a numeric string'),
-}).strict();
+    .regex(numericString, 'requestedLimit must be a numeric string')
+    .optional(),
+  interestRateBps: nonNegativeIntString.optional(),
+}).strict().refine(data => data.creditLimit || data.requestedLimit, {
+  message: "Either creditLimit or requestedLimit must be provided",
+  path: ["creditLimit"]
+});
 
 export type CreateCreditLineBody = z.infer<typeof createCreditLineSchema>;
 
@@ -27,6 +33,7 @@ export const creditLinesQuerySchema = z.object({
 export type CreditLinesQuery = z.infer<typeof creditLinesQuerySchema>;
 
 export const drawSchema = z.object({
+  walletAddress: stellarAddressField,
   amount: z
     .string()
     .min(1, 'amount is required')
@@ -36,6 +43,7 @@ export const drawSchema = z.object({
 export type DrawBody = z.infer<typeof drawSchema>;
 
 export const repaySchema = z.object({
+  walletAddress: stellarAddressField,
   amount: z
     .string()
     .min(1, 'amount is required')
