@@ -1,5 +1,6 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { getWebhookConfig, testWebhookConnectivity } from '../services/drawWebhookService.js';
+import { redactLogArgs } from '../utils/logRedact.js';
 
 export const webhookRouter = Router();
 
@@ -27,7 +28,7 @@ webhookRouter.get('/config', (_req: Request, res: Response) => {
         configured: config.urls.length > 0
     };
 
-    res.status(200).json(safeConfig);
+    return res.status(200).json(safeConfig);
 });
 
 /**
@@ -46,7 +47,7 @@ webhookRouter.post('/test', async (_req: Request, res: Response) => {
 
         res.status(200).json(summary);
     } catch (error) {
-        console.error('[WebhookRoutes] Connectivity test failed:', error);
+        console.error(...redactLogArgs(['[WebhookRoutes] Connectivity test failed:', error]));
         res.status(500).json({
             error: 'Internal server error',
             message: 'Failed to test webhook connectivity'
@@ -67,7 +68,7 @@ webhookRouter.get('/health', (_req: Request, res: Response) => {
         });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
         status: 'active',
         urls: config.urls.length,
         maxRetries: config.maxRetries,

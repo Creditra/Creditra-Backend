@@ -1,5 +1,5 @@
 
-import express, { Express } from "express";
+import express, { type Express } from "express";
 import request from "supertest";
 import {
   _resetStore,
@@ -17,7 +17,7 @@ vi.mock("../middleware/adminAuth.js", () => ({
 
 import creditRouter from "../routes/credit.js";
 import { adminAuth } from "../middleware/adminAuth.js";
-import { afterEach, beforeEach, vi } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 
 const mockAdminAuth = vi.mocked(adminAuth);
 
@@ -37,7 +37,7 @@ function allowAdmin() {
 }
 
 function denyAdmin() {
-  mockAdminAuth.mockImplementation((_req, res: any, _next) => {
+  mockAdminAuth.mockImplementation((_req, res: Response, _next) => {
     res.status(401).json({ error: "Unauthorized: valid X-Admin-Api-Key header is required." });
   });
 }

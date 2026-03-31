@@ -1,12 +1,13 @@
 import { Router, type Request, type Response } from 'express';
 import { createApiKeyMiddleware } from '../middleware/auth.js';
 import { loadApiKeys } from '../config/apiKeys.js';
-import { validateBody, validateQuery } from '../middleware/validate.js';
+import { validateBody, validateQuery, validateParams } from '../middleware/validate.js';
 import { ok, fail } from '../utils/response.js';
 import { Container } from '../container/Container.js';
 import {
   riskEvaluateSchema,
   riskHistoryQuerySchema,
+  walletAddressParamSchema,
   type RiskEvaluateBody,
   type RiskHistoryQuery,
 } from '../schemas/index.js';
@@ -48,7 +49,10 @@ riskRouter.get('/evaluations/:id', async (req: Request, res: Response): Promise<
   }
 });
 
-riskRouter.get('/wallet/:walletAddress/latest', async (req: Request, res: Response): Promise<void> => {
+riskRouter.get(
+  '/wallet/:walletAddress/latest',
+  validateParams(walletAddressParamSchema),
+  async (req: Request, res: Response): Promise<void> => {
   try {
     const evaluation = await container.riskEvaluationService.getLatestRiskEvaluation(req.params.walletAddress);
 
@@ -65,6 +69,7 @@ riskRouter.get('/wallet/:walletAddress/latest', async (req: Request, res: Respon
 
 riskRouter.get(
   '/wallet/:walletAddress/history',
+  validateParams(walletAddressParamSchema),
   validateQuery(riskHistoryQuerySchema),
   async (req: Request, res: Response): Promise<void> => {
     try {

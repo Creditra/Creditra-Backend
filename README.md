@@ -125,8 +125,14 @@ docker build --target runner -t creditra-backend:latest .
 | `API_KEYS`  | **Yes**  | Comma-separated list of valid admin API keys (see below) |
 | `CORS_ORIGINS` | Prod   | Comma-separated allowlist of exact browser origins        |
 | `DATABASE_URL` | No    | PostgreSQL connection string (required for migrations)   |
+| `HTTP_CONNECT_TIMEOUT_MS` | No | Connection timeout for outbound HTTP (default: `5000`) |
+| `HTTP_READ_TIMEOUT_MS` | No | Read timeout for outbound HTTP (default: `10000`) |
 
 Optional later: `REDIS_URL`, `HORIZON_URL`, etc.
+
+### HTTP Timeouts
+
+All outbound HTTP requests (Horizon API, risk providers) use configurable timeouts to prevent hanging connections. See [docs/http-timeouts.md](docs/http-timeouts.md) for configuration and usage details.
 
 ### Browser origins
 
@@ -152,6 +158,68 @@ The PostgreSQL schema is designed and documented in **[docs/data-model.md](docs/
 - **Migrations** live in `migrations/` as sequential SQL files. See [migrations/README.md](migrations/README.md) for strategy and naming.
 - **Apply migrations:** `DATABASE_URL=... npm run db:migrate`
 - **Validate schema:** `DATABASE_URL=... npm run db:validate`
+
+### Migration CLI Safety Features
+
+The migration CLI includes comprehensive safety guards to prevent accidental data loss in production environments.
+
+#### Safety Features
+
+- **Dry-run mode**: Preview pending migrations without applying them
+- **Environment detection**: Automatic detection of production-like environments
+- **Force requirement**: Production-like environments require explicit `--force` flag
+- **Interactive confirmation**: Prompts for confirmation in production environments
+- **Clear error messages**: Detailed troubleshooting and rollback guidance
+
+#### Usage Examples
+
+```bash
+# Dry run - see what would be applied
+DATABASE_URL=... npm run db:migrate -- --dry-run
+
+# Development - safe to run
+DATABASE_URL=... npm run db:migrate
+
+# Staging - requires force flag
+DATABASE_URL=... npm run db:migrate -- --force --env staging
+
+# Production - requires force flag and explicit confirmation
+DATABASE_URL=... npm run db:migrate -- --force --env production
+```
+
+#### Environment Safety Levels
+
+| Environment | Force Required | Confirmation |
+|-------------|---------------|--------------|
+| `development` | No | No |
+| `test` | No | No |
+| `staging` | Yes | Yes |
+| `production` | Yes | Yes (requires "MIGRATE PRODUCTION") |
+| `*prod*` | Yes | Yes |
+
+#### Operator Runbook
+
+**Before Migration:**
+1. Always run with `--dry-run` first to review pending migrations
+2. Ensure you have a recent database backup
+3. Test migrations in staging environment first
+4. Prepare rollback plan
+5. Notify relevant stakeholders
+
+**Production Migration Process:**
+1. Run dry-run: `npm run db:migrate -- --dry-run --env production`
+2. Review pending migrations carefully
+3. Confirm backup is available
+4. Execute with force: `npm run db:migrate -- --force --env production`
+5. Type "MIGRATE PRODUCTION" when prompted
+6. Verify application functionality post-migration
+
+**Troubleshooting:**
+- Check database connection and permissions
+- Verify migration file syntax
+- Ensure database is in correct state
+- Review migration logs for specific errors
+- Consider rollback if production issues occur
 
 ## Authentication
 
@@ -217,7 +285,44 @@ The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push and 
 |------|---------|-----------------|
 | TypeScript typecheck | `npm run typecheck` | Any type error |
 | Lint | `npm run lint` | Any ESLint warning or error |
-| Tests + Coverage | `npm test` | Failing test OR coverage < 95% |
+| Dependency audit | `npm audit --production` | Moderate+ vulnerabilities |
+
+## 🔐 Dependency Security
+
+This project enforces automated dependency vulnerability checks as part of CI.
+
+### Checks in place
+
+- `npm audit --production` runs on every push
+- GitHub Dependency Review runs on every pull request
+
+These checks help prevent vulnerable dependencies from reaching production.
+
+### Severity policy
+
+| Severity   | Policy |
+|-----------|--------|
+| Low       | Allowed |
+| Moderate  | Allowed with justification |
+| High      | Must be fixed before merge |
+| Critical  | Blocker — cannot be merged |
+
+### Exceptions
+
+Moderate vulnerabilities may be accepted only if:
+
+- No fix is available
+- The vulnerable code path is not used in production
+- There is no impact on security-sensitive data (API keys, PII, Stellar data)
+
+All exceptions **must be documented in the pull request description**.
+
+### Local validation
+
+Before pushing changes, run:
+
+```bash
+npm audit --production
 
 ### Run locally
 
@@ -290,7 +395,10 @@ HTTP status codes follow REST conventions:
 ### Public
 
 - `GET  /health` — Service health
-- `GET  /api/credit/lines` — List credit lines (placeholder)
+- `GET  /api/credit/lines` — List credit lines with pagination support
+  - **Cursor pagination** (recommended): `?cursor&limit=50` or `?cursor=<token>&limit=50`
+  - **Offset pagination** (legacy): `?offset=0&limit=50`
+  - See [Cursor Pagination Guide](docs/cursor-pagination.md) for details
 - `GET  /api/credit/lines/:id` — Get credit line by id (placeholder)
 - `POST /api/risk/evaluate` — Risk evaluation; body: `{ "walletAddress": "..." }`
 
@@ -305,6 +413,26 @@ HTTP status codes follow REST conventions:
 
 - `GET /api/webhooks/config` — Get webhook configuration
 - `GET /api/webhooks/health` — Webhook service health check
+
+### Pagination
+
+The `/api/credit/lines` endpoint supports two pagination modes:
+
+1. **Cursor-based** (recommended for production): Provides stable pagination for large datasets
+   ```bash
+   # First page
+   curl "http://localhost:3000/api/credit/lines?cursor&limit=10"
+   
+   # Next page (use nextCursor from response)
+   curl "http://localhost:3000/api/credit/lines?cursor=<nextCursor>&limit=10"
+   ```
+
+2. **Offset-based** (legacy): Traditional pagination with total count
+   ```bash
+   curl "http://localhost:3000/api/credit/lines?offset=0&limit=10"
+   ```
+
+For detailed documentation, examples, and migration guide, see [docs/cursor-pagination.md](docs/cursor-pagination.md).
 
 ## Running tests
 
@@ -321,6 +449,8 @@ Target: ≥ 95 % coverage on all middleware and route files.
 src/
   config/
     apiKeys.ts                              # loads + validates API_KEYS env var
+    cors.ts                                 # loads + validates CORS_ORIGINS env var
+    env.ts                                  # Zod schema; validates all env vars at startup
   container/
     Container.ts                            # DI container; wires repos → services
   middleware/
@@ -352,6 +482,9 @@ src/
     horizonListener.ts                      # Stellar Horizon event poller
     drawWebhookService.ts                   # draw confirmation webhook delivery
     jobQueue.ts                             # background job scheduler
+    reconciliationService.ts                # chain vs DB reconciliation
+    reconciliationWorker.ts                 # scheduled reconciliation worker
+    sorobanClient.ts                        # Soroban RPC client
   utils/
     response.ts                             # ok() / fail() envelope helpers
     stellarAddress.ts                       # Stellar public-key validation
@@ -361,6 +494,7 @@ docs/
   data-model.md                            # PostgreSQL schema documentation
   REPOSITORY_ARCHITECTURE.md              # deep-dive on the repository pattern
   security-checklist-backend.md
+  security-pentest-checklist.md           # pre-engagement API pentest readiness
 migrations/                                # sequential SQL migration files
 .github/workflows/
   ci.yml                                   # CI: typecheck → lint → test → coverage
@@ -600,8 +734,9 @@ Keep `openapi.yaml` in sync with route behaviour; the CI pipeline validates the 
 Security is a priority for Creditra. Before deploying or contributing:
 
 - Review the [Backend Security Checklist](docs/security-checklist-backend.md)
+- Before an external pentest, work through the [API pentest readiness checklist](docs/security-pentest-checklist.md)
 - Ensure all security requirements are met
-- Run `npm audit` to check for vulnerabilities
+- Run `npm audit --production` to check for vulnerabilities
 - Maintain minimum 95% test coverage
 
 ## Merging to remote

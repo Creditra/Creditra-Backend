@@ -13,6 +13,7 @@ describe('CreditLineService', () => {
       findById: vi.fn(),
       findByWalletAddress: vi.fn(),
       findAll: vi.fn(),
+      findAllWithCursor: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
       exists: vi.fn(),
@@ -25,7 +26,7 @@ describe('CreditLineService', () => {
   describe('createCreditLine', () => {
     it('should create credit line successfully', async () => {
       const request = {
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '1000.00',
         interestRateBps: 500
       };
@@ -61,7 +62,7 @@ describe('CreditLineService', () => {
 
     it('should throw error for invalid credit limit', async () => {
       const request = {
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '0',
         interestRateBps: 500
       };
@@ -71,7 +72,7 @@ describe('CreditLineService', () => {
 
     it('should throw error for invalid interest rate', async () => {
       const request = {
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '1000.00',
         interestRateBps: -100
       };
@@ -84,7 +85,7 @@ describe('CreditLineService', () => {
     it('should return credit line when found', async () => {
       const creditLine: CreditLine = {
         id: 'cl-123',
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '1000.00',
         availableCredit: '1000.00',
         interestRateBps: 500,
@@ -115,7 +116,7 @@ describe('CreditLineService', () => {
       const creditLines: CreditLine[] = [
         {
           id: 'cl-123',
-          walletAddress: 'wallet123',
+          walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
           creditLimit: '1000.00',
           availableCredit: '1000.00',
           interestRateBps: 500,
@@ -127,9 +128,9 @@ describe('CreditLineService', () => {
 
       vi.mocked(mockRepository.findByWalletAddress).mockResolvedValue(creditLines);
 
-      const result = await service.getCreditLinesByWallet('wallet123');
+      const result = await service.getCreditLinesByWallet('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1');
 
-      expect(mockRepository.findByWalletAddress).toHaveBeenCalledWith('wallet123');
+      expect(mockRepository.findByWalletAddress).toHaveBeenCalledWith('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1');
       expect(result).toEqual(creditLines);
     });
   });
@@ -143,7 +144,7 @@ describe('CreditLineService', () => {
 
       const updatedCreditLine: CreditLine = {
         id: 'cl-123',
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '2000.00',
         availableCredit: '2000.00',
         interestRateBps: 600,
@@ -225,6 +226,74 @@ describe('CreditLineService', () => {
 
     it('should throw error for oversized limit', async () => {
       await expect(service.getAllCreditLines(0, 101)).rejects.toThrow('Limit cannot exceed 100');
+    });
+  });
+
+  describe('getAllCreditLinesWithCursor', () => {
+    it('should return credit lines with cursor pagination', async () => {
+      const creditLines: CreditLine[] = [
+        { id: 'cl-1', walletAddress: 'w1', creditLimit: '100', availableCredit: '100', interestRateBps: 500, status: CreditLineStatus.ACTIVE, createdAt: new Date(), updatedAt: new Date() }
+      ];
+      
+      const mockResult = {
+        items: creditLines,
+        nextCursor: 'base64cursor',
+        hasMore: true
+      };
+
+      vi.mocked(mockRepository.findAllWithCursor).mockResolvedValue(mockResult);
+
+      const result = await service.getAllCreditLinesWithCursor(undefined, 10);
+      
+      expect(mockRepository.findAllWithCursor).toHaveBeenCalledWith(undefined, 10);
+      expect(result).toEqual(mockResult);
+      expect(result.items).toEqual(creditLines);
+      expect(result.nextCursor).toBe('base64cursor');
+      expect(result.hasMore).toBe(true);
+    });
+
+    it('should handle cursor parameter', async () => {
+      const mockResult = {
+        items: [],
+        nextCursor: null,
+        hasMore: false
+      };
+
+      vi.mocked(mockRepository.findAllWithCursor).mockResolvedValue(mockResult);
+
+      const result = await service.getAllCreditLinesWithCursor('somecursor', 20);
+      
+      expect(mockRepository.findAllWithCursor).toHaveBeenCalledWith('somecursor', 20);
+      expect(result.nextCursor).toBeNull();
+      expect(result.hasMore).toBe(false);
+    });
+
+    it('should throw error for zero limit', async () => {
+      await expect(service.getAllCreditLinesWithCursor(undefined, 0)).rejects.toThrow('Limit must be greater than 0');
+    });
+
+    it('should throw error for negative limit', async () => {
+      await expect(service.getAllCreditLinesWithCursor(undefined, -5)).rejects.toThrow('Limit must be greater than 0');
+    });
+
+    it('should throw error for oversized limit', async () => {
+      await expect(service.getAllCreditLinesWithCursor(undefined, 101)).rejects.toThrow('Limit cannot exceed 100');
+    });
+
+    it('should return empty result when no more items', async () => {
+      const mockResult = {
+        items: [],
+        nextCursor: null,
+        hasMore: false
+      };
+
+      vi.mocked(mockRepository.findAllWithCursor).mockResolvedValue(mockResult);
+
+      const result = await service.getAllCreditLinesWithCursor('exhaustedcursor', 10);
+      
+      expect(result.items).toHaveLength(0);
+      expect(result.nextCursor).toBeNull();
+      expect(result.hasMore).toBe(false);
     });
   });
 });

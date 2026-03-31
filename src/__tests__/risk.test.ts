@@ -14,33 +14,44 @@ afterAll(() => {
 });
 
 describe('POST /api/risk/evaluate (public)', () => {
-    it('returns 200 with a valid walletAddress', async () => {
+    it('returns 200 with a valid Stellar walletAddress', async () => {
+        const validAddress = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2';
         const res = await request(app)
             .post('/api/risk/evaluate')
-            .send({ walletAddress: '0xDeAdBeEf' });
+            .send({ walletAddress: validAddress });
         expect(res.status).toBe(200);
-        expect(res.body.walletAddress).toBe('0xDeAdBeEf');
+        expect(res.body.walletAddress).toBe(validAddress);
         expect(res.body).toHaveProperty('riskScore');
         expect(res.body).toHaveProperty('creditLimit');
         expect(res.body).toHaveProperty('interestRateBps');
     });
 
+    it('returns 400 with an invalid Stellar walletAddress', async () => {
+        const res = await request(app)
+            .post('/api/risk/evaluate')
+            .send({ walletAddress: 'invalid-address' });
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Validation failed');
+        expect(res.body.details[0].message).toBe('Invalid Stellar wallet address');
+    });
+
     it('returns 400 when walletAddress is missing', async () => {
         const res = await request(app).post('/api/risk/evaluate').send({});
         expect(res.status).toBe(400);
-        expect(res.body).toEqual({ error: 'walletAddress required' });
+        expect(res.body.error).toBe('Validation failed');
+        expect(res.body.details[0].message).toBe('walletAddress is required');
     });
 
     it('returns 400 when body is empty', async () => {
-        const res = await request(app).post('/api/risk/evaluate');
+        const res = await request(app).post('/api/risk/evaluate').send({});
         expect(res.status).toBe(400);
-        expect(res.body).toEqual({ error: 'walletAddress required' });
+        expect(res.body.error).toBe('Validation failed');
     });
 
     it('does not require an API key', async () => {
         const res = await request(app)
             .post('/api/risk/evaluate')
-            .send({ walletAddress: '0x1234' });
+            .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' });
         expect(res.status).toBe(200);
     });
 });

@@ -11,7 +11,7 @@ describe('InMemoryRiskEvaluationRepository', () => {
   describe('save', () => {
     it('should save a new risk evaluation', async () => {
       const evaluation = {
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         riskScore: 75,
         creditLimit: '1000.00',
         interestRateBps: 500,
@@ -32,7 +32,7 @@ describe('InMemoryRiskEvaluationRepository', () => {
 
   describe('findLatestByWalletAddress', () => {
     it('should return latest evaluation for wallet', async () => {
-      const walletAddress = 'wallet123';
+      const walletAddress = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1';
       const now = new Date();
       
       // Create older evaluation
@@ -70,7 +70,7 @@ describe('InMemoryRiskEvaluationRepository', () => {
   describe('findById', () => {
     it('should return evaluation when found', async () => {
       const saved = await repository.save({
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         riskScore: 75,
         creditLimit: '1000.00',
         interestRateBps: 500,
@@ -91,7 +91,7 @@ describe('InMemoryRiskEvaluationRepository', () => {
 
   describe('findByWalletAddress', () => {
     it('should return evaluations for wallet address sorted by date', async () => {
-      const walletAddress = 'wallet123';
+      const walletAddress = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1';
       const now = new Date();
 
       const eval1 = await repository.save({
@@ -121,7 +121,7 @@ describe('InMemoryRiskEvaluationRepository', () => {
     });
 
     it('should support pagination', async () => {
-      const walletAddress = 'wallet123';
+      const walletAddress = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1';
       
       // Create 5 evaluations
       for (let i = 0; i < 5; i++) {
@@ -178,7 +178,7 @@ describe('InMemoryRiskEvaluationRepository', () => {
 
   describe('isValid', () => {
     it('should return true for valid evaluation', async () => {
-      const walletAddress = 'wallet123';
+      const walletAddress = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1';
       
       await repository.save({
         walletAddress,
@@ -195,7 +195,7 @@ describe('InMemoryRiskEvaluationRepository', () => {
     });
 
     it('should return false for expired evaluation', async () => {
-      const walletAddress = 'wallet123';
+      const walletAddress = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1';
       
       await repository.save({
         walletAddress,
