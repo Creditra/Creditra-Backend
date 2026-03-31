@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { creditLines } from '../models/creditLineStore.js';
+import { TransactionType } from "../models/Transaction.js";
+
+export { TransactionType };
 
 interface DrawRequest {
      id: string;
@@ -55,8 +58,6 @@ export interface CreditLine {
     updatedAt: string;
     events: CreditLineEvent[];
 }
-
-export type TransactionType = "draw" | "repayment" | "status_change";
 
 export interface Transaction {
     id: string;
@@ -153,7 +154,7 @@ export function createCreditLine(
         events: [{ action: "created", timestamp: ts }],
     };
     _store.set(id, line);
-    recordTransaction(id, "status_change", ts, null, null, { action: "created" });
+    recordTransaction(id, TransactionType.STATUS_CHANGE, ts, null, null, { action: "created" });
     return line;
 }
 
@@ -177,7 +178,7 @@ export function suspendCreditLine(id: string): CreditLine {
     line.status = "suspended";
     line.updatedAt = ts;
     line.events.push({ action: "suspended", timestamp: ts });
-    recordTransaction(id, "status_change", ts, null, null, { action: "suspended" });
+    recordTransaction(id, TransactionType.STATUS_CHANGE, ts, null, null, { action: "suspended" });
 
     return line;
 }
@@ -194,7 +195,7 @@ export function closeCreditLine(id: string): CreditLine {
     line.status = "closed";
     line.updatedAt = ts;
     line.events.push({ action: "closed", timestamp: ts });
-    recordTransaction(id, "status_change", ts, null, null, { action: "closed" });
+    recordTransaction(id, TransactionType.STATUS_CHANGE, ts, null, null, { action: "closed" });
 
     return line;
 }
@@ -206,7 +207,7 @@ export function getTransactions(
 ): PaginatedTransactions {
     if (!_store.has(id)) throw new CreditLineNotFoundError(id);
 
-    let txs = _transactionStore.get(id) ?? [];
+    let txs = [...(_transactionStore.get(id) ?? [])];
 
     if (filters.type !== undefined) {
         txs = txs.filter((tx) => tx.type === filters.type);
@@ -221,6 +222,13 @@ export function getTransactions(
         const to = new Date(filters.to).getTime();
         txs = txs.filter((tx) => new Date(tx.timestamp).getTime() <= to);
     }
+
+    // Guarantee deterministic reverse-chronological order before pagination.
+    txs.sort((a, b) => {
+        const tsDiff = new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+        if (tsDiff !== 0) return tsDiff;
+        return a.id.localeCompare(b.id);
+    });
 
     const total = txs.length;
     const { page, limit } = pagination;

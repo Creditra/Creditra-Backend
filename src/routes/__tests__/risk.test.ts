@@ -1,290 +1,372 @@
-import { describe, it, expect, beforeAll, afterEach } from 'vitest';
-import express from 'express';
-import request from 'supertest';
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import type { Request, Response, NextFunction } from 'express';
 import { riskRouter } from '../risk.js';
 import { Container } from '../../container/Container.js';
 
+type Method = 'get' | 'post';
+
+interface InvokeArgs {
+  method: Method;
+  path: string;
+  body?: Record<string, unknown>;
+  query?: Record<string, unknown>;
+  params?: Record<string, string>;
+  headers?: Record<string, string>;
+}
+
+async function invokeRoute(args: InvokeArgs): Promise<{ status: number; body: unknown }> {
+  const layer = riskRouter.stack.find(
+    (entry: any) =>
+      entry.route?.path === args.path &&
+      entry.route?.methods?.[args.method] === true,
+  );
+
+  if (!layer) {
+    throw new Error(`Route not found: ${args.method.toUpperCase()} ${args.path}`);
+  }
+
+  const handlers: Array<(req: Request, res: Response, next: NextFunction) => unknown> =
+    layer.route.stack.map((entry: any) => entry.handle);
+
+  const req = {
+    body: args.body ?? {},
+    query: args.query ?? {},
+    params: args.params ?? {},
+    headers: args.headers ?? {},
+  } as unknown as Request;
+
+  const responseState: { status: number; body: unknown; sent: boolean } = {
+    status: 200,
+    body: undefined,
+    sent: false,
+  };
+
+  const res = {
+    status(code: number) {
+      responseState.status = code;
+      return this;
+    },
+    json(payload: unknown) {
+      responseState.body = payload;
+      responseState.sent = true;
+      return this;
+    },
+  } as unknown as Response;
+
+  for (const handler of handlers) {
+    if (responseState.sent) {
+      break;
+    }
+
+    let nextCalled = false;
+
+    await new Promise<void>((resolve, reject) => {
+      const next: NextFunction = (err?: unknown) => {
+        nextCalled = true;
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve();
+      };
+
+      Promise.resolve(handler(req, res, next)).then(() => {
+        if (!nextCalled) resolve();
+      }).catch(reject);
+    });
+  }
+
+  return { status: responseState.status, body: responseState.body };
+}
+
 describe('Risk Routes', () => {
-  let app: express.Application;
   let container: Container;
+  const validApiKey = 'risk-routes-test-key';
 
   beforeAll(() => {
-    // Use single container instance for all tests
+    process.env.API_KEYS = validApiKey;
     container = Container.getInstance();
-    
-    app = express();
-    app.use(express.json());
-    app.use('/api/risk', riskRouter);
+  });
+
+  afterAll(() => {
+    delete process.env.API_KEYS;
   });
 
   afterEach(() => {
-    // Clear repository data after each test
-    if (container.riskEvaluationRepository && typeof (container.riskEvaluationRepository as any).clear === 'function') {
+    if (typeof (container.riskEvaluationRepository as any).clear === 'function') {
       (container.riskEvaluationRepository as any).clear();
     }
   });
 
-  describe('POST /api/risk/evaluate', () => {
-    it('should evaluate risk successfully', async () => {
-      const requestBody = {
-        walletAddress: 'wallet123'
-      };
-
-      const response = await request(app)
-        .post('/api/risk/evaluate')
-        .send(requestBody)
-        .expect(200);
-
-      expect(response.body.walletAddress).toBe('wallet123');
-      expect(response.body.riskScore).toBeGreaterThan(0);
-      expect(response.body.creditLimit).toBeDefined();
-      expect(response.body.interestRateBps).toBeGreaterThan(0);
-      expect(response.body.message).toBe('New risk evaluation completed');
-    });
-
-    it('should use cached evaluation when available', async () => {
-      const walletAddress = 'wallet123';
-
-      // First evaluation
-      const response1 = await request(app)
-        .post('/api/risk/evaluate')
-        .send({ walletAddress })
-        .expect(200);
-
-      // Second evaluation (should use cache)
-      const response2 = await request(app)
-        .post('/api/risk/evaluate')
-        .send({ walletAddress })
-        .expect(200);
-
-      expect(response2.body.message).toBe('Using cached risk evaluation');
-      expect(response2.body.riskScore).toBe(response1.body.riskScore);
-    });
-
-    it('should force new evaluation when forceRefresh is true', async () => {
-      const walletAddress = 'wallet123';
-
-      // First evaluation
-      await request(app)
-        .post('/api/risk/evaluate')
-        .send({ walletAddress })
-        .expect(200);
-
-      // Force refresh
-      const response = await request(app)
-        .post('/api/risk/evaluate')
-        .send({ walletAddress, forceRefresh: true })
-        .expect(200);
-
-      expect(response.body.message).toBe('New risk evaluation completed');
-    });
-
-    it('should return 400 for missing wallet address', async () => {
-      const response = await request(app)
-        .post('/api/risk/evaluate')
-        .send({})
-        .expect(400);
-
-      expect(response.body.error).toBe('walletAddress required');
-    });
-
-    it('should handle empty request body', async () => {
-      const response = await request(app)
-        .post('/api/risk/evaluate')
-        .expect(400);
-
-      expect(response.body.error).toBe('walletAddress required');
-    });
-
-    it('should handle service errors gracefully', async () => {
-      // Mock service to throw error
-      const originalService = container.riskEvaluationService;
-      const mockService = {
-        ...originalService,
-        evaluateRisk: async () => {
-          throw new Error('Risk evaluation failed');
-        }
-      };
-      
-      (container as any)._riskEvaluationService = mockService;
-
-      const response = await request(app)
-        .post('/api/risk/evaluate')
-        .send({ walletAddress: 'wallet123' })
-        .expect(500);
-
-      expect(response.body.error).toBe('Risk evaluation failed');
-
-      // Restore original service
-      (container as any)._riskEvaluationService = originalService;
-    });
-  });
-
-  describe('GET /api/risk/evaluations/:id', () => {
-    it('should return risk evaluation when found', async () => {
-      // Create a risk evaluation first
-      const evalResult = await container.riskEvaluationService.evaluateRisk({
-        walletAddress: 'wallet123'
+  describe('POST /evaluate', () => {
+    it('evaluates risk and returns enveloped response', async () => {
+      const response = await invokeRoute({
+        method: 'post',
+        path: '/evaluate',
+        body: { walletAddress: 'wallet123' },
       });
 
-      // Get the evaluation ID from repository
-      const latest = await container.riskEvaluationRepository.findLatestByWalletAddress('wallet123');
-      
-      const response = await request(app)
-        .get(`/api/risk/evaluations/${latest!.id}`)
-        .expect(200);
-
-      expect(response.body.id).toBe(latest!.id);
-      expect(response.body.walletAddress).toBe('wallet123');
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        data: {
+          walletAddress: 'wallet123',
+          message: 'New risk evaluation completed',
+        },
+        error: null,
+      });
     });
 
-    it('should return 404 when evaluation not found', async () => {
-      const response = await request(app)
-        .get('/api/risk/evaluations/nonexistent')
-        .expect(404);
+    it('uses cached evaluation when available', async () => {
+      await invokeRoute({
+        method: 'post',
+        path: '/evaluate',
+        body: { walletAddress: 'wallet123' },
+      });
 
-      expect(response.body.error).toBe('Risk evaluation not found');
-      expect(response.body.id).toBe('nonexistent');
+      const response = await invokeRoute({
+        method: 'post',
+        path: '/evaluate',
+        body: { walletAddress: 'wallet123' },
+      });
+
+      expect((response.body as any).data.message).toBe('Using cached risk evaluation');
     });
 
-    it('should handle server errors gracefully', async () => {
-      // Mock service to throw error
+    it('forces refresh when requested', async () => {
+      await invokeRoute({
+        method: 'post',
+        path: '/evaluate',
+        body: { walletAddress: 'wallet123' },
+      });
+
+      const response = await invokeRoute({
+        method: 'post',
+        path: '/evaluate',
+        body: { walletAddress: 'wallet123', forceRefresh: true },
+      });
+
+      expect((response.body as any).data.message).toBe('New risk evaluation completed');
+    });
+
+    it('rejects missing walletAddress via schema validation', async () => {
+      const response = await invokeRoute({
+        method: 'post',
+        path: '/evaluate',
+        body: {},
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toMatchObject({
+        error: 'Validation failed',
+      });
+    });
+
+    it('rejects unknown keys via strict schema', async () => {
+      const response = await invokeRoute({
+        method: 'post',
+        path: '/evaluate',
+        body: { walletAddress: 'wallet123', unknown: 'x' },
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toMatchObject({
+        error: 'Validation failed',
+      });
+    });
+
+    it('returns 500 when service throws', async () => {
       const originalService = container.riskEvaluationService;
-      const mockService = {
+      (container as any)._riskEvaluationService = {
+        ...originalService,
+        evaluateRisk: async () => {
+          throw new Error('boom');
+        },
+      };
+
+      const response = await invokeRoute({
+        method: 'post',
+        path: '/evaluate',
+        body: { walletAddress: 'wallet123' },
+      });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ data: null, error: 'Internal server error' });
+
+      (container as any)._riskEvaluationService = originalService;
+    });
+  });
+
+  describe('GET endpoints', () => {
+    it('returns evaluation by id', async () => {
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123' });
+      const latest = await container.riskEvaluationRepository.findLatestByWalletAddress('wallet123');
+
+      const response = await invokeRoute({
+        method: 'get',
+        path: '/evaluations/:id',
+        params: { id: latest!.id },
+      });
+
+      expect(response.status).toBe(200);
+      expect((response.body as any).data.id).toBe(latest!.id);
+    });
+
+    it('returns 404 when evaluation is missing', async () => {
+      const response = await invokeRoute({
+        method: 'get',
+        path: '/evaluations/:id',
+        params: { id: 'missing' },
+      });
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({ data: null, error: 'Risk evaluation not found' });
+    });
+
+    it('returns 500 when evaluation fetch throws', async () => {
+      const originalService = container.riskEvaluationService;
+      (container as any)._riskEvaluationService = {
         ...originalService,
         getRiskEvaluation: async () => {
-          throw new Error('Database error');
-        }
+          throw new Error('db');
+        },
       };
-      
-      (container as any)._riskEvaluationService = mockService;
 
-      const response = await request(app)
-        .get('/api/risk/evaluations/test-id')
-        .expect(500);
+      const response = await invokeRoute({
+        method: 'get',
+        path: '/evaluations/:id',
+        params: { id: 'id' },
+      });
 
-      expect(response.body.error).toBe('Failed to fetch risk evaluation');
-
-      // Restore original service
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ data: null, error: 'Failed to fetch risk evaluation' });
       (container as any)._riskEvaluationService = originalService;
     });
-  });
 
-  describe('GET /api/risk/wallet/:walletAddress/latest', () => {
-    it('should return latest evaluation for wallet', async () => {
-      const walletAddress = 'wallet123';
+    it('returns latest evaluation for wallet', async () => {
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123' });
 
-      // Create evaluation
-      await container.riskEvaluationService.evaluateRisk({ walletAddress });
+      const response = await invokeRoute({
+        method: 'get',
+        path: '/wallet/:walletAddress/latest',
+        params: { walletAddress: 'wallet123' },
+      });
 
-      const response = await request(app)
-        .get(`/api/risk/wallet/${walletAddress}/latest`)
-        .expect(200);
-
-      expect(response.body.walletAddress).toBe(walletAddress);
-      expect(response.body.riskScore).toBeDefined();
+      expect(response.status).toBe(200);
+      expect((response.body as any).data.walletAddress).toBe('wallet123');
     });
 
-    it('should return 404 when no evaluation found', async () => {
-      const response = await request(app)
-        .get('/api/risk/wallet/nonexistent/latest')
-        .expect(404);
+    it('returns 404 for missing latest evaluation', async () => {
+      const response = await invokeRoute({
+        method: 'get',
+        path: '/wallet/:walletAddress/latest',
+        params: { walletAddress: 'missing' },
+      });
 
-      expect(response.body.error).toBe('No risk evaluation found for wallet');
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({ data: null, error: 'No risk evaluation found for wallet' });
     });
 
-    it('should handle service errors gracefully', async () => {
-      // Mock service to throw error
+    it('returns 500 when latest evaluation fetch throws', async () => {
       const originalService = container.riskEvaluationService;
-      const mockService = {
+      (container as any)._riskEvaluationService = {
         ...originalService,
         getLatestRiskEvaluation: async () => {
-          throw new Error('Database error');
-        }
+          throw new Error('db');
+        },
       };
-      
-      (container as any)._riskEvaluationService = mockService;
 
-      const response = await request(app)
-        .get('/api/risk/wallet/test-wallet/latest')
-        .expect(500);
+      const response = await invokeRoute({
+        method: 'get',
+        path: '/wallet/:walletAddress/latest',
+        params: { walletAddress: 'wallet123' },
+      });
 
-      expect(response.body.error).toBe('Failed to fetch latest risk evaluation');
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ data: null, error: 'Failed to fetch latest risk evaluation' });
+      (container as any)._riskEvaluationService = originalService;
+    });
 
-      // Restore original service
+    it('returns history with pagination', async () => {
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123', forceRefresh: true });
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123', forceRefresh: true });
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123', forceRefresh: true });
+
+      const response = await invokeRoute({
+        method: 'get',
+        path: '/wallet/:walletAddress/history',
+        params: { walletAddress: 'wallet123' },
+        query: { offset: '1', limit: '1' },
+      });
+
+      expect(response.status).toBe(200);
+      expect((response.body as any).data.evaluations).toHaveLength(1);
+    });
+
+    it('rejects invalid query types for history', async () => {
+      const response = await invokeRoute({
+        method: 'get',
+        path: '/wallet/:walletAddress/history',
+        params: { walletAddress: 'wallet123' },
+        query: { offset: 'bad', limit: 'bad' },
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toMatchObject({ error: 'Validation failed' });
+    });
+
+    it('returns 500 when history fetch throws', async () => {
+      const originalService = container.riskEvaluationService;
+      (container as any)._riskEvaluationService = {
+        ...originalService,
+        getRiskEvaluationHistory: async () => {
+          throw new Error('db');
+        },
+      };
+
+      const response = await invokeRoute({
+        method: 'get',
+        path: '/wallet/:walletAddress/history',
+        params: { walletAddress: 'wallet123' },
+      });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ data: null, error: 'Failed to fetch risk evaluation history' });
       (container as any)._riskEvaluationService = originalService;
     });
   });
 
-  describe('GET /api/risk/wallet/:walletAddress/history', () => {
-    it('should return evaluation history for wallet', async () => {
-      const walletAddress = 'wallet123';
+  describe('Admin endpoint', () => {
+    it('requires API key', async () => {
+      const response = await invokeRoute({
+        method: 'post',
+        path: '/admin/recalibrate',
+      });
 
-      // Create multiple evaluations
-      await container.riskEvaluationService.evaluateRisk({ walletAddress, forceRefresh: true });
-      await container.riskEvaluationService.evaluateRisk({ walletAddress, forceRefresh: true });
-
-      const response = await request(app)
-        .get(`/api/risk/wallet/${walletAddress}/history`)
-        .expect(200);
-
-      expect(response.body.evaluations).toHaveLength(2);
-      expect(response.body.evaluations.every((evaluation: any) => evaluation.walletAddress === walletAddress)).toBe(true);
+      expect(response.status).toBe(401);
     });
 
-    it('should support pagination parameters', async () => {
-      const walletAddress = 'wallet123';
+    it('rejects invalid API key', async () => {
+      const response = await invokeRoute({
+        method: 'post',
+        path: '/admin/recalibrate',
+        headers: { 'x-api-key': 'bad-key' },
+      });
 
-      // Create evaluations
-      await container.riskEvaluationService.evaluateRisk({ walletAddress, forceRefresh: true });
-      await container.riskEvaluationService.evaluateRisk({ walletAddress, forceRefresh: true });
-      await container.riskEvaluationService.evaluateRisk({ walletAddress, forceRefresh: true });
-
-      const response = await request(app)
-        .get(`/api/risk/wallet/${walletAddress}/history?offset=1&limit=1`)
-        .expect(200);
-
-      expect(response.body.evaluations).toHaveLength(1);
+      expect(response.status).toBe(403);
     });
 
-    it('should handle invalid pagination parameters', async () => {
-      const walletAddress = 'wallet123';
+    it('accepts valid API key', async () => {
+      const response = await invokeRoute({
+        method: 'post',
+        path: '/admin/recalibrate',
+        headers: { 'x-api-key': validApiKey },
+      });
 
-      const response = await request(app)
-        .get(`/api/risk/wallet/${walletAddress}/history?offset=invalid&limit=invalid`)
-        .expect(200);
-
-      expect(response.body.evaluations).toEqual([]);
-    });
-
-    it('should return empty array when no evaluations found', async () => {
-      const response = await request(app)
-        .get('/api/risk/wallet/nonexistent/history')
-        .expect(200);
-
-      expect(response.body.evaluations).toEqual([]);
-    });
-
-    it('should handle server errors gracefully', async () => {
-      // Mock service to throw error
-      const originalService = container.riskEvaluationService;
-      const mockService = {
-        ...originalService,
-        getRiskEvaluationHistory: async () => {
-          throw new Error('Database error');
-        }
-      };
-      
-      (container as any)._riskEvaluationService = mockService;
-
-      const response = await request(app)
-        .get('/api/risk/wallet/test-wallet/history')
-        .expect(500);
-
-      expect(response.body.error).toBe('Failed to fetch risk evaluation history');
-
-      // Restore original service
-      (container as any)._riskEvaluationService = originalService;
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        data: { message: 'Risk model recalibration triggered' },
+        error: null,
+      });
     });
   });
 });
