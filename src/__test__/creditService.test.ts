@@ -31,39 +31,94 @@ beforeEach(() => {
 });
 
 describe("drawFromCreditLine()", () => {
-  it("draws from an active line for the authorized borrower", () => {
+  it("increments utilized credit for the authorized borrower on an active line", () => {
     const line = drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 200 });
     expect(line.utilized).toBe(200);
   });
 
-  it("throws NOT_FOUND when line does not exist", () => {
-    expect(() => drawFromCreditLine({ id: "missing", borrowerId: "user-1", amount: 100 })).toThrow(
-      /NOT_FOUND/,
+  it("allows a borrower to draw exactly the remaining available credit", () => {
+    creditLines[0]!.utilized = 750;
+
+    const line = drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 250 });
+
+    expect(line.utilized).toBe(1000);
+  });
+
+  it("enforces the remaining limit after prior draws have already utilized part of the line", () => {
+    drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 400 });
+
+    expect(() =>
+      drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 601 }),
+    ).toThrowError(
+      'Requested draw amount of 601 exceeds available credit of 600 for credit line "line-1".',
     );
   });
 
-  it("throws INVALID_STATUS when line is not active", () => {
+  it("throws CreditLineNotFoundError when the credit line does not exist", () => {
+    expect(() =>
+      drawFromCreditLine({ id: "missing", borrowerId: "user-1", amount: 100 }),
+    ).toThrowError(CreditLineNotFoundError);
+  });
+
+  it("includes the missing credit line id in the not-found error message", () => {
+    expect(() =>
+      drawFromCreditLine({ id: "missing", borrowerId: "user-1", amount: 100 }),
+    ).toThrowError('Credit line "missing" not found.');
+  });
+
+  it("throws InvalidTransitionError when the line is suspended", () => {
+    creditLines[0]!.status = "Suspended";
+
+    expect(() =>
+      drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 100 }),
+    ).toThrowError(InvalidTransitionError);
+  });
+
+  it("exposes the normalized status and requested action on draw transition errors", () => {
     creditLines[0]!.status = "Closed";
-    expect(() => drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 100 })).toThrow(
-      /INVALID_STATUS/,
+
+    let error: unknown;
+
+    try {
+      drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 100 });
+    } catch (caughtError) {
+      error = caughtError;
+    }
+
+    expect(error).toBeInstanceOf(InvalidTransitionError);
+    const transitionError = error as InvalidTransitionError;
+    expect(transitionError.currentStatus).toBe("closed");
+    expect(transitionError.requestedAction).toBe("draw");
+    expect(transitionError.message).toBe(
+      'Cannot "draw" a credit line that is already "closed".',
     );
   });
 
-  it("throws UNAUTHORIZED for non-owner borrower", () => {
-    expect(() => drawFromCreditLine({ id: "line-1", borrowerId: "other", amount: 100 })).toThrow(
-      /UNAUTHORIZED/,
+  it("throws a descriptive error for a non-owner borrower", () => {
+    expect(() =>
+      drawFromCreditLine({ id: "line-1", borrowerId: "other", amount: 100 }),
+    ).toThrowError(
+      'Borrower "other" is not authorized to draw from credit line "line-1".',
     );
   });
 
-  it("throws INVALID_AMOUNT for non-positive amounts", () => {
-    expect(() => drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 0 })).toThrow(
-      /INVALID_AMOUNT/,
-    );
+  it("throws a descriptive error when the draw amount is zero or negative", () => {
+    expect(() =>
+      drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 0 }),
+    ).toThrowError("Draw amount must be greater than zero. Received 0.");
+
+    expect(() =>
+      drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: -1 }),
+    ).toThrowError("Draw amount must be greater than zero. Received -1.");
   });
 
-  it("throws OVER_LIMIT when amount exceeds available credit", () => {
-    expect(() => drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 1001 })).toThrow(
-      /OVER_LIMIT/,
+  it("throws a descriptive over-limit error when the draw exceeds the remaining credit", () => {
+    creditLines[0]!.utilized = 900;
+
+    expect(() =>
+      drawFromCreditLine({ id: "line-1", borrowerId: "user-1", amount: 101 }),
+    ).toThrowError(
+      'Requested draw amount of 101 exceeds available credit of 100 for credit line "line-1".',
     );
   });
 });
