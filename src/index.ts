@@ -52,6 +52,8 @@ app.use((req, res, next) => {
 // structured response.
 app.use(express.json({ limit: '100kb' }));
 
+app.use(requestLogger);
+
 app.use("/health", healthRouter);
 
 // ── Docs ────────────────────────────────────────────────────────────────────
