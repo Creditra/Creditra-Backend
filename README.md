@@ -364,6 +364,8 @@ Target: ≥ 95 % coverage on all middleware and route files.
 src/
   config/
     apiKeys.ts                              # loads + validates API_KEYS env var
+    cors.ts                                 # loads + validates CORS_ORIGINS env var
+    env.ts                                  # Zod schema; validates all env vars at startup
   container/
     Container.ts                            # DI container; wires repos → services
   middleware/
