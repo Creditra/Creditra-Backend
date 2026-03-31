@@ -35,6 +35,7 @@ export class Container {
     this._creditLineService = new CreditLineService(this._creditLineRepository);
     this._riskEvaluationService = new RiskEvaluationService(
       this._riskEvaluationRepository,
+      createRiskProvider(),
     );
     
     // Initialize Soroban client and reconciliation services
@@ -105,6 +106,7 @@ export class Container {
       this._riskEvaluationRepository = repositories.riskEvaluationRepository;
       this._riskEvaluationService = new RiskEvaluationService(
         this._riskEvaluationRepository,
+        createRiskProvider(),
       );
     }
 
