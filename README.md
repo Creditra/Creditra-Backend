@@ -333,7 +333,10 @@ HTTP status codes follow REST conventions:
 ### Public
 
 - `GET  /health` — Service health
-- `GET  /api/credit/lines` — List credit lines (placeholder)
+- `GET  /api/credit/lines` — List credit lines with pagination support
+  - **Cursor pagination** (recommended): `?cursor&limit=50` or `?cursor=<token>&limit=50`
+  - **Offset pagination** (legacy): `?offset=0&limit=50`
+  - See [Cursor Pagination Guide](docs/cursor-pagination.md) for details
 - `GET  /api/credit/lines/:id` — Get credit line by id (placeholder)
 - `POST /api/risk/evaluate` — Risk evaluation; body: `{ "walletAddress": "..." }`
 
@@ -348,6 +351,26 @@ HTTP status codes follow REST conventions:
 
 - `GET /api/webhooks/config` — Get webhook configuration
 - `GET /api/webhooks/health` — Webhook service health check
+
+### Pagination
+
+The `/api/credit/lines` endpoint supports two pagination modes:
+
+1. **Cursor-based** (recommended for production): Provides stable pagination for large datasets
+   ```bash
+   # First page
+   curl "http://localhost:3000/api/credit/lines?cursor&limit=10"
+   
+   # Next page (use nextCursor from response)
+   curl "http://localhost:3000/api/credit/lines?cursor=<nextCursor>&limit=10"
+   ```
+
+2. **Offset-based** (legacy): Traditional pagination with total count
+   ```bash
+   curl "http://localhost:3000/api/credit/lines?offset=0&limit=10"
+   ```
+
+For detailed documentation, examples, and migration guide, see [docs/cursor-pagination.md](docs/cursor-pagination.md).
 
 ## Running tests
 
