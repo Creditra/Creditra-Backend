@@ -11,8 +11,15 @@ import {
   resetMetrics,
   type HorizonEvent,
   type HorizonListenerConfig,
-  type HorizonListenerMetrics,
 } from "../services/horizonListener.js";
+import { vi, type Mock } from "vitest";
+
+const baseConfig: HorizonListenerConfig = {
+  horizonUrl: "https://horizon-testnet.stellar.org",
+  contractIds: [],
+  pollIntervalMs: 5000,
+  startLedger: "latest",
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -20,15 +27,15 @@ import {
 
 /** Capture console output without cluttering test output. */
 function silenceConsole() {
-  jest.spyOn(console, "log").mockImplementation(() => {});
-  jest.spyOn(console, "warn").mockImplementation(() => {});
-  jest.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(console, "log").mockImplementation(() => {});
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  vi.spyOn(console, "error").mockImplementation(() => {});
 }
 
 function restoreConsole() {
-  (console.log as jest.Mock).mockRestore?.();
-  (console.warn as jest.Mock).mockRestore?.();
-  (console.error as jest.Mock).mockRestore?.();
+  (console.log as unknown as Mock).mockRestore?.();
+  (console.warn as unknown as Mock).mockRestore?.();
+  (console.error as unknown as Mock).mockRestore?.();
 }
 
 /** Save and restore env vars. */
@@ -66,7 +73,7 @@ afterEach(() => {
   if (isRunning()) stop();
   clearEventHandlers();
   restoreConsole();
-  jest.useRealTimers();
+  vi.useRealTimers();
 });
 
 // ---------------------------------------------------------------------------
@@ -148,7 +155,7 @@ describe("isRunning() / getConfig()", () => {
   });
 
   it("returns true and a config object after start", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     await start();
     expect(isRunning()).toBe(true);
     expect(getConfig()).not.toBeNull();
@@ -156,7 +163,7 @@ describe("isRunning() / getConfig()", () => {
   });
 
   it("returns false and null config after stop", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     await start();
     stop();
     expect(isRunning()).toBe(false);
@@ -170,13 +177,13 @@ describe("isRunning() / getConfig()", () => {
 
 describe("start()", () => {
   it("sets running to true", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     await start();
     expect(isRunning()).toBe(true);
   });
 
   it("executes an immediate first poll on start", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     withEnv({ CONTRACT_IDS: "MY_CONTRACT" }, async () => {
       const received: HorizonEvent[] = [];
@@ -190,7 +197,7 @@ describe("start()", () => {
   });
 
   it("fires handlers on subsequent interval ticks", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     withEnv(
       { CONTRACT_IDS: "MY_CONTRACT", POLL_INTERVAL_MS: "100" },
       async () => {
@@ -202,12 +209,12 @@ describe("start()", () => {
 
         expect(received.length).toBe(1);
 
-        jest.advanceTimersByTime(100);
+        vi.advanceTimersByTime(100);
 
         await Promise.resolve();
         expect(received.length).toBe(2);
 
-        jest.advanceTimersByTime(200);
+        vi.advanceTimersByTime(200);
         await Promise.resolve();
         await Promise.resolve();
         expect(received.length).toBe(4);
@@ -216,9 +223,9 @@ describe("start()", () => {
   });
 
   it("is a no-op (warns) if called when already running", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     await start();
-    const warnSpy = console.warn as jest.Mock;
+    const warnSpy = console.warn as unknown as Mock;
     warnSpy.mockClear();
     await start(); // second call
     expect(warnSpy).toHaveBeenCalledWith(
@@ -228,8 +235,8 @@ describe("start()", () => {
   });
 
   it("logs startup config information", async () => {
-    jest.useFakeTimers();
-    const logSpy = console.log as jest.Mock;
+    vi.useFakeTimers();
+    const logSpy = console.log as unknown as Mock;
     await start();
     const calls = logSpy.mock.calls.flat().join(" ");
     expect(calls).toContain("Starting with config");
@@ -242,14 +249,14 @@ describe("start()", () => {
 
 describe("stop()", () => {
   it("sets running to false", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     await start();
     stop();
     expect(isRunning()).toBe(false);
   });
 
   it("clears the polling interval so no more events fire", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     withEnv(
       { CONTRACT_IDS: "MY_CONTRACT", POLL_INTERVAL_MS: "100" },
       async () => {
@@ -260,7 +267,7 @@ describe("stop()", () => {
         await start();
         stop();
         const countAfterStop = received.length;
-        jest.advanceTimersByTime(500);
+        vi.advanceTimersByTime(500);
         await Promise.resolve();
         // No new events after stop
         expect(received.length).toBe(countAfterStop);
@@ -269,7 +276,7 @@ describe("stop()", () => {
   });
 
   it("is a no-op (warns) if called when not running", () => {
-    const warnSpy = console.warn as jest.Mock;
+    const warnSpy = console.warn as unknown as Mock;
     stop();
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("Not running"),
@@ -277,18 +284,18 @@ describe("stop()", () => {
   });
 
   it("logs a stopped message", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     await start();
-    const logSpy = console.log as jest.Mock;
+    const logSpy = console.log as unknown as Mock;
     logSpy.mockClear();
     stop();
-    expect((console.log as jest.Mock).mock.calls.flat().join(" ")).toContain(
+    expect((console.log as unknown as Mock).mock.calls.flat().join(" ")).toContain(
       "Stopped",
     );
   });
 
   it("allows the listener to be restarted after stop", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     await start();
     stop();
     expect(isRunning()).toBe(false);
@@ -303,7 +310,7 @@ describe("stop()", () => {
 
 describe("onEvent() / clearEventHandlers()", () => {
   it("registers a handler that receives simulated events", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     withEnv({ CONTRACT_IDS: "MY_CONTRACT" }, async () => {
       const events: HorizonEvent[] = [];
       onEvent((e) => {
@@ -316,7 +323,7 @@ describe("onEvent() / clearEventHandlers()", () => {
   });
 
   it("supports multiple handlers and invokes all of them", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     withEnv({ CONTRACT_IDS: "MULTI_CONTRACT" }, async () => {
       const calls1: HorizonEvent[] = [];
       const calls2: HorizonEvent[] = [];
@@ -333,7 +340,7 @@ describe("onEvent() / clearEventHandlers()", () => {
   });
 
   it("clearEventHandlers() removes all registered handlers", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     withEnv({ CONTRACT_IDS: "MY_CONTRACT" }, async () => {
       const events: HorizonEvent[] = [];
       onEvent((e) => {
@@ -347,7 +354,7 @@ describe("onEvent() / clearEventHandlers()", () => {
   });
 
   it("catches and logs errors thrown by a handler without stopping dispatch", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     withEnv({ CONTRACT_IDS: "ERROR_CONTRACT" }, async () => {
       const goodEvents: HorizonEvent[] = [];
       onEvent(() => {
@@ -360,13 +367,13 @@ describe("onEvent() / clearEventHandlers()", () => {
 
       expect(goodEvents.length).toBe(1);
       expect(
-        (console.error as jest.Mock).mock.calls.flat().join(" "),
+        (console.error as unknown as Mock).mock.calls.flat().join(" "),
       ).toContain("handler threw an error");
     });
   });
 
   it("handles async handlers that reject gracefully", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     withEnv({ CONTRACT_IDS: "ASYNC_ERROR_CONTRACT" }, async () => {
       const goodEvents: HorizonEvent[] = [];
       onEvent(async () => {
@@ -386,19 +393,13 @@ describe("onEvent() / clearEventHandlers()", () => {
 // ---------------------------------------------------------------------------
 
 describe("pollOnce()", () => {
-  const baseConfig: HorizonListenerConfig = {
-    horizonUrl: "https://horizon-testnet.stellar.org",
-    contractIds: [],
-    pollIntervalMs: 5000,
-    startLedger: "latest",
-  };
 
   it("completes without throwing when contractIds is empty", async () => {
     await expect(pollOnce(baseConfig)).resolves.toBeUndefined();
   });
 
   it("logs a polling message on every call", async () => {
-    const logSpy = console.log as jest.Mock;
+    const logSpy = console.log as unknown as Mock;
     logSpy.mockClear();
     await pollOnce(baseConfig);
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Polling"));
@@ -430,7 +431,7 @@ describe("pollOnce()", () => {
   });
 
   it("logs 'none' for contracts when contractIds is empty", async () => {
-    const logSpy = console.log as jest.Mock;
+    const logSpy = console.log as unknown as Mock;
     logSpy.mockClear();
     await pollOnce(baseConfig);
     expect((logSpy.mock.calls.flat() as string[]).join(" ")).toContain("none");
@@ -533,7 +534,7 @@ describe("Resilience Features", () => {
       });
       
       // Simulate the same event being processed twice
-      const mockEvent: HorizonEvent = {
+      const _mockEvent: HorizonEvent = {
         ledger: 1000,
         timestamp: new Date().toISOString(),
         contractId: "DUPE_CONTRACT",
@@ -543,7 +544,7 @@ describe("Resilience Features", () => {
       
       // First dispatch should succeed
       await pollOnce(config);
-      const initialCount = events.length;
+      const _initialCount = events.length;
       
       // Second dispatch of same event should be ignored
       // (This tests the internal idempotency logic)
@@ -704,7 +705,7 @@ describe("Resilience Features", () => {
 
   describe("Structured Logging", () => {
     it("logs metrics when enabled", async () => {
-      const logSpy = console.log as jest.Mock;
+      const logSpy = console.log as unknown as Mock;
       logSpy.mockClear();
       
       const config: HorizonListenerConfig = {
@@ -724,7 +725,7 @@ describe("Resilience Features", () => {
     });
 
     it("does not log metrics when disabled", async () => {
-      const logSpy = console.log as jest.Mock;
+      const logSpy = console.log as unknown as Mock;
       logSpy.mockClear();
       
       const config: HorizonListenerConfig = {
