@@ -432,10 +432,17 @@ paths:
 
   /api/credit/lines:
     get:
-      tags: [Credit]
-      operationId: listCreditLines
-      summary: List all credit lines
-      security: []
+      summary: Get Credit Lines
+      description: |
+        Returns all available credit lines with pagination support.
+        
+        Supports two pagination modes:
+        - **Offset-based** (legacy): Use `offset` and `limit` parameters
+        - **Cursor-based** (recommended): Use `cursor` and `limit` parameters
+        
+        Cursor pagination provides stable results for large datasets and is recommended
+        for production use. The response includes a `nextCursor` field that can be used
+        to fetch the next page of results.
       parameters:
         - name: offset
           in: query
@@ -444,7 +451,9 @@ paths:
             type: integer
             minimum: 0
             default: 0
-          description: Pagination offset
+          description: |
+            Pagination offset (offset-based pagination only).
+            Cannot be used together with `cursor` parameter.
         - name: limit
           in: query
           required: false
@@ -453,7 +462,16 @@ paths:
             minimum: 1
             maximum: 100
             default: 100
-          description: Number of credit lines per page
+          description: Number of credit lines per page (works with both pagination modes)
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: |
+            Cursor for pagination (cursor-based pagination).
+            Use the `nextCursor` value from a previous response to fetch the next page.
+            When provided, `offset` parameter is ignored.
       responses:
         "200":
           description: Array of credit lines (may be empty)
@@ -476,15 +494,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CreditLinesResponse"
-              example:
-                creditLines: []
-                pagination:
-                  total: 0
-                  offset: 0
-                  limit: 100
-        "400":
-          description: Invalid query parameter
+                oneOf:
+                  - $ref: '#/components/schemas/CreditLinesOffsetResponse'
+                  - $ref: '#/components/schemas/CreditLinesCursorResponse'
+        '400':
+          description: Bad Request (Invalid pagination parameters)
           content:
             application/json:
               schema:
@@ -956,245 +970,214 @@ paths:
               schema:
                 $ref: "#/components/schemas/RateLimitErrorResponse"
 
-  /api/risk/evaluations/{id}:
-    get:
-      tags: [Risk]
-      operationId: getRiskEvaluationById
-      summary: Fetch a stored risk evaluation by ID
-      security: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: Risk evaluation identifier
-      responses:
-        "200":
-          description: Risk evaluation found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RiskEvaluation"
-              example:
-                id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-                walletAddress: "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOUJ3LNLRK"
-                riskScore: 72
-                creditLimit: "720.00000000"
-                interestRateBps: 640
-                factors:
-                  accountAge: 365
-                  transactionVolume: "5000.00"
-                evaluatedAt: "2024-01-15T10:00:00.000Z"
-        "404":
-          description: Risk evaluation not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error: Risk evaluation not found
-                id: "abc123"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /api/risk/wallet/{walletAddress}/latest:
-    get:
-      tags: [Risk]
-      operationId: getLatestRiskEvaluation
-      summary: Get the latest risk evaluation for a wallet
-      security: []
-      parameters:
-        - name: walletAddress
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Stellar wallet address
-      responses:
-        "200":
-          description: Latest risk evaluation
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RiskEvaluation"
-        "404":
-          description: No risk evaluation found for wallet
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error: No risk evaluation found for wallet
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /api/risk/wallet/{walletAddress}/history:
-    get:
-      tags: [Risk]
-      operationId: getRiskEvaluationHistory
-      summary: Get risk evaluation history for a wallet
-      security: []
-      parameters:
-        - name: walletAddress
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Stellar wallet address
-        - name: offset
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 0
-          description: Pagination offset
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-          description: Number of evaluations per page
-      responses:
-        "200":
-          description: Risk evaluation history
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RiskEvaluationHistoryResponse"
-              example:
-                evaluations:
-                  - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-                    walletAddress: "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOUJ3LNLRK"
-                    riskScore: 72
-                    creditLimit: "720.00000000"
-                    interestRateBps: 640
-                    evaluatedAt: "2024-01-15T10:00:00.000Z"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /api/risk/admin/recalibrate:
+  /api/reconciliation/trigger:
     post:
-      tags: [Risk]
-      operationId: recalibrateRiskModel
-      summary: Trigger risk model recalibration
+      summary: Trigger Credit Reconciliation
       description: |
-        Admin-only endpoint to trigger recalibration of the risk evaluation model.
-        Requires API key authentication.
+        Manually trigger a reconciliation job that compares on-chain Credit contract 
+        records with database credit lines and flags any drift.
+        
+        Requires admin authentication via X-API-Key header.
       security:
         - ApiKeyAuth: []
       responses:
-        "200":
-          description: Recalibration triggered
+        '202':
+          description: Reconciliation job scheduled
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminRecalibrateResponse"
-              example:
-                message: Risk model recalibration triggered
-        "401":
-          description: API key missing
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      jobId:
+                        type: string
+                        description: Unique identifier for the scheduled job
+                      message:
+                        type: string
+                        example: 'Reconciliation job scheduled'
+                  error:
+                    type: "null"
+        '401':
+          description: Unauthorized (Missing or invalid API key)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error: Unauthorized
-        "403":
-          description: Invalid API key
+                $ref: '#/components/schemas/FailureResponse'
+        '500':
+          description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error: Forbidden
+                $ref: '#/components/schemas/FailureResponse'
 
-  # ── Webhook Routes ───────────────────────────────────────────────────────────
-
-  /api/webhooks/config:
+  /api/reconciliation/status:
     get:
-      tags: [Webhooks]
-      operationId: getWebhookConfig
-      summary: Get webhook configuration
-      description: Returns the current webhook configuration (excluding sensitive data)
-      security: []
+      summary: Get Reconciliation Status
+      description: |
+        Returns the current status of the reconciliation worker including:
+        - Whether the worker is running
+        - Number of jobs in the queue
+        - Number of failed jobs
+        
+        Requires admin authentication via X-API-Key header.
+      security:
+        - ApiKeyAuth: []
       responses:
-        "200":
-          description: Webhook configuration
+        '200':
+          description: Reconciliation status
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WebhookConfigResponse"
-              example:
-                urls: ["https://example.com/webhook"]
-                maxRetries: 3
-                initialBackoffMs: 1000
-                backoffMultiplier: 2.0
-                timeoutMs: 10000
-                configured: true
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      workerRunning:
+                        type: boolean
+                        description: Whether the reconciliation worker is active
+                      queueSize:
+                        type: integer
+                        description: Number of pending jobs in the queue
+                      failedJobs:
+                        type: integer
+                        description: Number of jobs that have failed
+                  error:
+                    type: "null"
+        '401':
+          description: Unauthorized (Missing or invalid API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FailureResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FailureResponse'
 
-  /api/webhooks/test:
-    post:
-      tags: [Webhooks]
-      operationId: testWebhooks
-      summary: Test webhook connectivity
-      description: Sends a test payload to all configured webhook endpoints
-      security: []
-      responses:
-        "200":
-          description: Test results
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/WebhookTestResponse"
-              example:
-                total: 2
-                reachable: 1
-                unreachable: 1
-                results:
-                  - url: "https://example.com/webhook"
-                    reachable: true
-                  - url: "https://test.com/hook"
-                    reachable: false
-                    error: "Connection refused"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for admin endpoints
 
-  /api/webhooks/health:
-    get:
-      tags: [Webhooks]
-      operationId: getWebhookHealth
-      summary: Webhook service health check
-      description: Returns the health status of the webhook service
-      security: []
-      responses:
-        "200":
-          description: Webhook service health
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/WebhookHealthResponse"
-              example:
-                status: active
-                urls: 2
-                maxRetries: 3
-                timeoutMs: 10000
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        data:
+          description: The payload of the successful response. Varies by endpoint.
+          type: object
+        error:
+          description: Error message. Always null for successful responses.
+          type: "null"
+      required:
+        - data
+        - error
+
+    FailureResponse:
+      type: object
+      properties:
+        data:
+          description: Data payload. Always null for failed responses.
+          type: "null"
+        error:
+          description: The error message detailing what went wrong.
+          type: string
+      required:
+        - data
+        - error
+
+    CreditLine:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the credit line
+        walletAddress:
+          type: string
+          description: Stellar wallet address
+        creditLimit:
+          type: string
+          description: Maximum credit limit (decimal string)
+        availableCredit:
+          type: string
+          description: Currently available credit (decimal string)
+        interestRateBps:
+          type: integer
+          description: Interest rate in basis points (e.g., 500 = 5%)
+        status:
+          type: string
+          enum: [active, suspended, closed, pending]
+          description: Current status of the credit line
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    CreditLinesOffsetResponse:
+      type: object
+      description: Response format for offset-based pagination
+      properties:
+        creditLines:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreditLine'
+        pagination:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total number of credit lines
+            offset:
+              type: integer
+              description: Current offset
+            limit:
+              type: integer
+              description: Number of items per page
+          required:
+            - total
+            - offset
+            - limit
+      required:
+        - creditLines
+        - pagination
+
+    CreditLinesCursorResponse:
+      type: object
+      description: Response format for cursor-based pagination
+      properties:
+        creditLines:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreditLine'
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              description: Number of items per page
+            nextCursor:
+              type: string
+              nullable: true
+              description: Cursor for the next page (null if no more pages)
+            hasMore:
+              type: boolean
+              description: Whether more results are available
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+      required:
+        - creditLines
+        - pagination

@@ -10,7 +10,6 @@ import {
 import {
   InMemoryJobQueue,
   type Job,
-  type JobQueue,
 } from "../services/jobQueue.js";
 
 function createQueue(): InMemoryJobQueue {

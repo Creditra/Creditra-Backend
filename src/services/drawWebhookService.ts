@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { HorizonEvent } from "./horizonListener.js";
+import type { HorizonEvent } from "./horizonListener.js";
 
 // ---------------------------------------------------------------------------
 // Types
