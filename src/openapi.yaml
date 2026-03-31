@@ -599,8 +599,13 @@ components:
 
     ErrorResponse:
       type: object
-      required: [error]
+      required: [data, error]
+      description: Standardized error response format used across all endpoints
       properties:
+        data:
+          type: object
+          nullable: true
+          description: Always null for error responses
         error:
           type: string
         id:

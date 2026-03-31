@@ -1,10 +1,21 @@
 import type { Request, Response, NextFunction } from 'express';
+import { fail } from '../utils/response.js';
+
+/**
+ * Standard error response interface for OpenAPI documentation
+ */
+export interface ErrorResponse {
+  data: null;
+  error: string;
+}
 
 /**
  * Global error-handling middleware.
  *
  * Catches any unhandled errors thrown (or passed via `next(err)`) from route
- * handlers and returns a consistent JSON error response.
+ * handlers and returns a consistent JSON error response using the fail() helper.
+ * 
+ * In production, stack traces and internal error details are not leaked.
  */
 export function errorHandler(
   err: Error & { status?: number; type?: string },

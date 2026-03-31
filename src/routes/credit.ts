@@ -275,7 +275,7 @@ creditRouter.post(
       const line = serviceSuspend(req.params.id);
       ok(res, { line, message: 'Credit line suspended.' });
     } catch (err) {
-      handleServiceError(err, res);
+      handleServiceError(err, req, res, next);
     }
   },
 );
@@ -289,7 +289,7 @@ creditRouter.post(
       const line = serviceClose(req.params.id);
       ok(res, { line, message: 'Credit line closed.' });
     } catch (err) {
-      handleServiceError(err, res);
+      handleServiceError(err, req, res, next);
     }
   },
 );
