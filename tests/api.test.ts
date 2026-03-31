@@ -9,10 +9,14 @@ describe('API Integration Tests', () => {
             const response = await request(app).get('/health');
 
             expect(response.status).toBe(200);
-            expect(response.body).toEqual({
-                data: { status: 'ok', service: 'creditra-backend' },
-                error: null
+            expect(response.body).toHaveProperty('data');
+            expect(response.body).toHaveProperty('error', null);
+            expect(response.body.data).toMatchObject({
+                status: 'ok',
+                service: 'creditra-backend',
             });
+            expect(response.body.data).toHaveProperty('ready');
+            expect(response.body.data).toHaveProperty('dependencies');
         });
     });
 
