@@ -104,7 +104,7 @@ describe('createCreditLineSchema', () => {
 
   it('rejects unknown keys', () => {
     const result = createCreditLineSchema.safeParse({
-      walletAddress: 'GABCDEF',
+      walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
       requestedLimit: '100',
       extra: 'nope',
     });

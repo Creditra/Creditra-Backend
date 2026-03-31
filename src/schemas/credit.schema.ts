@@ -15,9 +15,13 @@ export const createCreditLineSchema = z.object({
   walletAddress: stellarAddressField,
   requestedLimit: z
     .string()
-    .min(1, 'requestedLimit is required')
-    .regex(numericString, 'requestedLimit must be a numeric string'),
-}).strict();
+    .regex(numericString, 'requestedLimit must be a numeric string')
+    .optional(),
+  interestRateBps: nonNegativeIntString.optional(),
+}).strict().refine(data => data.creditLimit || data.requestedLimit, {
+  message: "Either creditLimit or requestedLimit must be provided",
+  path: ["creditLimit"]
+});
 
 export type CreateCreditLineBody = z.infer<typeof createCreditLineSchema>;
 

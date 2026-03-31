@@ -26,7 +26,7 @@ describe('CreditLineService', () => {
   describe('createCreditLine', () => {
     it('should create credit line successfully', async () => {
       const request = {
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '1000.00',
         interestRateBps: 500
       };
@@ -62,7 +62,7 @@ describe('CreditLineService', () => {
 
     it('should throw error for invalid credit limit', async () => {
       const request = {
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '0',
         interestRateBps: 500
       };
@@ -72,7 +72,7 @@ describe('CreditLineService', () => {
 
     it('should throw error for invalid interest rate', async () => {
       const request = {
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '1000.00',
         interestRateBps: -100
       };
@@ -85,7 +85,7 @@ describe('CreditLineService', () => {
     it('should return credit line when found', async () => {
       const creditLine: CreditLine = {
         id: 'cl-123',
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '1000.00',
         availableCredit: '1000.00',
         interestRateBps: 500,
@@ -116,7 +116,7 @@ describe('CreditLineService', () => {
       const creditLines: CreditLine[] = [
         {
           id: 'cl-123',
-          walletAddress: 'wallet123',
+          walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
           creditLimit: '1000.00',
           availableCredit: '1000.00',
           interestRateBps: 500,
@@ -128,9 +128,9 @@ describe('CreditLineService', () => {
 
       vi.mocked(mockRepository.findByWalletAddress).mockResolvedValue(creditLines);
 
-      const result = await service.getCreditLinesByWallet('wallet123');
+      const result = await service.getCreditLinesByWallet('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1');
 
-      expect(mockRepository.findByWalletAddress).toHaveBeenCalledWith('wallet123');
+      expect(mockRepository.findByWalletAddress).toHaveBeenCalledWith('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1');
       expect(result).toEqual(creditLines);
     });
   });
@@ -144,7 +144,7 @@ describe('CreditLineService', () => {
 
       const updatedCreditLine: CreditLine = {
         id: 'cl-123',
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '2000.00',
         availableCredit: '2000.00',
         interestRateBps: 600,

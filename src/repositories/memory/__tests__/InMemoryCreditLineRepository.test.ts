@@ -12,7 +12,7 @@ describe('InMemoryCreditLineRepository', () => {
   describe('create', () => {
     it('should create a new credit line', async () => {
       const request = {
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '1000.00',
         interestRateBps: 500
       };
@@ -33,7 +33,7 @@ describe('InMemoryCreditLineRepository', () => {
   describe('findById', () => {
     it('should return credit line when found', async () => {
       const request = {
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '1000.00',
         interestRateBps: 500
       };
@@ -52,7 +52,7 @@ describe('InMemoryCreditLineRepository', () => {
 
   describe('findByWalletAddress', () => {
     it('should return credit lines for wallet address', async () => {
-      const walletAddress = 'wallet123';
+      const walletAddress = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1';
       
       await repository.create({
         walletAddress,
@@ -105,7 +105,7 @@ describe('InMemoryCreditLineRepository', () => {
   describe('update', () => {
     it('should update credit line successfully', async () => {
       const created = await repository.create({
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '1000.00',
         interestRateBps: 500
       });
@@ -130,7 +130,7 @@ describe('InMemoryCreditLineRepository', () => {
 
     it('should adjust available credit when credit limit changes', async () => {
       const created = await repository.create({
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '1000.00',
         interestRateBps: 500
       });
@@ -158,7 +158,7 @@ describe('InMemoryCreditLineRepository', () => {
   describe('delete', () => {
     it('should delete credit line successfully', async () => {
       const created = await repository.create({
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '1000.00',
         interestRateBps: 500
       });
@@ -179,7 +179,7 @@ describe('InMemoryCreditLineRepository', () => {
   describe('exists', () => {
     it('should return true when credit line exists', async () => {
       const created = await repository.create({
-        walletAddress: 'wallet123',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
         creditLimit: '1000.00',
         interestRateBps: 500
       });

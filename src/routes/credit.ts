@@ -57,8 +57,8 @@ creditRouter.post('/lines', validateBody(createCreditLineSchema), async (req, re
     const { walletAddress, requestedLimit } = req.body ?? {};
     const creditLine = await container.creditLineService.createCreditLine({
       walletAddress,
-      creditLimit: requestedLimit,
-      interestRateBps: 0,
+      creditLimit: finalLimit,
+      interestRateBps: interestRateBps ?? 0,
     });
     return res.status(201).json(creditLine);
   } catch (error) {
@@ -76,7 +76,7 @@ creditRouter.put('/lines/:id', async (req, res) => {
       status,
     });
     if (!creditLine) {
-      return res.status(404).json({ error: 'Credit line not found', id: req.params.id });
+      return fail(res, 'Credit line not found', 404);
     }
     return res.json(creditLine);
   } catch (error) {
@@ -89,7 +89,7 @@ creditRouter.delete('/lines/:id', async (req, res) => {
   try {
     const deleted = await container.creditLineService.deleteCreditLine(req.params.id);
     if (!deleted) {
-      return res.status(404).json({ error: 'Credit line not found', id: req.params.id });
+      return fail(res, 'Credit line not found', 404);
     }
     return res.status(204).send();
   } catch {
@@ -97,7 +97,10 @@ creditRouter.delete('/lines/:id', async (req, res) => {
   }
 });
 
-creditRouter.get('/wallet/:walletAddress/lines', async (req, res) => {
+creditRouter.get(
+  '/wallet/:walletAddress/lines',
+  validateParams(walletAddressParamSchema),
+  async (req, res) => {
   try {
     const lines = await container.creditLineService.getCreditLinesByWallet(
       req.params.walletAddress,

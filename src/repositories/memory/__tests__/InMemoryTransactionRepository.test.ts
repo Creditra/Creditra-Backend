@@ -119,7 +119,7 @@ describe('InMemoryTransactionRepository', () => {
 
   describe('findByWalletAddress', () => {
     it('should return transactions for wallet address', async () => {
-      const walletAddress = 'wallet123';
+      const walletAddress = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1';
 
       const tx1 = await repository.create({
         creditLineId: 'cl-123',
@@ -153,7 +153,7 @@ describe('InMemoryTransactionRepository', () => {
     });
 
     it('should support pagination', async () => {
-      const walletAddress = 'wallet123';
+      const walletAddress = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1';
 
       // Create 3 transactions
       for (let i = 0; i < 3; i++) {

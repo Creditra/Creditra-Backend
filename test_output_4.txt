@@ -1,0 +1,2151 @@
+
+> creditra-backend@0.1.0 test
+> vitest --run
+
+
+[1m[46m RUN [49m[22m [36mv4.1.1 [39m[90m/home/edohwares/Desktop/Room/drips/Creditra-Backend[39m
+
+ [31m❯[39m src/__test__/adminAuth.test.ts [2m([22m[2m11 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 211[2mms[22m[39m
+       [32m✓[39m calls next() and returns 200 when the correct key is supplied[32m 102[2mms[22m[39m
+       [32m✓[39m returns 401 when the X-Admin-Api-Key header is missing[32m 13[2mms[22m[39m
+       [32m✓[39m returns 401 when the header value is wrong[32m 10[2mms[22m[39m
+       [32m✓[39m returns 401 when the header is an empty string[32m 8[2mms[22m[39m
+[31m       [31m×[31m returns 401 when the header is close but not equal to the secret[39m[32m 26[2mms[22m[39m
+       [32m✓[39m response body includes X-Admin-Api-Key in the error hint[32m 8[2mms[22m[39m
+       [32m✓[39m returns JSON content-type on 401[32m 6[2mms[22m[39m
+       [32m✓[39m returns 503 regardless of what header is sent[32m 7[2mms[22m[39m
+       [32m✓[39m returns 503 even without a header[32m 11[2mms[22m[39m
+       [32m✓[39m body error mentions admin authentication is not configured[32m 9[2mms[22m[39m
+       [32m✓[39m returns JSON content-type on 503[32m 4[2mms[22m[39m
+ [31m❯[39m src/routes/__tests__/credit.test.ts [2m([22m[2m23 tests[22m[2m | [22m[31m15 failed[39m[2m)[22m[33m 368[2mms[22m[39m
+       [32m✓[39m should return empty array when no credit lines exist[32m 74[2mms[22m[39m
+       [32m✓[39m should return credit lines with pagination[32m 24[2mms[22m[39m
+       [32m✓[39m should return 400 for negative offset[32m 16[2mms[22m[39m
+       [32m✓[39m should return 400 for zero limit[32m 14[2mms[22m[39m
+       [32m✓[39m should return 400 for oversized limit[32m 19[2mms[22m[39m
+       [32m✓[39m should handle server errors gracefully[32m 9[2mms[22m[39m
+       [32m✓[39m should return credit line when found[32m 8[2mms[22m[39m
+       [32m✓[39m should return 404 when credit line not found[32m 10[2mms[22m[39m
+[31m       [31m×[31m should handle server errors gracefully[39m[32m 30[2mms[22m[39m
+[31m       [31m×[31m should create credit line successfully[39m[32m 42[2mms[22m[39m
+[31m       [31m×[31m should return 400 for missing required fields[39m[32m 12[2mms[22m[39m
+[31m       [31m×[31m should return 400 for invalid data[39m[32m 14[2mms[22m[39m
+[31m       [31m×[31m should handle service errors with generic message[39m[32m 12[2mms[22m[39m
+[31m       [31m×[31m should update credit line successfully[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m should return 404 when credit line not found[39m[32m 8[2mms[22m[39m
+[31m       [31m×[31m should return 400 for invalid update data[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m should handle service errors with generic message[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m should delete credit line successfully[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m should return 404 when credit line not found[39m[32m 31[2mms[22m[39m
+[31m       [31m×[31m should handle service errors gracefully[39m[32m 12[2mms[22m[39m
+[31m       [31m×[31m should return credit lines for wallet[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m should return empty array when no credit lines found for wallet[39m[32m 7[2mms[22m[39m
+[31m       [31m×[31m should handle service errors gracefully[39m[32m 7[2mms[22m[39m
+ [31m❯[39m src/__tests__/index.test.ts [2m([22m[2m3 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 1075[2mms[22m[39m
+     [33m[2m✓[22m[39m should start server and respond to health check [33m 1016[2mms[22m[39m
+     [32m✓[39m should handle credit routes[32m 15[2mms[22m[39m
+[31m     [31m×[31m should handle risk routes[39m[32m 38[2mms[22m[39m
+ [31m❯[39m tests/cors.test.ts [2m([22m[2m11 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 1086[2mms[22m[39m
+     [32m✓[39m allows requests without an Origin header[32m 9[2mms[22m[39m
+     [32m✓[39m falls back to loopback origins when CORS_ORIGINS is unset outside production[32m 2[2mms[22m[39m
+     [32m✓[39m parses, normalizes, and deduplicates an explicit allowlist[32m 2[2mms[22m[39m
+     [32m✓[39m rejects invalid allowlist entries that use unsupported protocols[32m 3[2mms[22m[39m
+     [32m✓[39m rejects allowlist entries that include a path or credentials[32m 1[2mms[22m[39m
+     [32m✓[39m rejects allowlist entries that include a path[32m 1[2mms[22m[39m
+     [32m✓[39m throws when CORS_ORIGINS is present but empty[32m 1[2mms[22m[39m
+     [32m✓[39m rejects non-loopback origins in loopback mode[32m 1[2mms[22m[39m
+     [32m✓[39m throws in production when CORS_ORIGINS is missing[32m 2[2mms[22m[39m
+[31m     [31m×[31m echoes localhost origins on preflight requests[39m[32m 94[2mms[22m[39m
+[31m     [31m×[31m omits CORS headers for disallowed browser origins[39m[32m 20[2mms[22m[39m
+ [31m❯[39m src/__test__/creditRoute.test.ts [2m([22m[2m41 tests[22m[2m | [22m[31m22 failed[39m[2m)[22m[33m 555[2mms[22m[39m
+[31m     [31m×[31m returns 200 with an empty array when store is empty[39m[32m 103[2mms[22m[39m
+[31m     [31m×[31m returns all credit lines[39m[32m 28[2mms[22m[39m
+     [32m✓[39m returns JSON content-type[32m 10[2mms[22m[39m
+[31m     [31m×[31m returns 200 with the credit line for a known id[39m[32m 17[2mms[22m[39m
+[31m     [31m×[31m returns 404 for an unknown id[39m[32m 20[2mms[22m[39m
+     [32m✓[39m returns JSON content-type on 404[32m 9[2mms[22m[39m
+     [32m✓[39m returns 401 when admin auth is denied[32m 9[2mms[22m[39m
+     [32m✓[39m does not suspend the line when auth is denied[32m 13[2mms[22m[39m
+[31m     [31m×[31m returns 200 and suspended line for an active credit line[39m[32m 27[2mms[22m[39m
+[31m     [31m×[31m response includes the full credit line object[39m[32m 14[2mms[22m[39m
+[31m     [31m×[31m returns 404 when the credit line does not exist[39m[32m 7[2mms[22m[39m
+[31m     [31m×[31m returns 409 when the line is already suspended[39m[32m 9[2mms[22m[39m
+[31m     [31m×[31m returns 409 when the line is already closed[39m[32m 11[2mms[22m[39m
+     [32m✓[39m returns 401 when admin auth is denied[32m 7[2mms[22m[39m
+     [32m✓[39m does not close the line when auth is denied[32m 9[2mms[22m[39m
+[31m     [31m×[31m returns 200 and closed line for an active credit line[39m[32m 11[2mms[22m[39m
+[31m     [31m×[31m returns 200 and closed line for a suspended credit line[39m[32m 22[2mms[22m[39m
+[31m     [31m×[31m response includes the full credit line object with events[39m[32m 8[2mms[22m[39m
+[31m     [31m×[31m returns 404 when the credit line does not exist[39m[32m 7[2mms[22m[39m
+[31m     [31m×[31m returns 409 when the line is already closed[39m[32m 6[2mms[22m[39m
+[31m     [31m×[31m full lifecycle: active → suspend → close via HTTP[39m[32m 10[2mms[22m[39m
+     [32m✓[39m returns 200 with the response envelope[32m 11[2mms[22m[39m
+     [32m✓[39m returns pagination metadata in the response[32m 7[2mms[22m[39m
+     [32m✓[39m returns the status_change transaction recorded on line creation[32m 7[2mms[22m[39m
+[31m     [31m×[31m returns populated history after suspend and close via service[39m[32m 33[2mms[22m[39m
+     [32m✓[39m returns 404 with error containing id for an unknown credit line[32m 7[2mms[22m[39m
+     [32m✓[39m returns 404 with JSON content-type[32m 5[2mms[22m[39m
+     [32m✓[39m filters by type=status_change[32m 13[2mms[22m[39m
+     [32m✓[39m returns empty transactions array when type filter has no matches[32m 9[2mms[22m[39m
+[31m     [31m×[31m returns 400 for an invalid type filter value[39m[32m 10[2mms[22m[39m
+[31m     [31m×[31m returns 400 for an invalid 'from' date[39m[32m 10[2mms[22m[39m
+[31m     [31m×[31m returns 400 for an invalid 'to' date[39m[32m 8[2mms[22m[39m
+[31m     [31m×[31m returns 400 for a non-numeric 'page' value[39m[32m 8[2mms[22m[39m
+     [32m✓[39m returns 400 for page=0[32m 8[2mms[22m[39m
+[31m     [31m×[31m returns 400 for a non-numeric 'limit' value[39m[32m 6[2mms[22m[39m
+     [32m✓[39m returns 400 for limit=0[32m 6[2mms[22m[39m
+     [32m✓[39m returns 400 for limit exceeding 100[32m 5[2mms[22m[39m
+     [32m✓[39m respects custom page and limit query params[32m 15[2mms[22m[39m
+[31m     [31m×[31m returns second page of results correctly[39m[32m 7[2mms[22m[39m
+     [32m✓[39m filters by valid 'from' date excluding older transactions[32m 6[2mms[22m[39m
+     [32m✓[39m filters by valid 'to' date excluding newer transactions[32m 6[2mms[22m[39m
+ [31m❯[39m tests/rateLimit.test.ts [2m([22m[2m8 tests[22m[2m | [22m[31m6 failed[39m[2m)[22m[33m 344[2mms[22m[39m
+[31m       [31m×[31m sets X-RateLimit-* headers on GET /api/credit/lines[39m[32m 121[2mms[22m[39m
+[31m       [31m×[31m sets X-RateLimit-* headers on GET /api/credit/lines/:id[39m[32m 16[2mms[22m[39m
+[31m       [31m×[31m sets X-RateLimit-* headers on POST /api/credit/lines[39m[32m 48[2mms[22m[39m
+[31m       [31m×[31m sets X-RateLimit-* headers on POST /api/risk/evaluate[39m[32m 21[2mms[22m[39m
+[31m       [31m×[31m sets X-RateLimit-* headers on GET /api/risk/wallet/:address/latest[39m[32m 26[2mms[22m[39m
+[31m       [31m×[31m sets X-RateLimit-* headers on GET /api/risk/wallet/:address/history[39m[32m 13[2mms[22m[39m
+       [32m✓[39m POST /api/risk/admin/recalibrate does not apply rate limiting[32m 11[2mms[22m[39m
+       [32m✓[39m returns correct 429 response body when rate limit is exceeded on /api/risk/evaluate[32m 81[2mms[22m[39m
+ [31m❯[39m tests/routes/routes.test.ts [2m([22m[2m17 tests[22m[2m | [22m[31m7 failed[39m[2m)[22m[33m 307[2mms[22m[39m
+     [32m✓[39m returns 200 with ok status[32m 64[2mms[22m[39m
+       [32m✓[39m returns empty array[32m 11[2mms[22m[39m
+       [32m✓[39m returns 404[32m 10[2mms[22m[39m
+[31m       [31m×[31m returns 201 with valid body[39m[32m 67[2mms[22m[39m
+[31m       [31m×[31m returns 400 when walletAddress is missing[39m[32m 17[2mms[22m[39m
+       [32m✓[39m returns 400 when requestedLimit is non-numeric[32m 10[2mms[22m[39m
+       [32m✓[39m returns 400 when body is empty[32m 6[2mms[22m[39m
+[31m       [31m×[31m returns 200 with valid amount[39m[32m 10[2mms[22m[39m
+[31m       [31m×[31m returns 400 when amount is missing[39m[32m 16[2mms[22m[39m
+       [32m✓[39m returns 400 when amount is not numeric string[32m 8[2mms[22m[39m
+[31m       [31m×[31m returns 200 with valid amount[39m[32m 16[2mms[22m[39m
+       [32m✓[39m returns 400 when amount is missing[32m 11[2mms[22m[39m
+       [32m✓[39m returns 400 when amount is a number (not string)[32m 9[2mms[22m[39m
+[31m       [31m×[31m returns placeholder risk data for valid walletAddress[39m[32m 10[2mms[22m[39m
+[31m       [31m×[31m returns 400 when walletAddress is missing[39m[32m 7[2mms[22m[39m
+       [32m✓[39m returns 400 when walletAddress is empty string[32m 8[2mms[22m[39m
+       [32m✓[39m returns 400 when walletAddress is not a string[32m 6[2mms[22m[39m
+ [31m❯[39m src/services/__tests__/drawWebhookService.test.ts [2m([22m[2m20 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[32m 214[2mms[22m[39m
+       [32m✓[39m should resolve configuration from environment variables[32m 28[2mms[22m[39m
+       [32m✓[39m should use default values when environment variables are not set[32m 4[2mms[22m[39m
+       [32m✓[39m should throw error when URLs are configured but secret is missing[32m 5[2mms[22m[39m
+       [32m✓[39m should handle empty URLs gracefully[32m 1[2mms[22m[39m
+       [32m✓[39m should trim and filter URLs[32m 2[2mms[22m[39m
+       [32m✓[39m should initialize webhooks successfully with valid configuration[32m 3[2mms[22m[39m
+       [32m✓[39m should handle missing configuration gracefully[32m 2[2mms[22m[39m
+       [32m✓[39m should log initialization details[32m 8[2mms[22m[39m
+       [32m✓[39m should skip webhook delivery when no URLs are configured[32m 21[2mms[22m[39m
+       [32m✓[39m should skip non-draw confirmation events[32m 4[2mms[22m[39m
+       [32m✓[39m should successfully deliver webhook for draw confirmation event[32m 9[2mms[22m[39m
+       [32m✓[39m should handle HTTP errors properly[32m 2[2mms[22m[39m
+[31m       [31m×[31m should retry failed requests with exponential backoff[39m[32m 25[2mms[22m[39m
+       [32m✓[39m should handle malformed event data gracefully[32m 4[2mms[22m[39m
+[31m       [31m×[31m should handle multiple webhook URLs[39m[32m 17[2mms[22m[39m
+[31m       [31m×[31m should test connectivity to all webhook URLs[39m[32m 21[2mms[22m[39m
+[31m       [31m×[31m should handle network errors during connectivity test[39m[32m 16[2mms[22m[39m
+       [32m✓[39m should return empty array when no URLs are configured[32m 4[2mms[22m[39m
+       [32m✓[39m should generate consistent signatures for the same payload[32m 7[2mms[22m[39m
+[31m       [31m×[31m should handle request timeouts[39m[32m 8[2mms[22m[39m
+ [31m❯[39m src/__tests__/credit.test.ts [2m([22m[2m9 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[33m 560[2mms[22m[39m
+[31m     [31m×[31m returns 200 without any API key[39m[33m 391[2mms[22m[39m
+     [32m✓[39m returns 404 without any API key[32m 18[2mms[22m[39m
+     [32m✓[39m returns 401 when x-api-key header is missing[32m 16[2mms[22m[39m
+     [32m✓[39m returns 403 when x-api-key header has a wrong value[32m 24[2mms[22m[39m
+     [32m✓[39m does not expose the wrong key value in the 403 body[32m 19[2mms[22m[39m
+[31m     [31m×[31m returns 200 with the valid API key[39m[32m 15[2mms[22m[39m
+     [32m✓[39m returns 401 when x-api-key header is missing[32m 9[2mms[22m[39m
+     [32m✓[39m returns 403 when x-api-key header has a wrong value[32m 6[2mms[22m[39m
+[31m     [31m×[31m returns 200 with the valid API key[39m[32m 15[2mms[22m[39m
+ [31m❯[39m tests/draw-credit.test.ts [2m([22m[2m8 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[32m 272[2mms[22m[39m
+[31m     [31m×[31m should draw successfully[39m[32m 113[2mms[22m[39m
+     [32m✓[39m should reject over-limit draw[32m 24[2mms[22m[39m
+[31m     [31m×[31m should reject wrong borrower[39m[32m 15[2mms[22m[39m
+     [32m✓[39m should reject inactive credit line[32m 29[2mms[22m[39m
+[31m     [31m×[31m should return 404 if credit line not found[39m[32m 46[2mms[22m[39m
+     [32m✓[39m should reject invalid amount[32m 10[2mms[22m[39m
+     [32m✓[39m should reject zero amount[32m 10[2mms[22m[39m
+[31m     [31m×[31m should fail if body missing[39m[32m 12[2mms[22m[39m
+ [31m❯[39m src/__test__/riskRoute.test.ts [2m([22m[2m8 tests[22m[2m | [22m[31m7 failed[39m[2m)[22m[33m 427[2mms[22m[39m
+[31m     [31m×[31m returns 400 when body is empty[39m[32m 201[2mms[22m[39m
+[31m     [31m×[31m returns 400 when walletAddress is blank[39m[32m 28[2mms[22m[39m
+[31m     [31m×[31m returns 400 for invalid format and does not call evaluateWallet[39m[32m 22[2mms[22m[39m
+[31m     [31m×[31m returns 200 with the service result on a valid address[39m[32m 30[2mms[22m[39m
+[31m     [31m×[31m normalizes walletAddress and calls evaluateWallet with trimmed value[39m[32m 35[2mms[22m[39m
+[31m     [31m×[31m returns 400 when service throws InvalidWalletAddressError[39m[32m 30[2mms[22m[39m
+[31m     [31m×[31m returns 500 with a generic message when service throws unexpected errors[39m[32m 41[2mms[22m[39m
+     [32m✓[39m returns JSON content-type on 400 error[32m 19[2mms[22m[39m
+ [31m❯[39m tests/api.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 269[2mms[22m[39m
+       [32m✓[39m returns a successful envelope with health status[32m 166[2mms[22m[39m
+[31m       [31m×[31m GET /api/credit/lines returns a successful envelope[39m[32m 30[2mms[22m[39m
+       [32m✓[39m GET /api/credit/lines/:id returns a standard failure envelope for 404[32m 9[2mms[22m[39m
+       [32m✓[39m POST /api/risk/evaluate returns a standard failure envelope for missing body[32m 36[2mms[22m[39m
+[31m       [31m×[31m POST /api/risk/evaluate returns a successful envelope with risk status[39m[32m 17[2mms[22m[39m
+ [31m❯[39m src/tests/api.test.ts [2m([22m[2m6 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[32m 235[2mms[22m[39m
+[31m     [31m×[31m returns 200 with status ok[39m[32m 101[2mms[22m[39m
+     [32m✓[39m returns the parsed OpenAPI spec[32m 25[2mms[22m[39m
+[31m     [31m×[31m returns 200 with empty creditLines array[39m[32m 20[2mms[22m[39m
+[31m     [31m×[31m returns 404 for unknown id[39m[32m 24[2mms[22m[39m
+[31m     [31m×[31m returns 400 when walletAddress is missing[39m[32m 43[2mms[22m[39m
+[31m     [31m×[31m returns 200 with risk fields when walletAddress provided[39m[32m 12[2mms[22m[39m
+ [31m❯[39m src/__tests__/risk.test.ts [2m([22m[2m9 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[32m 219[2mms[22m[39m
+[31m     [31m×[31m returns 200 with a valid Stellar walletAddress[39m[32m 117[2mms[22m[39m
+     [32m✓[39m returns 400 with an invalid Stellar walletAddress[32m 17[2mms[22m[39m
+[31m     [31m×[31m returns 400 when walletAddress is missing[39m[32m 22[2mms[22m[39m
+     [32m✓[39m returns 400 when body is empty[32m 9[2mms[22m[39m
+     [32m✓[39m does not require an API key[32m 9[2mms[22m[39m
+     [32m✓[39m returns 401 when x-api-key header is missing[32m 7[2mms[22m[39m
+     [32m✓[39m returns 403 when x-api-key header has a wrong value[32m 6[2mms[22m[39m
+     [32m✓[39m does not expose the wrong key value in the 403 body[32m 6[2mms[22m[39m
+[31m     [31m×[31m returns 200 with the valid API key[39m[32m 14[2mms[22m[39m
+ [31m❯[39m tests/health.test.ts [2m([22m[2m3 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 149[2mms[22m[39m
+     [32m✓[39m should return health status 200[32m 95[2mms[22m[39m
+[31m     [31m×[31m should return correct JSON structure[39m[32m 41[2mms[22m[39m
+     [32m✓[39m should have content-type application/json[32m 8[2mms[22m[39m
+ [31m❯[39m tests/schemas/schemas.test.ts [2m([22m[2m37 tests[22m[2m | [22m[31m7 failed[39m[2m)[22m[32m 118[2mms[22m[39m
+[31m     [31m×[31m accepts a valid walletAddress[39m[32m 51[2mms[22m[39m
+     [32m✓[39m rejects missing walletAddress[32m 2[2mms[22m[39m
+     [32m✓[39m rejects empty walletAddress[32m 1[2mms[22m[39m
+     [32m✓[39m rejects walletAddress exceeding 256 chars[32m 2[2mms[22m[39m
+     [32m✓[39m rejects non-string walletAddress[32m 1[2mms[22m[39m
+[31m     [31m×[31m accepts optional forceRefresh[39m[32m 3[2mms[22m[39m
+     [32m✓[39m rejects unknown keys[32m 1[2mms[22m[39m
+[31m     [31m×[31m accepts valid body[39m[32m 4[2mms[22m[39m
+[31m     [31m×[31m accepts decimal requestedLimit[39m[32m 10[2mms[22m[39m
+     [32m✓[39m rejects missing walletAddress[32m 1[2mms[22m[39m
+     [32m✓[39m rejects missing requestedLimit[32m 1[2mms[22m[39m
+     [32m✓[39m rejects non-numeric requestedLimit[32m 3[2mms[22m[39m
+     [32m✓[39m rejects negative requestedLimit[32m 1[2mms[22m[39m
+     [32m✓[39m rejects unknown keys[32m 1[2mms[22m[39m
+[31m     [31m×[31m accepts a valid amount[39m[32m 3[2mms[22m[39m
+[31m     [31m×[31m accepts a decimal amount[39m[32m 2[2mms[22m[39m
+     [32m✓[39m rejects missing amount[32m 1[2mms[22m[39m
+     [32m✓[39m rejects non-numeric amount[32m 1[2mms[22m[39m
+     [32m✓[39m rejects numeric (non-string) amount[32m 1[2mms[22m[39m
+     [32m✓[39m rejects unknown keys[32m 1[2mms[22m[39m
+[31m     [31m×[31m accepts a valid amount[39m[32m 4[2mms[22m[39m
+     [32m✓[39m rejects missing amount[32m 1[2mms[22m[39m
+     [32m✓[39m rejects non-numeric amount[32m 1[2mms[22m[39m
+     [32m✓[39m rejects unknown keys[32m 1[2mms[22m[39m
+     [32m✓[39m accepts empty query[32m 1[2mms[22m[39m
+     [32m✓[39m coerces numeric query strings[32m 2[2mms[22m[39m
+     [32m✓[39m rejects invalid limit[32m 1[2mms[22m[39m
+     [32m✓[39m rejects unknown keys[32m 1[2mms[22m[39m
+     [32m✓[39m accepts valid filters and pagination[32m 2[2mms[22m[39m
+     [32m✓[39m rejects invalid transaction type[32m 1[2mms[22m[39m
+     [32m✓[39m rejects invalid date[32m 1[2mms[22m[39m
+     [32m✓[39m rejects invalid page/limit bounds[32m 1[2mms[22m[39m
+     [32m✓[39m rejects unknown keys[32m 1[2mms[22m[39m
+     [32m✓[39m accepts empty query[32m 1[2mms[22m[39m
+     [32m✓[39m coerces valid pagination values[32m 1[2mms[22m[39m
+     [32m✓[39m rejects negative offset[32m 1[2mms[22m[39m
+     [32m✓[39m rejects unknown keys[32m 1[2mms[22m[39m
+ [31m❯[39m src/routes/__tests__/risk.test.ts [2m([22m[2m18 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 90[2mms[22m[39m
+       [32m✓[39m evaluates risk and returns enveloped response[32m 18[2mms[22m[39m
+       [32m✓[39m uses cached evaluation when available[32m 1[2mms[22m[39m
+       [32m✓[39m forces refresh when requested[32m 2[2mms[22m[39m
+       [32m✓[39m rejects missing walletAddress via schema validation[32m 4[2mms[22m[39m
+       [32m✓[39m rejects unknown keys via strict schema[32m 2[2mms[22m[39m
+       [32m✓[39m returns 500 when service throws[32m 3[2mms[22m[39m
+       [32m✓[39m returns evaluation by id[32m 1[2mms[22m[39m
+       [32m✓[39m returns 404 when evaluation is missing[32m 1[2mms[22m[39m
+       [32m✓[39m returns 500 when evaluation fetch throws[32m 3[2mms[22m[39m
+       [32m✓[39m returns latest evaluation for wallet[32m 3[2mms[22m[39m
+[31m       [31m×[31m returns 404 for missing latest evaluation[39m[32m 27[2mms[22m[39m
+       [32m✓[39m returns 500 when latest evaluation fetch throws[32m 2[2mms[22m[39m
+       [32m✓[39m returns history with pagination[32m 5[2mms[22m[39m
+       [32m✓[39m rejects invalid query types for history[32m 1[2mms[22m[39m
+       [32m✓[39m returns 500 when history fetch throws[32m 1[2mms[22m[39m
+       [32m✓[39m requires API key[32m 1[2mms[22m[39m
+       [32m✓[39m rejects invalid API key[32m 1[2mms[22m[39m
+       [32m✓[39m accepts valid API key[32m 1[2mms[22m[39m
+ [31m❯[39m src/__test__/horizonListener.test.ts [2m([22m[2m49 tests[22m[2m | [22m[31m49 failed[39m[2m)[22m[32m 169[2mms[22m[39m
+[31m     [31m×[31m returns sensible defaults when no env vars are set[39m[32m 32[2mms[22m[39m
+[31m     [31m×[31m reads HORIZON_URL from env[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m parses a single CONTRACT_ID[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m parses multiple CONTRACT_IDS separated by commas[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m trims whitespace from CONTRACT_IDS entries[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m returns empty contractIds for an empty CONTRACT_IDS string[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m parses POLL_INTERVAL_MS from env[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m reads HORIZON_START_LEDGER from env[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m returns false and null config before start[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m returns true and a config object after start[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m returns false and null config after stop[39m[32m 8[2mms[22m[39m
+[31m     [31m×[31m sets running to true[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m executes an immediate first poll on start[39m[32m 6[2mms[22m[39m
+[31m     [31m×[31m fires handlers on subsequent interval ticks[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m is a no-op (warns) if called when already running[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m logs startup config information[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m sets running to false[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m clears the polling interval so no more events fire[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m is a no-op (warns) if called when not running[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m logs a stopped message[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m allows the listener to be restarted after stop[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m registers a handler that receives simulated events[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m supports multiple handlers and invokes all of them[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m clearEventHandlers() removes all registered handlers[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m catches and logs errors thrown by a handler without stopping dispatch[39m[32m 3[2mms[22m[39m
+[31m     [31m×[31m handles async handlers that reject gracefully[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m completes without throwing when contractIds is empty[39m[32m 7[2mms[22m[39m
+[31m     [31m×[31m logs a polling message on every call[39m[32m 4[2mms[22m[39m
+[31m     [31m×[31m emits a simulated event when contractIds is non-empty[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m does not emit events when contractIds is empty[39m[32m 4[2mms[22m[39m
+[31m     [31m×[31m logs 'none' for contracts when contractIds is empty[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m includes simulated event data with a walletAddress field[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m sets a valid ISO timestamp on the simulated event[39m[32m 3[2mms[22m[39m
+[31m       [31m×[31m returns initial metrics state[39m[32m 15[2mms[22m[39m
+[31m       [31m×[31m tracks metrics during polling[39m[32m 2[2mms[22m[39m
+[31m       [31m×[31m resets metrics to initial state[39m[32m 2[2mms[22m[39m
+[31m       [31m×[31m prevents duplicate event processing[39m[32m 2[2mms[22m[39m
+[31m       [31m×[31m generates unique event IDs[39m[32m 2[2mms[22m[39m
+[31m       [31m×[31m reads resilience configuration from environment[39m[32m 2[2mms[22m[39m
+[31m       [31m×[31m uses default values for resilience configuration[39m[32m 3[2mms[22m[39m
+[31m       [31m×[31m handles rate limit errors with proper backoff[39m[32m 2[2mms[22m[39m
+[31m       [31m×[31m handles transient errors with exponential backoff[39m[32m 5[2mms[22m[39m
+[31m       [31m×[31m handles cursor gap errors and recovery[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m respects maximum retry limits[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m logs metrics when enabled[39m[32m 2[2mms[22m[39m
+[31m       [31m×[31m does not log metrics when disabled[39m[32m 2[2mms[22m[39m
+[31m       [31m×[31m tracks ledger cursor progression[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m handles different start ledger configurations[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m limits processed event ID cache size[39m[32m 1[2mms[22m[39m
+ [32m✓[39m src/__test__/creditService.test.ts [2m([22m[2m73 tests[22m[2m)[22m[32m 149[2mms[22m[39m
+ [31m❯[39m src/__tests__/health.test.ts [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 202[2mms[22m[39m
+[31m     [31m×[31m returns 200 with correct service name[39m[32m 182[2mms[22m[39m
+ [32m✓[39m tests/middleware/errorHandler.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 90[2mms[22m[39m
+ [32m✓[39m src/__tests__/app.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 247[2mms[22m[39m
+ [32m✓[39m tests/middleware/validate.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 340[2mms[22m[39m
+ [32m✓[39m src/services/__tests__/CreditLineService.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 108[2mms[22m[39m
+ [32m✓[39m src/__tests__/stellar_validation.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 353[2mms[22m[39m
+ [32m✓[39m src/__tests__/auth.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 100[2mms[22m[39m
+ [32m✓[39m src/__test__/jobQueue.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 145[2mms[22m[39m
+ [32m✓[39m src/repositories/memory/__tests__/InMemoryTransactionRepository.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 107[2mms[22m[39m
+ [32m✓[39m src/services/__tests__/RiskEvaluationService.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 47[2mms[22m[39m
+ [32m✓[39m tests/middleware/rateLimit.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 53[2mms[22m[39m
+ [32m✓[39m tests/middleware/validate.unit.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 47[2mms[22m[39m
+ [32m✓[39m src/container/__tests__/Container.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m src/db/migrations.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m src/repositories/memory/__tests__/InMemoryCreditLineRepository.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m src/__test__/riskService.test.ts [2m([22m[2m33 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+ [32m✓[39m src/repositories/memory/__tests__/InMemoryRiskEvaluationRepository.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m tests/response.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m src/db/validate-schema.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m tests/config/rateLimit.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/__test__/stellarAddress.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m src/db/client.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m tests/schemas/index.exports.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 142 [49m[22m[31m⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/api.test.ts[2m > [22mAPI Integration Tests[2m > [22mCredit Routes[2m > [22mGET /api/credit/lines returns a successful envelope
+[31m[1mAssertionError[22m: expected { …(2) } to deeply equal { data: { creditLines: [] }, …(1) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[2m    "data": {[22m
+[2m      "creditLines": [],[22m
+[31m+     "pagination": {[39m
+[31m+       "limit": 100,[39m
+[31m+       "offset": 0,[39m
+[31m+       "total": 0,[39m
+[31m+     },[39m
+[2m    },[22m
+[2m    "error": null,[22m
+[2m  }[22m
+
+[36m [2m❯[22m tests/api.test.ts:[2m24:35[22m[39m
+    [90m 22|[39m
+    [90m 23|[39m             [34mexpect[39m(response[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m 24|[39m             [34mexpect[39m(response[33m.[39mbody)[33m.[39m[34mtoEqual[39m({
+    [90m   |[39m                                   [31m^[39m
+    [90m 25|[39m                 data[33m:[39m { creditLines[33m:[39m [] }[33m,[39m
+    [90m 26|[39m                 error[33m:[39m [35mnull[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/api.test.ts[2m > [22mAPI Integration Tests[2m > [22mRisk Routes[2m > [22mPOST /api/risk/evaluate returns a successful envelope with risk status
+[31m[1mAssertionError[22m: expected 400 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 400[39m
+
+[36m [2m❯[22m tests/api.test.ts:[2m56:37[22m[39m
+    [90m 54|[39m                 .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2…
+    [90m 55|[39m
+    [90m 56|[39m             [34mexpect[39m(response[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                                     [31m^[39m
+    [90m 57|[39m             [34mexpect[39m(response[33m.[39mbody)[33m.[39m[34mtoMatchObject[39m({
+    [90m 58|[39m                 data[33m:[39m {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/cors.test.ts[2m > [22mapplication CORS behavior[2m > [22mechoes localhost origins on preflight requests
+[31m[1mAssertionError[22m: expected '*' to be 'http://localhost:5173' // Object.is equality[39m
+
+Expected: [32m"http://localhost:5173"[39m
+Received: [31m"*"[39m
+
+[36m [2m❯[22m tests/cors.test.ts:[2m136:61[22m[39m
+    [90m134|[39m
+    [90m135|[39m     [34mexpect[39m(response[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m204[39m)[33m;[39m
+    [90m136|[39m     expect(response.headers['access-control-allow-origin']).toBe('http…
+    [90m   |[39m                                                             [31m^[39m
+    [90m137|[39m   })[33m;[39m
+    [90m138|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/cors.test.ts[2m > [22mapplication CORS behavior[2m > [22momits CORS headers for disallowed browser origins
+[31m[1mAssertionError[22m: expected '*' to be undefined[39m
+
+[32m- Expected:[39m
+undefined
+
+[31m+ Received:[39m
+"*"
+
+[36m [2m❯[22m tests/cors.test.ts:[2m145:61[22m[39m
+    [90m143|[39m
+    [90m144|[39m     [34mexpect[39m(response[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m145|[39m     expect(response.headers['access-control-allow-origin']).toBeUndefi…
+    [90m   |[39m                                                             [31m^[39m
+    [90m146|[39m   })[33m;[39m
+    [90m147|[39m })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/draw-credit.test.ts[2m > [22mPOST /api/credit/lines/:id/draw[2m > [22mshould draw successfully
+[31m[1mAssertionError[22m: expected 400 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 400[39m
+
+[36m [2m❯[22m tests/draw-credit.test.ts:[2m21:30[22m[39m
+    [90m 19|[39m                .send({ borrowerId: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2…
+    [90m 20|[39m
+    [90m 21|[39m           [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                              [31m^[39m
+    [90m 22|[39m           [34mexpect[39m(res[33m.[39mbody[33m.[39mcreditLine[33m.[39mutilized)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m 23|[39m      })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/draw-credit.test.ts[2m > [22mPOST /api/credit/lines/:id/draw[2m > [22mshould reject wrong borrower
+[31m[1mAssertionError[22m: expected 400 to be 403 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 403[39m
+[31m+ 400[39m
+
+[36m [2m❯[22m tests/draw-credit.test.ts:[2m38:30[22m[39m
+    [90m 36|[39m                .send({ borrowerId: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2…
+    [90m 37|[39m
+    [90m 38|[39m           [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m403[39m)[33m;[39m
+    [90m   |[39m                              [31m^[39m
+    [90m 39|[39m      })[33m;[39m
+    [90m 40|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/draw-credit.test.ts[2m > [22mPOST /api/credit/lines/:id/draw[2m > [22mshould return 404 if credit line not found
+[31m[1mAssertionError[22m: expected 400 to be 404 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 404[39m
+[31m+ 400[39m
+
+[36m [2m❯[22m tests/draw-credit.test.ts:[2m56:30[22m[39m
+    [90m 54|[39m                .send({ borrowerId: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2…
+    [90m 55|[39m
+    [90m 56|[39m           [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m404[39m)[33m;[39m
+    [90m   |[39m                              [31m^[39m
+    [90m 57|[39m      })[33m;[39m
+    [90m 58|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/draw-credit.test.ts[2m > [22mPOST /api/credit/lines/:id/draw[2m > [22mshould fail if body missing
+[31m[1mAssertionError[22m: expected 400 to be 403 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 403[39m
+[31m+ 400[39m
+
+[36m [2m❯[22m tests/draw-credit.test.ts:[2m80:30[22m[39m
+    [90m 78|[39m                [33m.[39m[34msend[39m({})[33m;[39m
+    [90m 79|[39m
+    [90m 80|[39m           [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m403[39m)[33m;[39m
+    [90m   |[39m                              [31m^[39m
+    [90m 81|[39m      })[33m;[39m
+    [90m 82|[39m })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/health.test.ts[2m > [22mGET /health[2m > [22mshould return correct JSON structure
+[31m[1mAssertionError[22m: expected { data: { status: 'ok', …(1) }, …(1) } to deeply equal { status: 'ok', …(1) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[31m+   "data": {[39m
+[2m      "service": "creditra-backend",[22m
+[2m      "status": "ok",[22m
+[31m+   },[39m
+[31m+   "error": null,[39m
+[2m  }[22m
+
+[36m [2m❯[22m tests/health.test.ts:[2m19:28[22m[39m
+    [90m 17|[39m           [35mconst[39m res [33m=[39m [35mawait[39m [34mrequest[39m(app)[33m.[39m[35mget[39m([32m'/health'[39m)[33m;[39m
+    [90m 18|[39m
+    [90m 19|[39m           [34mexpect[39m(res[33m.[39mbody)[33m.[39m[34mtoEqual[39m({
+    [90m   |[39m                            [31m^[39m
+    [90m 20|[39m                status[33m:[39m [32m'ok'[39m[33m,[39m
+    [90m 21|[39m                service[33m:[39m [32m'creditra-backend'[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/rateLimit.test.ts[2m > [22mRate Limiting Integration Tests[2m > [22mRate limit headers on credit endpoints[2m > [22msets X-RateLimit-* headers on GET /api/credit/lines
+[31m[1mAssertionError[22m: expected { 'x-powered-by': 'Express', …(6) } to have property "x-ratelimit-limit"[39m
+[36m [2m❯[22m tests/rateLimit.test.ts:[2m22:32[22m[39m
+    [90m 20|[39m
+    [90m 21|[39m       [34mexpect[39m(response[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m 22|[39m       [34mexpect[39m(response[33m.[39mheaders)[33m.[39m[34mtoHaveProperty[39m([32m'x-ratelimit-limit'[39m)[33m;[39m
+    [90m   |[39m                                [31m^[39m
+    [90m 23|[39m       [34mexpect[39m(response[33m.[39mheaders)[33m.[39m[34mtoHaveProperty[39m([32m'x-ratelimit-remaining'[39m)[33m;[39m
+    [90m 24|[39m       [34mexpect[39m(response[33m.[39mheaders)[33m.[39m[34mtoHaveProperty[39m([32m'x-ratelimit-reset'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/rateLimit.test.ts[2m > [22mRate Limiting Integration Tests[2m > [22mRate limit headers on credit endpoints[2m > [22msets X-RateLimit-* headers on GET /api/credit/lines/:id
+[31m[1mAssertionError[22m: expected { 'x-powered-by': 'Express', …(6) } to have property "x-ratelimit-limit"[39m
+[36m [2m❯[22m tests/rateLimit.test.ts:[2m31:32[22m[39m
+    [90m 29|[39m
+    [90m 30|[39m       [34mexpect[39m(response[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m404[39m)[33m;[39m
+    [90m 31|[39m       [34mexpect[39m(response[33m.[39mheaders)[33m.[39m[34mtoHaveProperty[39m([32m'x-ratelimit-limit'[39m)[33m;[39m
+    [90m   |[39m                                [31m^[39m
+    [90m 32|[39m       [34mexpect[39m(response[33m.[39mheaders)[33m.[39m[34mtoHaveProperty[39m([32m'x-ratelimit-remaining'[39m)[33m;[39m
+    [90m 33|[39m       [34mexpect[39m(response[33m.[39mheaders)[33m.[39m[34mtoHaveProperty[39m([32m'x-ratelimit-reset'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/rateLimit.test.ts[2m > [22mRate Limiting Integration Tests[2m > [22mRate limit headers on credit endpoints[2m > [22msets X-RateLimit-* headers on POST /api/credit/lines
+[31m[1mAssertionError[22m: expected 400 to be 201 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 201[39m
+[31m+ 400[39m
+
+[36m [2m❯[22m tests/rateLimit.test.ts:[2m41:31[22m[39m
+    [90m 39|[39m         .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2…
+    [90m 40|[39m
+    [90m 41|[39m       [34mexpect[39m(response[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m201[39m)[33m;[39m
+    [90m   |[39m                               [31m^[39m
+    [90m 42|[39m       [34mexpect[39m(response[33m.[39mheaders)[33m.[39m[34mtoHaveProperty[39m([32m'x-ratelimit-limit'[39m)[33m;[39m
+    [90m 43|[39m       [34mexpect[39m(response[33m.[39mheaders)[33m.[39m[34mtoHaveProperty[39m([32m'x-ratelimit-remaining'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/rateLimit.test.ts[2m > [22mRate Limiting Integration Tests[2m > [22mRate limit headers on risk endpoints[2m > [22msets X-RateLimit-* headers on POST /api/risk/evaluate
+[31m[1mAssertionError[22m: expected 400 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 400[39m
+
+[36m [2m❯[22m tests/rateLimit.test.ts:[2m54:31[22m[39m
+    [90m 52|[39m         .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2…
+    [90m 53|[39m
+    [90m 54|[39m       [34mexpect[39m(response[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                               [31m^[39m
+    [90m 55|[39m       [34mexpect[39m(response[33m.[39mheaders)[33m.[39m[34mtoHaveProperty[39m([32m'x-ratelimit-limit'[39m)[33m;[39m
+    [90m 56|[39m       [34mexpect[39m(response[33m.[39mheaders)[33m.[39m[34mtoHaveProperty[39m([32m'x-ratelimit-remaining'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/rateLimit.test.ts[2m > [22mRate Limiting Integration Tests[2m > [22mRate limit headers on risk endpoints[2m > [22msets X-RateLimit-* headers on GET /api/risk/wallet/:address/latest
+[31m[1mAssertionError[22m: expected [ 200, 404, 500 ] to include 400[39m
+[36m [2m❯[22m tests/rateLimit.test.ts:[2m63:31[22m[39m
+    [90m 61|[39m       const response = await request(app).get('/api/risk/wallet/0x123/…
+    [90m 62|[39m
+    [90m 63|[39m       [34mexpect[39m([[34m200[39m[33m,[39m [34m404[39m[33m,[39m [34m500[39m])[33m.[39m[34mtoContain[39m(response[33m.[39mstatus)[33m;[39m
+    [90m   |[39m                               [31m^[39m
+    [90m 64|[39m       [34mexpect[39m(response[33m.[39mheaders)[33m.[39m[34mtoHaveProperty[39m([32m'x-ratelimit-limit'[39m)[33m;[39m
+    [90m 65|[39m       [34mexpect[39m(response[33m.[39mheaders)[33m.[39m[34mtoHaveProperty[39m([32m'x-ratelimit-remaining'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/rateLimit.test.ts[2m > [22mRate Limiting Integration Tests[2m > [22mRate limit headers on risk endpoints[2m > [22msets X-RateLimit-* headers on GET /api/risk/wallet/:address/history
+[31m[1mAssertionError[22m: expected [ 200, 500 ] to include 400[39m
+[36m [2m❯[22m tests/rateLimit.test.ts:[2m72:26[22m[39m
+    [90m 70|[39m       const response = await request(app).get('/api/risk/wallet/0x123/…
+    [90m 71|[39m
+    [90m 72|[39m       [34mexpect[39m([[34m200[39m[33m,[39m [34m500[39m])[33m.[39m[34mtoContain[39m(response[33m.[39mstatus)[33m;[39m
+    [90m   |[39m                          [31m^[39m
+    [90m 73|[39m       [34mexpect[39m(response[33m.[39mheaders)[33m.[39m[34mtoHaveProperty[39m([32m'x-ratelimit-limit'[39m)[33m;[39m
+    [90m 74|[39m       [34mexpect[39m(response[33m.[39mheaders)[33m.[39m[34mtoHaveProperty[39m([32m'x-ratelimit-remaining'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/adminAuth.test.ts[2m > [22madminAuth middleware[2m > [22mwhen ADMIN_API_KEY env var is configured[2m > [22mreturns 401 when the header is close but not equal to the secret
+[31m[1mAssertionError[22m: expected 200 to be 401 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 401[39m
+[31m+ 200[39m
+
+[36m [2m❯[22m src/__test__/adminAuth.test.ts:[2m77:28[22m[39m
+    [90m 75|[39m             [33m.[39m[35mset[39m([33mADMIN_KEY_HEADER[39m[33m,[39m [33mSECRET[39m [33m+[39m [32m" "[39m)[33m;[39m
+    [90m 76|[39m
+    [90m 77|[39m         [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m401[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m 78|[39m         })[33m;[39m
+    [90m 79|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mGET /api/credit/lines[2m > [22mreturns 200 with an empty array when store is empty
+[31m[1mAssertionError[22m: expected { creditLines: [], …(1) } to deeply equal [][39m
+
+[32m- Expected:[39m
+[]
+
+[31m+ Received:[39m
+{
+  "creditLines": [],
+  "pagination": {
+    "limit": 100,
+    "offset": 0,
+    "total": 0,
+  },
+}
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m60:27[22m[39m
+    [90m 58|[39m     [35mconst[39m res [33m=[39m [35mawait[39m [34mrequest[39m([34mbuildApp[39m())[33m.[39m[35mget[39m([32m"/api/credit/lines"[39m)[33m;[39m
+    [90m 59|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m 60|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mdata)[33m.[39m[34mtoEqual[39m([])[33m;[39m
+    [90m   |[39m                           [31m^[39m
+    [90m 61|[39m   })[33m;[39m
+    [90m 62|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mGET /api/credit/lines[2m > [22mreturns all credit lines
+[31m[1mAssertionError[22m: expected { creditLines: [], …(1) } to have property 'length'[39m
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m67:27[22m[39m
+    [90m 65|[39m     [34mcreateCreditLine[39m([32m"b"[39m)[33m;[39m
+    [90m 66|[39m     [35mconst[39m res [33m=[39m [35mawait[39m [34mrequest[39m([34mbuildApp[39m())[33m.[39m[35mget[39m([32m"/api/credit/lines"[39m)[33m;[39m
+    [90m 67|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mdata)[33m.[39m[34mtoHaveLength[39m([34m2[39m)[33m;[39m
+    [90m   |[39m                           [31m^[39m
+    [90m 68|[39m   })[33m;[39m
+    [90m 69|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mGET /api/credit/lines/:id[2m > [22mreturns 200 with the credit line for a known id
+[31m[1mAssertionError[22m: expected 404 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 404[39m
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m81:24[22m[39m
+    [90m 79|[39m     [34mcreateCreditLine[39m([33mVALID_ID[39m)[33m;[39m
+    [90m 80|[39m     const res = await request(buildApp()).get(`/api/credit/lines/${VAL…
+    [90m 81|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m 82|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mid)[33m.[39m[34mtoBe[39m([33mVALID_ID[39m)[33m;[39m
+    [90m 83|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mGET /api/credit/lines/:id[2m > [22mreturns 404 for an unknown id
+[31m[1mAssertionError[22m: expected 'Credit line not found' to contain 'does-not-exist'[39m
+
+Expected: [32m"does-not-exist"[39m
+Received: [31m"Credit line not found"[39m
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m88:28[22m[39m
+    [90m 86|[39m     const res = await request(buildApp()).get(`/api/credit/lines/${MIS…
+    [90m 87|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m404[39m)[33m;[39m
+    [90m 88|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoContain[39m([33mMISSING_ID[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m 89|[39m   })[33m;[39m
+    [90m 90|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mPOST /api/credit/lines/:id/suspend — business logic[2m > [22mreturns 200 and suspended line for an active credit line
+[31m[1mAssertionError[22m: expected 401 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 401[39m
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m122:24[22m[39m
+    [90m120|[39m       [33m.[39m[35mset[39m([32m"x-admin-api-key"[39m[33m,[39m [33mADMIN_KEY[39m)[33m;[39m
+    [90m121|[39m
+    [90m122|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m123|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"suspended"[39m)[33m;[39m
+    [90m124|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mmessage)[33m.[39m[34mtoBe[39m([32m"Credit line suspended."[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mPOST /api/credit/lines/:id/suspend — business logic[2m > [22mresponse includes the full credit line object
+[31m[1mAssertionError[22m: expected undefined to match object { id: 'line-abc', status: 'suspended' }[39m
+
+[32m- Expected:[39m
+{
+  "id": "line-abc",
+  "status": "suspended",
+}
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m133:27[22m[39m
+    [90m131|[39m       [33m.[39m[35mset[39m([32m"x-admin-api-key"[39m[33m,[39m [33mADMIN_KEY[39m)[33m;[39m
+    [90m132|[39m
+    [90m133|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mdata)[33m.[39m[34mtoMatchObject[39m({
+    [90m   |[39m                           [31m^[39m
+    [90m134|[39m       id[33m:[39m [33mVALID_ID[39m[33m,[39m
+    [90m135|[39m       status[33m:[39m [32m"suspended"[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mPOST /api/credit/lines/:id/suspend — business logic[2m > [22mreturns 404 when the credit line does not exist
+[31m[1mAssertionError[22m: expected 401 to be 404 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 404[39m
+[31m+ 401[39m
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m145:24[22m[39m
+    [90m143|[39m       [33m.[39m[35mset[39m([32m"x-admin-api-key"[39m[33m,[39m [33mADMIN_KEY[39m)[33m;[39m
+    [90m144|[39m
+    [90m145|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m404[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m146|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoContain[39m([33mMISSING_ID[39m)[33m;[39m
+    [90m147|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mPOST /api/credit/lines/:id/suspend — business logic[2m > [22mreturns 409 when the line is already suspended
+[31m[1mAssertionError[22m: expected 401 to be 409 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 409[39m
+[31m+ 401[39m
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m155:24[22m[39m
+    [90m153|[39m       [33m.[39m[35mset[39m([32m"x-admin-api-key"[39m[33m,[39m [33mADMIN_KEY[39m)[33m;[39m
+    [90m154|[39m
+    [90m155|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m409[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m156|[39m     expect(res.body.error).toMatch(/suspend.*suspended|suspended.*susp…
+    [90m157|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mPOST /api/credit/lines/:id/suspend — business logic[2m > [22mreturns 409 when the line is already closed
+[31m[1mAssertionError[22m: expected 401 to be 409 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 409[39m
+[31m+ 401[39m
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m165:24[22m[39m
+    [90m163|[39m       [33m.[39m[35mset[39m([32m"x-admin-api-key"[39m[33m,[39m [33mADMIN_KEY[39m)[33m;[39m
+    [90m164|[39m
+    [90m165|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m409[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m166|[39m   })[33m;[39m
+    [90m167|[39m })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mPOST /api/credit/lines/:id/close — business logic[2m > [22mreturns 200 and closed line for an active credit line
+[31m[1mAssertionError[22m: expected 401 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 401[39m
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m194:24[22m[39m
+    [90m192|[39m       [33m.[39m[35mset[39m([32m"x-admin-api-key"[39m[33m,[39m [33mADMIN_KEY[39m)[33m;[39m
+    [90m193|[39m
+    [90m194|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m195|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"closed"[39m)[33m;[39m
+    [90m196|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mmessage)[33m.[39m[34mtoBe[39m([32m"Credit line closed."[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mPOST /api/credit/lines/:id/close — business logic[2m > [22mreturns 200 and closed line for a suspended credit line
+[31m[1mAssertionError[22m: expected 401 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 401[39m
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m205:24[22m[39m
+    [90m203|[39m       [33m.[39m[35mset[39m([32m"x-admin-api-key"[39m[33m,[39m [33mADMIN_KEY[39m)[33m;[39m
+    [90m204|[39m
+    [90m205|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m206|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"closed"[39m)[33m;[39m
+    [90m207|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mPOST /api/credit/lines/:id/close — business logic[2m > [22mresponse includes the full credit line object with events
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'events')[39m
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m215:26[22m[39m
+    [90m213|[39m       [33m.[39m[35mset[39m([32m"x-admin-api-key"[39m[33m,[39m [33mADMIN_KEY[39m)[33m;[39m
+    [90m214|[39m
+    [90m215|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mevents)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m   |[39m                          [31m^[39m
+    [90m216|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mevents[33m.[39m[34mat[39m([33m-[39m[34m1[39m)[33m.[39maction)[33m.[39m[34mtoBe[39m([32m"closed"[39m)[33m;[39m
+    [90m217|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mPOST /api/credit/lines/:id/close — business logic[2m > [22mreturns 404 when the credit line does not exist
+[31m[1mAssertionError[22m: expected 401 to be 404 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 404[39m
+[31m+ 401[39m
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m224:24[22m[39m
+    [90m222|[39m       [33m.[39m[35mset[39m([32m"x-admin-api-key"[39m[33m,[39m [33mADMIN_KEY[39m)[33m;[39m
+    [90m223|[39m
+    [90m224|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m404[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m225|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoContain[39m([33mMISSING_ID[39m)[33m;[39m
+    [90m226|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mPOST /api/credit/lines/:id/close — business logic[2m > [22mreturns 409 when the line is already closed
+[31m[1mAssertionError[22m: expected 401 to be 409 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 409[39m
+[31m+ 401[39m
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m234:24[22m[39m
+    [90m232|[39m       [33m.[39m[35mset[39m([32m"x-admin-api-key"[39m[33m,[39m [33mADMIN_KEY[39m)[33m;[39m
+    [90m233|[39m
+    [90m234|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m409[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m235|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoMatch[39m([36m/close.*closed|closed.*close/i[39m)[33m;[39m
+    [90m236|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mPOST /api/credit/lines/:id/close — business logic[2m > [22mfull lifecycle: active → suspend → close via HTTP
+[31m[1mAssertionError[22m: expected 401 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 401[39m
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m250:24[22m[39m
+    [90m248|[39m       [33m.[39m[35mset[39m([32m"x-admin-api-key"[39m[33m,[39m [33mADMIN_KEY[39m)[33m;[39m
+    [90m249|[39m
+    [90m250|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m251|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"closed"[39m)[33m;[39m
+    [90m252|[39m     expect(res.body.data.events.map((e: { action: string }) => e.actio…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mGET /api/credit/lines/:id/transactions[2m > [22mreturns populated history after suspend and close via service
+[31m[1mAssertionError[22m: expected [ 'suspended', 'closed', 'created' ] to deeply equal [ 'closed', 'suspended', 'created' ][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[32m-   "closed",[39m
+[2m    "suspended",[22m
+[31m+   "closed",[39m
+[2m    "created",[22m
+[2m  ][22m
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m293:106[22m[39m
+    [90m291|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mtotal)[33m.[39m[34mtoBe[39m([34m3[39m)[33m;[39m
+    [90m292|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mtransactions)[33m.[39m[34mtoHaveLength[39m([34m3[39m)[33m;[39m
+    [90m293|[39m     expect(res.body.data.transactions.map((tx: { metadata: { action: s…
+    [90m   |[39m                                                                                                          [31m^[39m
+    [90m294|[39m       [32m"closed"[39m[33m,[39m
+    [90m295|[39m       [32m"suspended"[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mGET /api/credit/lines/:id/transactions[2m > [22mreturns 400 for an invalid type filter value
+[31m[1mAssertionError[22m: expected 'Validation failed' to match /type/i[39m
+
+[32m- Expected:[39m
+/type/i
+
+[31m+ Received:[39m
+"Validation failed"
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m341:28[22m[39m
+    [90m339|[39m     )[33m;[39m
+    [90m340|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m341|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoMatch[39m([36m/type/i[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m342|[39m   })[33m;[39m
+    [90m343|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mGET /api/credit/lines/:id/transactions[2m > [22mreturns 400 for an invalid 'from' date
+[31m[1mAssertionError[22m: expected 'Validation failed' to match /from/i[39m
+
+[32m- Expected:[39m
+/from/i
+
+[31m+ Received:[39m
+"Validation failed"
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m350:28[22m[39m
+    [90m348|[39m     )[33m;[39m
+    [90m349|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m350|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoMatch[39m([36m/from/i[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m351|[39m   })[33m;[39m
+    [90m352|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mGET /api/credit/lines/:id/transactions[2m > [22mreturns 400 for an invalid 'to' date
+[31m[1mAssertionError[22m: expected 'Validation failed' to match /to/i[39m
+
+[32m- Expected:[39m
+/to/i
+
+[31m+ Received:[39m
+"Validation failed"
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m359:28[22m[39m
+    [90m357|[39m     )[33m;[39m
+    [90m358|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m359|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoMatch[39m([36m/to/i[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m360|[39m   })[33m;[39m
+    [90m361|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[35/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mGET /api/credit/lines/:id/transactions[2m > [22mreturns 400 for a non-numeric 'page' value
+[31m[1mAssertionError[22m: expected 'Validation failed' to match /page/i[39m
+
+[32m- Expected:[39m
+/page/i
+
+[31m+ Received:[39m
+"Validation failed"
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m368:28[22m[39m
+    [90m366|[39m     )[33m;[39m
+    [90m367|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m368|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoMatch[39m([36m/page/i[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m369|[39m   })[33m;[39m
+    [90m370|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[36/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mGET /api/credit/lines/:id/transactions[2m > [22mreturns 400 for a non-numeric 'limit' value
+[31m[1mAssertionError[22m: expected 'Validation failed' to match /limit/i[39m
+
+[32m- Expected:[39m
+/limit/i
+
+[31m+ Received:[39m
+"Validation failed"
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m385:28[22m[39m
+    [90m383|[39m     )[33m;[39m
+    [90m384|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m385|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoMatch[39m([36m/limit/i[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m386|[39m   })[33m;[39m
+    [90m387|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[37/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/creditRoute.test.ts[2m > [22mGET /api/credit/lines/:id/transactions[2m > [22mreturns second page of results correctly
+[31m[1mAssertionError[22m: expected 'suspended' to be 'created' // Object.is equality[39m
+
+Expected: [32m"[7mcreat[27med"[39m
+Received: [31m"[7msuspend[27med"[39m
+
+[36m [2m❯[22m src/__test__/creditRoute.test.ts:[2m427:59[22m[39m
+    [90m425|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m426|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mtransactions)[33m.[39m[34mtoHaveLength[39m([34m1[39m)[33m;[39m
+    [90m427|[39m     expect(res.body.data.transactions[0].metadata.action).toBe("create…
+    [90m   |[39m                                                           [31m^[39m
+    [90m428|[39m   })[33m;[39m
+    [90m429|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[38/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mreturns sensible defaults when no env vars are set
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mreads HORIZON_URL from env
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mparses a single CONTRACT_ID
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mparses multiple CONTRACT_IDS separated by commas
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mtrims whitespace from CONTRACT_IDS entries
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mreturns empty contractIds for an empty CONTRACT_IDS string
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mparses POLL_INTERVAL_MS from env
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mreads HORIZON_START_LEDGER from env
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22misRunning() / getConfig()[2m > [22mreturns false and null config before start
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22misRunning() / getConfig()[2m > [22mreturns true and a config object after start
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22misRunning() / getConfig()[2m > [22mreturns false and null config after stop
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstart()[2m > [22msets running to true
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstart()[2m > [22mexecutes an immediate first poll on start
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstart()[2m > [22mfires handlers on subsequent interval ticks
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstart()[2m > [22mis a no-op (warns) if called when already running
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstart()[2m > [22mlogs startup config information
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstop()[2m > [22msets running to false
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstop()[2m > [22mclears the polling interval so no more events fire
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstop()[2m > [22mis a no-op (warns) if called when not running
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstop()[2m > [22mlogs a stopped message
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstop()[2m > [22mallows the listener to be restarted after stop
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22monEvent() / clearEventHandlers()[2m > [22mregisters a handler that receives simulated events
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22monEvent() / clearEventHandlers()[2m > [22msupports multiple handlers and invokes all of them
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22monEvent() / clearEventHandlers()[2m > [22mclearEventHandlers() removes all registered handlers
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22monEvent() / clearEventHandlers()[2m > [22mcatches and logs errors thrown by a handler without stopping dispatch
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22monEvent() / clearEventHandlers()[2m > [22mhandles async handlers that reject gracefully
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mpollOnce()[2m > [22mcompletes without throwing when contractIds is empty
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mpollOnce()[2m > [22mlogs a polling message on every call
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mpollOnce()[2m > [22memits a simulated event when contractIds is non-empty
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mpollOnce()[2m > [22mdoes not emit events when contractIds is empty
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mpollOnce()[2m > [22mlogs 'none' for contracts when contractIds is empty
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mpollOnce()[2m > [22mincludes simulated event data with a walletAddress field
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mpollOnce()[2m > [22msets a valid ISO timestamp on the simulated event
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mgetMetrics() and resetMetrics()[2m > [22mreturns initial metrics state
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mgetMetrics() and resetMetrics()[2m > [22mtracks metrics during polling
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mgetMetrics() and resetMetrics()[2m > [22mresets metrics to initial state
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mIdempotent Event Processing[2m > [22mprevents duplicate event processing
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mIdempotent Event Processing[2m > [22mgenerates unique event IDs
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mEnhanced Configuration[2m > [22mreads resilience configuration from environment
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mEnhanced Configuration[2m > [22muses default values for resilience configuration
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mError Classification and Retry Logic[2m > [22mhandles rate limit errors with proper backoff
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mError Classification and Retry Logic[2m > [22mhandles transient errors with exponential backoff
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mError Classification and Retry Logic[2m > [22mhandles cursor gap errors and recovery
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mError Classification and Retry Logic[2m > [22mrespects maximum retry limits
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mStructured Logging[2m > [22mlogs metrics when enabled
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mStructured Logging[2m > [22mdoes not log metrics when disabled
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mCursor Management[2m > [22mtracks ledger cursor progression
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mCursor Management[2m > [22mhandles different start ledger configurations
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mMemory Management[2m > [22mlimits processed event ID cache size
+[31m[1mReferenceError[22m: jest is not defined[39m
+[36m [2m❯[22m silenceConsole src/__test__/horizonListener.test.ts:[2m23:3[22m[39m
+    [90m 21|[39m [90m/** Capture console output without cluttering test output. */[39m
+    [90m 22|[39m [35mfunction[39m [34msilenceConsole[39m() {
+    [90m 23|[39m   jest[33m.[39m[34mspyOn[39m(console[33m,[39m [32m"log"[39m)[33m.[39m[34mmockImplementation[39m(() [33m=>[39m {})[33m;[39m
+    [90m   |[39m   [31m^[39m
+    [90m 24|[39m   jest[33m.[39m[34mspyOn[39m(console[33m,[39m [32m"warn"[39m)[33m.[39m[34mmockImplementation[39m(() [33m=>[39m {})[33m;[39m
+    [90m 25|[39m   jest[33m.[39m[34mspyOn[39m(console[33m,[39m [32m"error"[39m)[33m.[39m[34mmockImplementation[39m(() [33m=>[39m {})[33m;[39m
+[90m [2m❯[22m src/__test__/horizonListener.test.ts:[2m59:3[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mreturns sensible defaults when no env vars are set
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mreads HORIZON_URL from env
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mparses a single CONTRACT_ID
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mparses multiple CONTRACT_IDS separated by commas
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mtrims whitespace from CONTRACT_IDS entries
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mreturns empty contractIds for an empty CONTRACT_IDS string
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mparses POLL_INTERVAL_MS from env
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mresolveConfig()[2m > [22mreads HORIZON_START_LEDGER from env
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22misRunning() / getConfig()[2m > [22mreturns false and null config before start
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22misRunning() / getConfig()[2m > [22mreturns true and a config object after start
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22misRunning() / getConfig()[2m > [22mreturns false and null config after stop
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstart()[2m > [22msets running to true
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstart()[2m > [22mexecutes an immediate first poll on start
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstart()[2m > [22mfires handlers on subsequent interval ticks
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstart()[2m > [22mis a no-op (warns) if called when already running
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstart()[2m > [22mlogs startup config information
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstop()[2m > [22msets running to false
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstop()[2m > [22mclears the polling interval so no more events fire
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstop()[2m > [22mis a no-op (warns) if called when not running
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstop()[2m > [22mlogs a stopped message
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mstop()[2m > [22mallows the listener to be restarted after stop
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22monEvent() / clearEventHandlers()[2m > [22mregisters a handler that receives simulated events
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22monEvent() / clearEventHandlers()[2m > [22msupports multiple handlers and invokes all of them
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22monEvent() / clearEventHandlers()[2m > [22mclearEventHandlers() removes all registered handlers
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22monEvent() / clearEventHandlers()[2m > [22mcatches and logs errors thrown by a handler without stopping dispatch
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22monEvent() / clearEventHandlers()[2m > [22mhandles async handlers that reject gracefully
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mpollOnce()[2m > [22mcompletes without throwing when contractIds is empty
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mpollOnce()[2m > [22mlogs a polling message on every call
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mpollOnce()[2m > [22memits a simulated event when contractIds is non-empty
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mpollOnce()[2m > [22mdoes not emit events when contractIds is empty
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mpollOnce()[2m > [22mlogs 'none' for contracts when contractIds is empty
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mpollOnce()[2m > [22mincludes simulated event data with a walletAddress field
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mpollOnce()[2m > [22msets a valid ISO timestamp on the simulated event
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mgetMetrics() and resetMetrics()[2m > [22mreturns initial metrics state
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mgetMetrics() and resetMetrics()[2m > [22mtracks metrics during polling
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mgetMetrics() and resetMetrics()[2m > [22mresets metrics to initial state
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mIdempotent Event Processing[2m > [22mprevents duplicate event processing
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mIdempotent Event Processing[2m > [22mgenerates unique event IDs
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mEnhanced Configuration[2m > [22mreads resilience configuration from environment
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mEnhanced Configuration[2m > [22muses default values for resilience configuration
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mError Classification and Retry Logic[2m > [22mhandles rate limit errors with proper backoff
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mError Classification and Retry Logic[2m > [22mhandles transient errors with exponential backoff
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mError Classification and Retry Logic[2m > [22mhandles cursor gap errors and recovery
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mError Classification and Retry Logic[2m > [22mrespects maximum retry limits
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mStructured Logging[2m > [22mlogs metrics when enabled
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mStructured Logging[2m > [22mdoes not log metrics when disabled
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mCursor Management[2m > [22mtracks ledger cursor progression
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mCursor Management[2m > [22mhandles different start ledger configurations
+[41m[1m FAIL [22m[49m src/__test__/horizonListener.test.ts[2m > [22mResilience Features[2m > [22mMemory Management[2m > [22mlimits processed event ID cache size
+[31m[1mReferenceError[22m: jest is not defined[39m
+[36m [2m❯[22m src/__test__/horizonListener.test.ts:[2m69:3[22m[39m
+    [90m 67|[39m   [34mclearEventHandlers[39m()[33m;[39m
+    [90m 68|[39m   [34mrestoreConsole[39m()[33m;[39m
+    [90m 69|[39m   jest[33m.[39m[34museRealTimers[39m()[33m;[39m
+    [90m   |[39m   [31m^[39m
+    [90m 70|[39m })[33m;[39m
+    [90m 71|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[40/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/riskRoute.test.ts[2m > [22mPOST /api/risk/evaluate[2m > [22mreturns 400 when body is empty
+[31m[1mAssertionError[22m: expected { error: 'Validation failed', …(1) } to deeply equal { error: 'walletAddress is required' }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "error": "walletAddress is required",[39m
+[31m+   "details": [[39m
+[31m+     {[39m
+[31m+       "field": "walletAddress",[39m
+[31m+       "message": "Invalid input: expected string, received undefined",[39m
+[31m+     },[39m
+[31m+   ],[39m
+[31m+   "error": "Validation failed",[39m
+[2m  }[22m
+
+[36m [2m❯[22m src/__test__/riskRoute.test.ts:[2m55:22[22m[39m
+    [90m 53|[39m
+    [90m 54|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m 55|[39m     [34mexpect[39m(res[33m.[39mbody)[33m.[39m[34mtoEqual[39m({ error[33m:[39m [32m"walletAddress is required"[39m })[33m;[39m
+    [90m   |[39m                      [31m^[39m
+    [90m 56|[39m   })[33m;[39m
+    [90m 57|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[41/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/riskRoute.test.ts[2m > [22mPOST /api/risk/evaluate[2m > [22mreturns 400 when walletAddress is blank
+[31m[1mAssertionError[22m: expected { error: 'Validation failed', …(1) } to deeply equal { error: 'walletAddress is required' }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "error": "walletAddress is required",[39m
+[31m+   "details": [[39m
+[31m+     {[39m
+[31m+       "field": "walletAddress",[39m
+[31m+       "message": "Invalid Stellar wallet address",[39m
+[31m+     },[39m
+[31m+   ],[39m
+[31m+   "error": "Validation failed",[39m
+[2m  }[22m
+
+[36m [2m❯[22m src/__test__/riskRoute.test.ts:[2m64:22[22m[39m
+    [90m 62|[39m
+    [90m 63|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m 64|[39m     [34mexpect[39m(res[33m.[39mbody)[33m.[39m[34mtoEqual[39m({ error[33m:[39m [32m"walletAddress is required"[39m })[33m;[39m
+    [90m   |[39m                      [31m^[39m
+    [90m 65|[39m   })[33m;[39m
+    [90m 66|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/riskRoute.test.ts[2m > [22mPOST /api/risk/evaluate[2m > [22mreturns 400 for invalid format and does not call evaluateWallet
+[31m[1mAssertionError[22m: expected { error: 'Validation failed', …(1) } to deeply equal { Object (error) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "error": "Invalid wallet address format.",[39m
+[31m+   "details": [[39m
+[31m+     {[39m
+[31m+       "field": "walletAddress",[39m
+[31m+       "message": "Invalid Stellar wallet address",[39m
+[31m+     },[39m
+[31m+   ],[39m
+[31m+   "error": "Validation failed",[39m
+[2m  }[22m
+
+[36m [2m❯[22m src/__test__/riskRoute.test.ts:[2m74:22[22m[39m
+    [90m 72|[39m
+    [90m 73|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m 74|[39m     expect(res.body).toEqual({ error: "Invalid wallet address format."…
+    [90m   |[39m                      [31m^[39m
+    [90m 75|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39merror)[33m.[39mnot[33m.[39m[34mtoContain[39m(invalidAddress)[33m;[39m
+    [90m 76|[39m     [34mexpect[39m(mockEvaluateWallet)[33m.[39mnot[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[43/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/riskRoute.test.ts[2m > [22mPOST /api/risk/evaluate[2m > [22mreturns 200 with the service result on a valid address
+[31m[1mAssertionError[22m: expected { data: { …(5) }, error: null } to deeply equal { …(5) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "evaluatedAt": "2026-02-26T00:00:00.000Z",[39m
+[32m-   "message": "Risk evaluation placeholder - engine not yet integrated.",[39m
+[32m-   "riskLevel": null,[39m
+[32m-   "score": null,[39m
+[31m+   "data": {[39m
+[31m+     "creditLimit": "690",[39m
+[31m+     "interestRateBps": 845,[39m
+[31m+     "message": "New risk evaluation completed",[39m
+[31m+     "riskScore": 69,[39m
+[2m      "walletAddress": "GCKFBEIYV2U22IO2BJ4KVJOIP7XPWQGZBW3JXDC55CYIXB5NAXMCEKJA",[22m
+[31m+   },[39m
+[31m+   "error": null,[39m
+[2m  }[22m
+
+[36m [2m❯[22m src/__test__/riskRoute.test.ts:[2m87:22[22m[39m
+    [90m 85|[39m
+    [90m 86|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m 87|[39m     [34mexpect[39m(res[33m.[39mbody)[33m.[39m[34mtoEqual[39m([33mMOCK_RESULT[39m)[33m;[39m
+    [90m   |[39m                      [31m^[39m
+    [90m 88|[39m   })[33m;[39m
+    [90m 89|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[44/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/riskRoute.test.ts[2m > [22mPOST /api/risk/evaluate[2m > [22mnormalizes walletAddress and calls evaluateWallet with trimmed value
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called 1 times, but got 0 times[39m
+[36m [2m❯[22m src/__test__/riskRoute.test.ts:[2m97:32[22m[39m
+    [90m 95|[39m       [33m.[39m[34msend[39m({ walletAddress[33m:[39m [32m` [39m[36m${[39m[33mVALID_ADDRESS[39m[36m}[39m[32m `[39m })[33m;[39m
+    [90m 96|[39m
+    [90m 97|[39m     [34mexpect[39m(mockEvaluateWallet)[33m.[39m[34mtoHaveBeenCalledTimes[39m([34m1[39m)[33m;[39m
+    [90m   |[39m                                [31m^[39m
+    [90m 98|[39m     [34mexpect[39m(mockEvaluateWallet)[33m.[39m[34mtoHaveBeenCalledWith[39m([33mVALID_ADDRESS[39m)[33m;[39m
+    [90m 99|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[45/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/riskRoute.test.ts[2m > [22mPOST /api/risk/evaluate[2m > [22mreturns 400 when service throws InvalidWalletAddressError
+[31m[1mAssertionError[22m: expected 200 to be 400 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 400[39m
+[31m+ 200[39m
+
+[36m [2m❯[22m src/__test__/riskRoute.test.ts:[2m108:24[22m[39m
+    [90m106|[39m       [33m.[39m[34msend[39m({ walletAddress[33m:[39m [33mVALID_ADDRESS[39m })[33m;[39m
+    [90m107|[39m
+    [90m108|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m109|[39m     expect(res.body).toEqual({ error: "Invalid wallet address format."…
+    [90m110|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[46/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__test__/riskRoute.test.ts[2m > [22mPOST /api/risk/evaluate[2m > [22mreturns 500 with a generic message when service throws unexpected errors
+[31m[1mAssertionError[22m: expected 200 to be 500 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 500[39m
+[31m+ 200[39m
+
+[36m [2m❯[22m src/__test__/riskRoute.test.ts:[2m119:24[22m[39m
+    [90m117|[39m       [33m.[39m[34msend[39m({ walletAddress[33m:[39m [33mVALID_ADDRESS[39m })[33m;[39m
+    [90m118|[39m
+    [90m119|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m500[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m120|[39m     [34mexpect[39m(res[33m.[39mbody)[33m.[39m[34mtoEqual[39m({
+    [90m121|[39m       error[33m:[39m [32m"Unable to evaluate wallet at this time."[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[47/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/credit.test.ts[2m > [22mGET /api/credit/lines (public)[2m > [22mreturns 200 without any API key
+[31m[1mAssertionError[22m: expected { …(2) } to have property "creditLines"[39m
+[36m [2m❯[22m src/__tests__/credit.test.ts:[2m20:26[22m[39m
+    [90m 18|[39m         [35mconst[39m res [33m=[39m [35mawait[39m [34mrequest[39m(app)[33m.[39m[35mget[39m([32m'/api/credit/lines'[39m)[33m;[39m
+    [90m 19|[39m         [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m 20|[39m         [34mexpect[39m(res[33m.[39mbody)[33m.[39m[34mtoHaveProperty[39m([32m'creditLines'[39m)[33m;[39m
+    [90m   |[39m                          [31m^[39m
+    [90m 21|[39m     })[33m;[39m
+    [90m 22|[39m })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[48/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/credit.test.ts[2m > [22mPOST /api/credit/lines/:id/suspend (admin – requires API key)[2m > [22mreturns 200 with the valid API key
+[31m[1mAssertionError[22m: expected 404 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 404[39m
+
+[36m [2m❯[22m src/__tests__/credit.test.ts:[2m60:28[22m[39m
+    [90m 58|[39m             [33m.[39m[34mpost[39m([32m'/api/credit/lines/123/suspend'[39m)
+    [90m 59|[39m             [33m.[39m[35mset[39m([32m'x-api-key'[39m[33m,[39m [33mVALID_KEY[39m)[33m;[39m
+    [90m 60|[39m         [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m 61|[39m         [34mexpect[39m(res[33m.[39mbody[33m.[39mmessage)[33m.[39m[34mtoBe[39m([32m'Credit line suspended'[39m)[33m;[39m
+    [90m 62|[39m         [34mexpect[39m(res[33m.[39mbody[33m.[39mid)[33m.[39m[34mtoBe[39m([32m'123'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[49/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/credit.test.ts[2m > [22mPOST /api/credit/lines/:id/close (admin – requires API key)[2m > [22mreturns 200 with the valid API key
+[31m[1mAssertionError[22m: expected 404 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 404[39m
+
+[36m [2m❯[22m src/__tests__/credit.test.ts:[2m85:28[22m[39m
+    [90m 83|[39m             [33m.[39m[34mpost[39m([32m'/api/credit/lines/456/close'[39m)
+    [90m 84|[39m             [33m.[39m[35mset[39m([32m'x-api-key'[39m[33m,[39m [33mVALID_KEY[39m)
+    [90m 85|[39m         [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m 86|[39m         [34mexpect[39m(res[33m.[39mbody[33m.[39mmessage)[33m.[39m[34mtoBe[39m([32m'Credit line closed'[39m)[33m;[39m
+    [90m 87|[39m         [34mexpect[39m(res[33m.[39mbody[33m.[39mid)[33m.[39m[34mtoBe[39m([32m'456'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[50/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/health.test.ts[2m > [22mGET /health (public)[2m > [22mreturns 200 with correct service name
+[31m[1mAssertionError[22m: expected { data: { status: 'ok', …(1) }, …(1) } to deeply equal { status: 'ok', …(1) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[31m+   "data": {[39m
+[2m      "service": "creditra-backend",[22m
+[2m      "status": "ok",[22m
+[31m+   },[39m
+[31m+   "error": null,[39m
+[2m  }[22m
+
+[36m [2m❯[22m src/__tests__/health.test.ts:[2m14:26[22m[39m
+    [90m 12|[39m         [35mconst[39m res [33m=[39m [35mawait[39m [34mrequest[39m(app)[33m.[39m[35mget[39m([32m'/health'[39m)[33m;[39m
+    [90m 13|[39m         [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m 14|[39m         expect(res.body).toEqual({ status: 'ok', service: 'creditra-ba…
+    [90m   |[39m                          [31m^[39m
+    [90m 15|[39m     })[33m;[39m
+    [90m 16|[39m })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[51/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/index.test.ts[2m > [22mMain Application[2m > [22mshould handle risk routes
+[31m[1mError[22m: expected 200 "OK", got 400 "Bad Request"[39m
+[36m [2m❯[22m src/__tests__/index.test.ts:[2m58:8[22m[39m
+    [90m 56|[39m       [33m.[39m[34mpost[39m([32m'/api/risk/evaluate'[39m)
+    [90m 57|[39m       .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2…
+    [90m 58|[39m       [33m.[39m[34mexpect[39m([34m200[39m)[33m;[39m
+    [90m   |[39m        [31m^[39m
+    [90m 59|[39m
+    [90m 60|[39m     expect(response.body.data.walletAddress).toBe('GBAHQCUPC7G2B4D2F2I…
+[90m [2m❯[22m Test._assertStatus node_modules/supertest/lib/test.js:[2m309:14[22m[39m
+[90m [2m❯[22m node_modules/supertest/lib/test.js:[2m365:13[22m[39m
+[90m [2m❯[22m Test._assertFunction node_modules/supertest/lib/test.js:[2m342:13[22m[39m
+[90m [2m❯[22m Test.assert node_modules/supertest/lib/test.js:[2m195:23[22m[39m
+[90m [2m❯[22m localAssert node_modules/supertest/lib/test.js:[2m138:14[22m[39m
+[90m [2m❯[22m Server.<anonymous> node_modules/supertest/lib/test.js:[2m152:11[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[52/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/risk.test.ts[2m > [22mPOST /api/risk/evaluate (public)[2m > [22mreturns 200 with a valid Stellar walletAddress
+[31m[1mAssertionError[22m: expected undefined to be 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A…' // Object.is equality[39m
+
+[32m- Expected:[39m
+"GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2"
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m src/__tests__/risk.test.ts:[2m23:40[22m[39m
+    [90m 21|[39m             [33m.[39m[34msend[39m({ walletAddress[33m:[39m validAddress })[33m;[39m
+    [90m 22|[39m         [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m 23|[39m         [34mexpect[39m(res[33m.[39mbody[33m.[39mwalletAddress)[33m.[39m[34mtoBe[39m(validAddress)[33m;[39m
+    [90m   |[39m                                        [31m^[39m
+    [90m 24|[39m         [34mexpect[39m(res[33m.[39mbody)[33m.[39m[34mtoHaveProperty[39m([32m'riskScore'[39m)[33m;[39m
+    [90m 25|[39m         [34mexpect[39m(res[33m.[39mbody)[33m.[39m[34mtoHaveProperty[39m([32m'creditLimit'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[53/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/risk.test.ts[2m > [22mPOST /api/risk/evaluate (public)[2m > [22mreturns 400 when walletAddress is missing
+[31m[1mAssertionError[22m: expected 'Invalid input: expected string, recei…' to be 'walletAddress is required' // Object.is equality[39m
+
+Expected: [32m"[7mwalletAddress is requir[27med"[39m
+Received: [31m"[7mInvalid input: expected string, received undefin[27med"[39m
+
+[36m [2m❯[22m src/__tests__/risk.test.ts:[2m42:45[22m[39m
+    [90m 40|[39m         [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m 41|[39m         [34mexpect[39m(res[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoBe[39m([32m'Validation failed'[39m)[33m;[39m
+    [90m 42|[39m         expect(res.body.details[0].message).toBe('walletAddress is req…
+    [90m   |[39m                                             [31m^[39m
+    [90m 43|[39m     })[33m;[39m
+    [90m 44|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[54/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/risk.test.ts[2m > [22mPOST /api/risk/admin/recalibrate (admin – requires API key)[2m > [22mreturns 200 with the valid API key
+[31m[1mAssertionError[22m: expected undefined to be 'Risk model recalibration triggered' // Object.is equality[39m
+
+[32m- Expected:[39m
+"Risk model recalibration triggered"
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m src/__tests__/risk.test.ts:[2m88:34[22m[39m
+    [90m 86|[39m             [33m.[39m[35mset[39m([32m'x-api-key'[39m[33m,[39m [33mVALID_KEY[39m)[33m;[39m
+    [90m 87|[39m         [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m 88|[39m         expect(res.body.message).toBe('Risk model recalibration trigge…
+    [90m   |[39m                                  [31m^[39m
+    [90m 89|[39m     })[33m;[39m
+    [90m 90|[39m })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[55/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/tests/api.test.ts[2m > [22mGET /health[2m > [22mreturns 200 with status ok
+[31m[1mAssertionError[22m: expected { data: { status: 'ok', …(1) }, …(1) } to deeply equal { status: 'ok', …(1) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[31m+   "data": {[39m
+[2m      "service": "creditra-backend",[22m
+[2m      "status": "ok",[22m
+[31m+   },[39m
+[31m+   "error": null,[39m
+[2m  }[22m
+
+[36m [2m❯[22m src/tests/api.test.ts:[2m9:22[22m[39m
+    [90m  7|[39m     [35mconst[39m res [33m=[39m [35mawait[39m [34mrequest[39m(app)[33m.[39m[35mget[39m([32m'/health'[39m)[33m;[39m
+    [90m  8|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m  9|[39m     expect(res.body).toEqual({ status: 'ok', service: 'creditra-backen…
+    [90m   |[39m                      [31m^[39m
+    [90m 10|[39m   })[33m;[39m
+    [90m 11|[39m })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[56/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/tests/api.test.ts[2m > [22mGET /api/credit/lines[2m > [22mreturns 200 with empty creditLines array
+[31m[1mAssertionError[22m: expected { …(2) } to have property "creditLines"[39m
+[36m [2m❯[22m src/tests/api.test.ts:[2m26:22[22m[39m
+    [90m 24|[39m     [35mconst[39m res [33m=[39m [35mawait[39m [34mrequest[39m(app)[33m.[39m[35mget[39m([32m'/api/credit/lines'[39m)[33m;[39m
+    [90m 25|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m 26|[39m     [34mexpect[39m(res[33m.[39mbody)[33m.[39m[34mtoHaveProperty[39m([32m'creditLines'[39m)[33m;[39m
+    [90m   |[39m                      [31m^[39m
+    [90m 27|[39m     [34mexpect[39m([33mArray[39m[33m.[39m[34misArray[39m(res[33m.[39mbody[33m.[39mcreditLines))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m 28|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[57/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/tests/api.test.ts[2m > [22mGET /api/credit/lines/:id[2m > [22mreturns 404 for unknown id
+[31m[1mAssertionError[22m: expected { data: null, …(1) } to have property "id" with value 'nonexistent'[39m
+
+[32m- Expected:[39m
+"nonexistent"
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m src/tests/api.test.ts:[2m36:22[22m[39m
+    [90m 34|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m404[39m)[33m;[39m
+    [90m 35|[39m     [34mexpect[39m(res[33m.[39mbody)[33m.[39m[34mtoHaveProperty[39m([32m'error'[39m[33m,[39m [32m'Credit line not found'[39m)[33m;[39m
+    [90m 36|[39m     [34mexpect[39m(res[33m.[39mbody)[33m.[39m[34mtoHaveProperty[39m([32m'id'[39m[33m,[39m [32m'nonexistent'[39m)[33m;[39m
+    [90m   |[39m                      [31m^[39m
+    [90m 37|[39m   })[33m;[39m
+    [90m 38|[39m })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[58/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/tests/api.test.ts[2m > [22mPOST /api/risk/evaluate[2m > [22mreturns 400 when walletAddress is missing
+[31m[1mAssertionError[22m: expected { error: 'Validation failed', …(1) } to have property "error" with value 'walletAddress required'[39m
+
+Expected: [32m"[7mw[27mal[7mletAddress requir[27med"[39m
+Received: [31m"[7mV[27mal[7midation fail[27med"[39m
+
+[36m [2m❯[22m src/tests/api.test.ts:[2m44:22[22m[39m
+    [90m 42|[39m     [35mconst[39m res [33m=[39m [35mawait[39m [34mrequest[39m(app)[33m.[39m[34mpost[39m([32m'/api/risk/evaluate'[39m)[33m.[39m[34msend[39m({})[33m;[39m
+    [90m 43|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m 44|[39m     [34mexpect[39m(res[33m.[39mbody)[33m.[39m[34mtoHaveProperty[39m([32m'error'[39m[33m,[39m [32m'walletAddress required'[39m)[33m;[39m
+    [90m   |[39m                      [31m^[39m
+    [90m 45|[39m   })[33m;[39m
+    [90m 46|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[59/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/tests/api.test.ts[2m > [22mPOST /api/risk/evaluate[2m > [22mreturns 200 with risk fields when walletAddress provided
+[31m[1mAssertionError[22m: expected 400 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 400[39m
+
+[36m [2m❯[22m src/tests/api.test.ts:[2m52:24[22m[39m
+    [90m 50|[39m       [33m.[39m[34mpost[39m([32m'/api/risk/evaluate'[39m)
+    [90m 51|[39m       [33m.[39m[34msend[39m({ walletAddress[33m:[39m wallet })[33m;[39m
+    [90m 52|[39m     [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m 53|[39m     [34mexpect[39m(res[33m.[39mbody[33m.[39mwalletAddress)[33m.[39m[34mtoBe[39m(wallet)[33m;[39m
+    [90m 54|[39m     [34mexpect[39m(res[33m.[39mbody)[33m.[39m[34mtoHaveProperty[39m([32m'riskScore'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[60/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/routes/routes.test.ts[2m > [22mCredit routes[2m > [22mPOST /api/credit/lines[2m > [22mreturns 201 with valid body
+[31m[1mAssertionError[22m: expected 400 to be 201 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 201[39m
+[31m+ 400[39m
+
+[36m [2m❯[22m tests/routes/routes.test.ts:[2m43:26[22m[39m
+    [90m 41|[39m         .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2…
+    [90m 42|[39m
+    [90m 43|[39m       [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m201[39m)[33m;[39m
+    [90m   |[39m                          [31m^[39m
+    [90m 44|[39m       expect(res.body.data.walletAddress).toBe('GBAHQCUPC7G2B4D2F2I2K2…
+    [90m 45|[39m       [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mrequestedLimit)[33m.[39m[34mtoBe[39m([32m'5000'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[61/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/routes/routes.test.ts[2m > [22mCredit routes[2m > [22mPOST /api/credit/lines[2m > [22mreturns 400 when walletAddress is missing
+[31m[1mAssertionError[22m: expected undefined to be null[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m tests/routes/routes.test.ts:[2m57:29[22m[39m
+    [90m 55|[39m       [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m 56|[39m       [34mexpect[39m(res[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoBe[39m([32m'Validation failed'[39m)[33m;[39m
+    [90m 57|[39m       [34mexpect[39m(res[33m.[39mbody[33m.[39mdata)[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m   |[39m                             [31m^[39m
+    [90m 58|[39m       expect(res.body.details.some((d: any) => d.field === 'walletAddr…
+    [90m 59|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[62/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/routes/routes.test.ts[2m > [22mCredit routes[2m > [22mPOST /api/credit/lines/:id/draw[2m > [22mreturns 200 with valid amount
+[31m[1mAssertionError[22m: expected 400 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 400[39m
+
+[36m [2m❯[22m tests/routes/routes.test.ts:[2m85:26[22m[39m
+    [90m 83|[39m         [33m.[39m[34msend[39m({ amount[33m:[39m [32m'100'[39m })[33m;[39m
+    [90m 84|[39m
+    [90m 85|[39m       [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                          [31m^[39m
+    [90m 86|[39m       [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mamount)[33m.[39m[34mtoBe[39m([32m'100'[39m)[33m;[39m
+    [90m 87|[39m       [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mid)[33m.[39m[34mtoBe[39m([32m'line-1'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[63/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/routes/routes.test.ts[2m > [22mCredit routes[2m > [22mPOST /api/credit/lines/:id/draw[2m > [22mreturns 400 when amount is missing
+[31m[1mAssertionError[22m: expected undefined to be null[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m tests/routes/routes.test.ts:[2m97:29[22m[39m
+    [90m 95|[39m
+    [90m 96|[39m       [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m 97|[39m       [34mexpect[39m(res[33m.[39mbody[33m.[39mdata)[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m   |[39m                             [31m^[39m
+    [90m 98|[39m       expect(res.body.details.some((d: any) => d.field === 'amount')).…
+    [90m 99|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[64/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/routes/routes.test.ts[2m > [22mCredit routes[2m > [22mPOST /api/credit/lines/:id/repay[2m > [22mreturns 200 with valid amount
+[31m[1mAssertionError[22m: expected 400 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 400[39m
+
+[36m [2m❯[22m tests/routes/routes.test.ts:[2m116:26[22m[39m
+    [90m114|[39m         .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2…
+    [90m115|[39m
+    [90m116|[39m       [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                          [31m^[39m
+    [90m117|[39m       [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mamount)[33m.[39m[34mtoBe[39m([32m'50'[39m)[33m;[39m
+    [90m118|[39m       [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mid)[33m.[39m[34mtoBe[39m([32m'line-1'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[65/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/routes/routes.test.ts[2m > [22mRisk routes[2m > [22mPOST /api/risk/evaluate[2m > [22mreturns placeholder risk data for valid walletAddress
+[31m[1mAssertionError[22m: expected 400 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 400[39m
+
+[36m [2m❯[22m tests/routes/routes.test.ts:[2m150:26[22m[39m
+    [90m148|[39m         .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2…
+    [90m149|[39m
+    [90m150|[39m       [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m200[39m)[33m;[39m
+    [90m   |[39m                          [31m^[39m
+    [90m151|[39m       expect(res.body.data.walletAddress).toBe('GBAHQCUPC7G2B4D2F2I2K2…
+    [90m152|[39m       [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39mriskScore)[33m.[39m[34mtoBe[39m([34m0[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[66/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/routes/routes.test.ts[2m > [22mRisk routes[2m > [22mPOST /api/risk/evaluate[2m > [22mreturns 400 when walletAddress is missing
+[31m[1mAssertionError[22m: expected undefined to be null[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m tests/routes/routes.test.ts:[2m163:29[22m[39m
+    [90m161|[39m       [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m400[39m)[33m;[39m
+    [90m162|[39m       [34mexpect[39m(res[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoBe[39m([32m'Validation failed'[39m)[33m;[39m
+    [90m163|[39m       [34mexpect[39m(res[33m.[39mbody[33m.[39mdata)[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m   |[39m                             [31m^[39m
+    [90m164|[39m       expect(res.body.details.some((d: any) => d.field === 'walletAddr…
+    [90m165|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[67/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/schemas/schemas.test.ts[2m > [22mriskEvaluateSchema[2m > [22maccepts a valid walletAddress
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m tests/schemas/schemas.test.ts:[2m20:28[22m[39m
+    [90m 18|[39m   [34mit[39m([32m'accepts a valid walletAddress'[39m[33m,[39m () [33m=>[39m {
+    [90m 19|[39m     const result = riskEvaluateSchema.safeParse({ walletAddress: 'GBAH…
+    [90m 20|[39m     [34mexpect[39m(result[33m.[39msuccess)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m 21|[39m   })[33m;[39m
+    [90m 22|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[68/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/schemas/schemas.test.ts[2m > [22mriskEvaluateSchema[2m > [22maccepts optional forceRefresh
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m tests/schemas/schemas.test.ts:[2m45:28[22m[39m
+    [90m 43|[39m   [34mit[39m([32m'accepts optional forceRefresh'[39m[33m,[39m () [33m=>[39m {
+    [90m 44|[39m     const result = riskEvaluateSchema.safeParse({ walletAddress: 'GBAH…
+    [90m 45|[39m     [34mexpect[39m(result[33m.[39msuccess)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m 46|[39m   })[33m;[39m
+    [90m 47|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[69/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/schemas/schemas.test.ts[2m > [22mcreateCreditLineSchema[2m > [22maccepts valid body
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m tests/schemas/schemas.test.ts:[2m63:28[22m[39m
+    [90m 61|[39m       requestedLimit[33m:[39m [32m'1000'[39m[33m,[39m
+    [90m 62|[39m     })[33m;[39m
+    [90m 63|[39m     [34mexpect[39m(result[33m.[39msuccess)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m 64|[39m   })[33m;[39m
+    [90m 65|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[70/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/schemas/schemas.test.ts[2m > [22mcreateCreditLineSchema[2m > [22maccepts decimal requestedLimit
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m tests/schemas/schemas.test.ts:[2m71:28[22m[39m
+    [90m 69|[39m       requestedLimit[33m:[39m [32m'1000.50'[39m[33m,[39m
+    [90m 70|[39m     })[33m;[39m
+    [90m 71|[39m     [34mexpect[39m(result[33m.[39msuccess)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m 72|[39m   })[33m;[39m
+    [90m 73|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[71/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/schemas/schemas.test.ts[2m > [22mdrawSchema[2m > [22maccepts a valid amount
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m tests/schemas/schemas.test.ts:[2m116:28[22m[39m
+    [90m114|[39m   [34mit[39m([32m'accepts a valid amount'[39m[33m,[39m () [33m=>[39m {
+    [90m115|[39m     [35mconst[39m result [33m=[39m drawSchema[33m.[39m[34msafeParse[39m({ amount[33m:[39m [32m'500'[39m })[33m;[39m
+    [90m116|[39m     [34mexpect[39m(result[33m.[39msuccess)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m117|[39m   })[33m;[39m
+    [90m118|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[72/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/schemas/schemas.test.ts[2m > [22mdrawSchema[2m > [22maccepts a decimal amount
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m tests/schemas/schemas.test.ts:[2m121:28[22m[39m
+    [90m119|[39m   [34mit[39m([32m'accepts a decimal amount'[39m[33m,[39m () [33m=>[39m {
+    [90m120|[39m     [35mconst[39m result [33m=[39m drawSchema[33m.[39m[34msafeParse[39m({ amount[33m:[39m [32m'500.25'[39m })[33m;[39m
+    [90m121|[39m     [34mexpect[39m(result[33m.[39msuccess)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m122|[39m   })[33m;[39m
+    [90m123|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[73/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/schemas/schemas.test.ts[2m > [22mrepaySchema[2m > [22maccepts a valid amount
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m tests/schemas/schemas.test.ts:[2m151:28[22m[39m
+    [90m149|[39m   [34mit[39m([32m'accepts a valid amount'[39m[33m,[39m () [33m=>[39m {
+    [90m150|[39m     [35mconst[39m result [33m=[39m repaySchema[33m.[39m[34msafeParse[39m({ amount[33m:[39m [32m'200'[39m })[33m;[39m
+    [90m151|[39m     [34mexpect[39m(result[33m.[39msuccess)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m152|[39m   })[33m;[39m
+    [90m153|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[74/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mGET /api/credit/lines/:id[2m > [22mshould handle server errors gracefully
+[31m[1mAssertionError[22m: expected 'Failed to fetch credit line' to be 'Internal server error' // Object.is equality[39m
+
+Expected: [32m"Internal server error"[39m
+Received: [31m"Failed to fetch credit line"[39m
+
+[36m [2m❯[22m src/routes/__tests__/credit.test.ts:[2m149:35[22m[39m
+    [90m147|[39m         [33m.[39m[34mexpect[39m([34m500[39m)[33m;[39m
+    [90m148|[39m
+    [90m149|[39m       [34mexpect[39m(response[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoBe[39m([32m'Internal server error'[39m)[33m;[39m
+    [90m   |[39m                                   [31m^[39m
+    [90m150|[39m       [34mexpect[39m(response[33m.[39mbody[33m.[39mdata)[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m151|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[75/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mPOST /api/credit/lines[2m > [22mshould create credit line successfully
+[31m[1mError[22m: expected 201 "Created", got 400 "Bad Request"[39m
+[36m [2m❯[22m src/routes/__tests__/credit.test.ts:[2m168:10[22m[39m
+    [90m166|[39m         [33m.[39m[34mpost[39m([32m'/api/credit/lines'[39m)
+    [90m167|[39m         [33m.[39m[34msend[39m(requestBody)
+    [90m168|[39m         [33m.[39m[34mexpect[39m([34m201[39m)[33m;[39m
+    [90m   |[39m          [31m^[39m
+    [90m169|[39m
+    [90m170|[39m       [34mexpect[39m(response[33m.[39mbody[33m.[39mdata[33m.[39mid)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+[90m [2m❯[22m Test._assertStatus node_modules/supertest/lib/test.js:[2m309:14[22m[39m
+[90m [2m❯[22m node_modules/supertest/lib/test.js:[2m365:13[22m[39m
+[90m [2m❯[22m Test._assertFunction node_modules/supertest/lib/test.js:[2m342:13[22m[39m
+[90m [2m❯[22m Test.assert node_modules/supertest/lib/test.js:[2m195:23[22m[39m
+[90m [2m❯[22m localAssert node_modules/supertest/lib/test.js:[2m138:14[22m[39m
+[90m [2m❯[22m Server.<anonymous> node_modules/supertest/lib/test.js:[2m152:11[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[76/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mPOST /api/credit/lines[2m > [22mshould return 400 for missing required fields
+[31m[1mAssertionError[22m: expected 'Validation failed' to be 'Missing required fields: walletAddres…' // Object.is equality[39m
+
+Expected: [32m"Missing required fields: walletAddress, creditLimit, interestRateBps"[39m
+Received: [31m"Validation failed"[39m
+
+[36m [2m❯[22m src/routes/__tests__/credit.test.ts:[2m187:35[22m[39m
+    [90m185|[39m         [33m.[39m[34mexpect[39m([34m400[39m)[33m;[39m
+    [90m186|[39m
+    [90m187|[39m       expect(response.body.error).toBe('Missing required fields: walle…
+    [90m   |[39m                                   [31m^[39m
+    [90m188|[39m       [34mexpect[39m(response[33m.[39mbody[33m.[39mdata)[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m189|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[77/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mPOST /api/credit/lines[2m > [22mshould return 400 for invalid data
+[31m[1mAssertionError[22m: expected 'Validation failed' to be 'Missing required fields: walletAddres…' // Object.is equality[39m
+
+Expected: [32m"Missing required fields: walletAddress, creditLimit, interestRateBps"[39m
+Received: [31m"Validation failed"[39m
+
+[36m [2m❯[22m src/routes/__tests__/credit.test.ts:[2m201:35[22m[39m
+    [90m199|[39m         [33m.[39m[34mexpect[39m([34m400[39m)[33m;[39m
+    [90m200|[39m
+    [90m201|[39m       expect(response.body.error).toBe('Missing required fields: walle…
+    [90m   |[39m                                   [31m^[39m
+    [90m202|[39m       [34mexpect[39m(response[33m.[39mbody[33m.[39mdata)[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m203|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[78/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mPOST /api/credit/lines[2m > [22mshould handle service errors with generic message
+[31m[1mAssertionError[22m: expected 'Validation failed' to be 'Bad request' // Object.is equality[39m
+
+Expected: [32m"Bad request"[39m
+Received: [31m"Validation failed"[39m
+
+[36m [2m❯[22m src/routes/__tests__/credit.test.ts:[2m226:35[22m[39m
+    [90m224|[39m         [33m.[39m[34mexpect[39m([34m400[39m)[33m;[39m
+    [90m225|[39m
+    [90m226|[39m       [34mexpect[39m(response[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoBe[39m([32m'Bad request'[39m)[33m;[39m
+    [90m   |[39m                                   [31m^[39m
+    [90m227|[39m       [34mexpect[39m(response[33m.[39mbody[33m.[39mdata)[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m228|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[79/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mPUT /api/credit/lines/:id[2m > [22mshould update credit line successfully
+[31m[1mUnknown Error[22m: Some non-error object[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[80/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mPUT /api/credit/lines/:id[2m > [22mshould return 404 when credit line not found
+[31m[1mError[22m: expected 404 "Not Found", got 400 "Bad Request"[39m
+[36m [2m❯[22m src/routes/__tests__/credit.test.ts:[2m265:10[22m[39m
+    [90m263|[39m           creditLimit[33m:[39m [32m'2000.00'[39m
+    [90m264|[39m         })
+    [90m265|[39m         [33m.[39m[34mexpect[39m([34m404[39m)[33m;[39m
+    [90m   |[39m          [31m^[39m
+    [90m266|[39m
+    [90m267|[39m       [34mexpect[39m(response[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoBe[39m([32m'Credit line not found'[39m)[33m;[39m
+[90m [2m❯[22m Test._assertStatus node_modules/supertest/lib/test.js:[2m309:14[22m[39m
+[90m [2m❯[22m node_modules/supertest/lib/test.js:[2m365:13[22m[39m
+[90m [2m❯[22m Test._assertFunction node_modules/supertest/lib/test.js:[2m342:13[22m[39m
+[90m [2m❯[22m Test.assert node_modules/supertest/lib/test.js:[2m195:23[22m[39m
+[90m [2m❯[22m localAssert node_modules/supertest/lib/test.js:[2m138:14[22m[39m
+[90m [2m❯[22m Server.<anonymous> node_modules/supertest/lib/test.js:[2m152:11[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[81/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mPUT /api/credit/lines/:id[2m > [22mshould return 400 for invalid update data
+[31m[1mUnknown Error[22m: Some non-error object[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[82/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mPUT /api/credit/lines/:id[2m > [22mshould handle service errors with generic message
+[31m[1mUnknown Error[22m: Some non-error object[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[83/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mDELETE /api/credit/lines/:id[2m > [22mshould delete credit line successfully
+[31m[1mUnknown Error[22m: Some non-error object[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[84/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mDELETE /api/credit/lines/:id[2m > [22mshould return 404 when credit line not found
+[31m[1mError[22m: expected 404 "Not Found", got 500 "Internal Server Error"[39m
+[36m [2m❯[22m src/routes/__tests__/credit.test.ts:[2m340:10[22m[39m
+    [90m338|[39m       [35mconst[39m response [33m=[39m [35mawait[39m [34mrequest[39m(app)
+    [90m339|[39m         [33m.[39m[35mdelete[39m([32m'/api/credit/lines/nonexistent'[39m)
+    [90m340|[39m         [33m.[39m[34mexpect[39m([34m404[39m)[33m;[39m
+    [90m   |[39m          [31m^[39m
+    [90m341|[39m
+    [90m342|[39m       [34mexpect[39m(response[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoBe[39m([32m'Credit line not found'[39m)[33m;[39m
+[90m [2m❯[22m Test._assertStatus node_modules/supertest/lib/test.js:[2m309:14[22m[39m
+[90m [2m❯[22m node_modules/supertest/lib/test.js:[2m365:13[22m[39m
+[90m [2m❯[22m Test._assertFunction node_modules/supertest/lib/test.js:[2m342:13[22m[39m
+[90m [2m❯[22m Test.assert node_modules/supertest/lib/test.js:[2m195:23[22m[39m
+[90m [2m❯[22m localAssert node_modules/supertest/lib/test.js:[2m138:14[22m[39m
+[90m [2m❯[22m Server.<anonymous> node_modules/supertest/lib/test.js:[2m152:11[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[85/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mDELETE /api/credit/lines/:id[2m > [22mshould handle service errors gracefully
+[31m[1mAssertionError[22m: expected 'Failed to delete credit line' to be 'Internal server error' // Object.is equality[39m
+
+Expected: [32m"Internal server error"[39m
+Received: [31m"Failed to delete credit line"[39m
+
+[36m [2m❯[22m src/routes/__tests__/credit.test.ts:[2m362:35[22m[39m
+    [90m360|[39m         [33m.[39m[34mexpect[39m([34m500[39m)[33m;[39m
+    [90m361|[39m
+    [90m362|[39m       [34mexpect[39m(response[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoBe[39m([32m'Internal server error'[39m)[33m;[39m
+    [90m   |[39m                                   [31m^[39m
+    [90m363|[39m       [34mexpect[39m(response[33m.[39mbody[33m.[39mdata)[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m364|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[86/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mGET /api/credit/wallet/:walletAddress/lines[2m > [22mshould return credit lines for wallet
+[31m[1mUnknown Error[22m: Some non-error object[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[87/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mGET /api/credit/wallet/:walletAddress/lines[2m > [22mshould return empty array when no credit lines found for wallet
+[31m[1mError[22m: expected 200 "OK", got 400 "Bad Request"[39m
+[36m [2m❯[22m src/routes/__tests__/credit.test.ts:[2m405:10[22m[39m
+    [90m403|[39m       [35mconst[39m response [33m=[39m [35mawait[39m [34mrequest[39m(app)
+    [90m404|[39m         .get('/api/credit/wallet/GBAHQCUPC7G2B4D2F2I2K2M2O2Q2W2Y2A2C2E…
+    [90m405|[39m         [33m.[39m[34mexpect[39m([34m200[39m)[33m;[39m
+    [90m   |[39m          [31m^[39m
+    [90m406|[39m
+    [90m407|[39m       [34mexpect[39m(response[33m.[39mbody[33m.[39mdata[33m.[39mcreditLines)[33m.[39m[34mtoEqual[39m([])[33m;[39m
+[90m [2m❯[22m Test._assertStatus node_modules/supertest/lib/test.js:[2m309:14[22m[39m
+[90m [2m❯[22m node_modules/supertest/lib/test.js:[2m365:13[22m[39m
+[90m [2m❯[22m Test._assertFunction node_modules/supertest/lib/test.js:[2m342:13[22m[39m
+[90m [2m❯[22m Test.assert node_modules/supertest/lib/test.js:[2m195:23[22m[39m
+[90m [2m❯[22m localAssert node_modules/supertest/lib/test.js:[2m138:14[22m[39m
+[90m [2m❯[22m Server.<anonymous> node_modules/supertest/lib/test.js:[2m152:11[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[88/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/credit.test.ts[2m > [22mCredit Routes[2m > [22mGET /api/credit/wallet/:walletAddress/lines[2m > [22mshould handle service errors gracefully
+[31m[1mError[22m: expected 500 "Internal Server Error", got 400 "Bad Request"[39m
+[36m [2m❯[22m src/routes/__tests__/credit.test.ts:[2m425:10[22m[39m
+    [90m423|[39m       [35mconst[39m response [33m=[39m [35mawait[39m [34mrequest[39m(app)
+    [90m424|[39m         .get('/api/credit/wallet/GBAHQCUPC7G2B4D2F2I2K2M2O2Q2W2Y2A2C2E…
+    [90m425|[39m         [33m.[39m[34mexpect[39m([34m500[39m)[33m;[39m
+    [90m   |[39m          [31m^[39m
+    [90m426|[39m
+    [90m427|[39m       [34mexpect[39m(response[33m.[39mbody[33m.[39merror)[33m.[39m[34mtoBe[39m([32m'Internal server error'[39m)[33m;[39m
+[90m [2m❯[22m Test._assertStatus node_modules/supertest/lib/test.js:[2m309:14[22m[39m
+[90m [2m❯[22m node_modules/supertest/lib/test.js:[2m365:13[22m[39m
+[90m [2m❯[22m Test._assertFunction node_modules/supertest/lib/test.js:[2m342:13[22m[39m
+[90m [2m❯[22m Test.assert node_modules/supertest/lib/test.js:[2m195:23[22m[39m
+[90m [2m❯[22m localAssert node_modules/supertest/lib/test.js:[2m138:14[22m[39m
+[90m [2m❯[22m Server.<anonymous> node_modules/supertest/lib/test.js:[2m152:11[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[89/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/routes/__tests__/risk.test.ts[2m > [22mRisk Routes[2m > [22mGET endpoints[2m > [22mreturns 404 for missing latest evaluation
+[31m[1mAssertionError[22m: expected 400 to be 404 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 404[39m
+[31m+ 400[39m
+
+[36m [2m❯[22m src/routes/__tests__/risk.test.ts:[2m265:31[22m[39m
+    [90m263|[39m       })[33m;[39m
+    [90m264|[39m
+    [90m265|[39m       [34mexpect[39m(response[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m404[39m)[33m;[39m
+    [90m   |[39m                               [31m^[39m
+    [90m266|[39m       expect(response.body).toEqual({ data: null, error: 'No risk eval…
+    [90m267|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[90/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/services/__tests__/drawWebhookService.test.ts[2m > [22mDrawWebhookService[2m > [22msendDrawConfirmationWebhook[2m > [22mshould retry failed requests with exponential backoff
+[31m[1mAssertionError[22m: expected { …(5) } to deeply equal { …(4) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "attempt": 3,[39m
+[32m-   "responseStatus": 200,[39m
+[32m-   "success": true,[39m
+[31m+   "attempt": 1,[39m
+[31m+   "error": "Network error",[39m
+[31m+   "responseStatus": undefined,[39m
+[31m+   "success": false,[39m
+[2m    "url": "https://example.com/webhook",[22m
+[2m  }[22m
+
+[36m [2m❯[22m src/services/__tests__/drawWebhookService.test.ts:[2m295:32[22m[39m
+    [90m293|[39m
+    [90m294|[39m             [34mexpect[39m(results)[33m.[39m[34mtoHaveLength[39m([34m1[39m)[33m;[39m
+    [90m295|[39m             [34mexpect[39m(results[[34m0[39m])[33m.[39m[34mtoEqual[39m({
+    [90m   |[39m                                [31m^[39m
+    [90m296|[39m                 url[33m:[39m [32m"https://example.com/webhook"[39m[33m,[39m
+    [90m297|[39m                 success[33m:[39m [35mtrue[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[91/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/services/__tests__/drawWebhookService.test.ts[2m > [22mDrawWebhookService[2m > [22msendDrawConfirmationWebhook[2m > [22mshould handle multiple webhook URLs
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m src/services/__tests__/drawWebhookService.test.ts:[2m358:51[22m[39m
+    [90m356|[39m             [34mexpect[39m(results[[34m0[39m][33m.[39murl)[33m.[39m[34mtoBe[39m([32m"https://example.com/webhook"[39m)[33m;[39m
+    [90m357|[39m             [34mexpect[39m(results[[34m1[39m][33m.[39murl)[33m.[39m[34mtoBe[39m([32m"https://test.com/hook"[39m)[33m;[39m
+    [90m358|[39m             [34mexpect[39m(results[33m.[39m[34mevery[39m(r [33m=>[39m r[33m.[39msuccess))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                                                   [31m^[39m
+    [90m359|[39m         })[33m;[39m
+    [90m360|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[92/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/services/__tests__/drawWebhookService.test.ts[2m > [22mDrawWebhookService[2m > [22mtestWebhookConnectivity[2m > [22mshould test connectivity to all webhook URLs
+[31m[1mAssertionError[22m: expected { url: 'https://test.com/hook', …(2) } to deeply equal { url: 'https://test.com/hook', …(2) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "error": "HTTP 500: Internal Server Error",[39m
+[32m-   "reachable": false,[39m
+[31m+   "error": undefined,[39m
+[31m+   "reachable": true,[39m
+[2m    "url": "https://test.com/hook",[22m
+[2m  }[22m
+
+[36m [2m❯[22m src/services/__tests__/drawWebhookService.test.ts:[2m389:32[22m[39m
+    [90m387|[39m                 reachable[33m:[39m [35mtrue[39m
+    [90m388|[39m             })[33m;[39m
+    [90m389|[39m             [34mexpect[39m(results[[34m1[39m])[33m.[39m[34mtoEqual[39m({
+    [90m   |[39m                                [31m^[39m
+    [90m390|[39m                 url[33m:[39m [32m"https://test.com/hook"[39m[33m,[39m
+    [90m391|[39m                 reachable[33m:[39m [35mfalse[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[93/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/services/__tests__/drawWebhookService.test.ts[2m > [22mDrawWebhookService[2m > [22mtestWebhookConnectivity[2m > [22mshould handle network errors during connectivity test
+[31m[1mAssertionError[22m: expected { …(3) } to deeply equal { …(3) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "error": "Connection refused",[39m
+[32m-   "reachable": false,[39m
+[31m+   "error": undefined,[39m
+[31m+   "reachable": true,[39m
+[2m    "url": "https://example.com/webhook",[22m
+[2m  }[22m
+
+[36m [2m❯[22m src/services/__tests__/drawWebhookService.test.ts:[2m402:32[22m[39m
+    [90m400|[39m
+    [90m401|[39m             [34mexpect[39m(results)[33m.[39m[34mtoHaveLength[39m([34m2[39m)[33m;[39m
+    [90m402|[39m             [34mexpect[39m(results[[34m0[39m])[33m.[39m[34mtoEqual[39m({
+    [90m   |[39m                                [31m^[39m
+    [90m403|[39m                 url[33m:[39m [32m"https://example.com/webhook"[39m[33m,[39m
+    [90m404|[39m                 reachable[33m:[39m [35mfalse[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[94/191]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/services/__tests__/drawWebhookService.test.ts[2m > [22mDrawWebhookService[2m > [22mRequest Timeout[2m > [22mshould handle request timeouts
+[31m[1mAssertionError[22m: expected [] to have a length of 1 but got +0[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 0[39m
+
+[36m [2m❯[22m src/services/__tests__/drawWebhookService.test.ts:[2m484:29[22m[39m
+    [90m482|[39m             [35mconst[39m results [33m=[39m [35mawait[39m promise[33m;[39m
+    [90m483|[39m
+    [90m484|[39m             [34mexpect[39m(results)[33m.[39m[34mtoHaveLength[39m([34m1[39m)[33m;[39m
+    [90m   |[39m                             [31m^[39m
+    [90m485|[39m             [34mexpect[39m(results[[34m0[39m])[33m.[39m[34mtoEqual[39m({
+    [90m486|[39m                 url[33m:[39m [32m"https://example.com/webhook"[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[95/191]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m19 failed[39m[22m[2m | [22m[1m[32m23 passed[39m[22m[90m (42)[39m
+[2m      Tests [22m [1m[31m142 failed[39m[22m[2m | [22m[1m[32m434 passed[39m[22m[90m (576)[39m
+[2m   Start at [22m 10:31:13
+[2m   Duration [22m 9.99s[2m (transform 3.63s, setup 0ms, import 25.50s, tests 8.94s, environment 28ms)[22m
+
