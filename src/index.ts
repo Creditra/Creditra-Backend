@@ -82,6 +82,18 @@ if (isMain) {
   const server = app.listen(port, () => {
     console.log(`Creditra API listening on http://localhost:${port}`);
     console.log(`Swagger UI available at http://localhost:${port}/docs`);
+    
+    // Start reconciliation worker
+    const container = Container.getInstance();
+    const reconciliationInterval = parseInt(
+      process.env.RECONCILIATION_INTERVAL_MS ?? "3600000", // Default: 1 hour
+      10
+    );
+    container.reconciliationWorker.start({
+      intervalMs: reconciliationInterval,
+      runImmediately: process.env.RECONCILIATION_RUN_IMMEDIATELY !== "false",
+    });
+    console.log(`[ReconciliationWorker] Started with ${reconciliationInterval}ms interval`);
   });
 
   // ── Graceful Shutdown ───────────────────────────────────────────────────────

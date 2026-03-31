@@ -420,6 +420,9 @@ src/
     horizonListener.ts                      # Stellar Horizon event poller
     drawWebhookService.ts                   # draw confirmation webhook delivery
     jobQueue.ts                             # background job scheduler
+    reconciliationService.ts                # chain vs DB reconciliation
+    reconciliationWorker.ts                 # scheduled reconciliation worker
+    sorobanClient.ts                        # Soroban RPC client
   utils/
     response.ts                             # ok() / fail() envelope helpers
     stellarAddress.ts                       # Stellar public-key validation
