@@ -13,6 +13,7 @@ describe('CreditLineService', () => {
       findById: vi.fn(),
       findByWalletAddress: vi.fn(),
       findAll: vi.fn(),
+      findAllWithCursor: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
       exists: vi.fn(),
@@ -225,6 +226,74 @@ describe('CreditLineService', () => {
 
     it('should throw error for oversized limit', async () => {
       await expect(service.getAllCreditLines(0, 101)).rejects.toThrow('Limit cannot exceed 100');
+    });
+  });
+
+  describe('getAllCreditLinesWithCursor', () => {
+    it('should return credit lines with cursor pagination', async () => {
+      const creditLines: CreditLine[] = [
+        { id: 'cl-1', walletAddress: 'w1', creditLimit: '100', availableCredit: '100', interestRateBps: 500, status: CreditLineStatus.ACTIVE, createdAt: new Date(), updatedAt: new Date() }
+      ];
+      
+      const mockResult = {
+        items: creditLines,
+        nextCursor: 'base64cursor',
+        hasMore: true
+      };
+
+      vi.mocked(mockRepository.findAllWithCursor).mockResolvedValue(mockResult);
+
+      const result = await service.getAllCreditLinesWithCursor(undefined, 10);
+      
+      expect(mockRepository.findAllWithCursor).toHaveBeenCalledWith(undefined, 10);
+      expect(result).toEqual(mockResult);
+      expect(result.items).toEqual(creditLines);
+      expect(result.nextCursor).toBe('base64cursor');
+      expect(result.hasMore).toBe(true);
+    });
+
+    it('should handle cursor parameter', async () => {
+      const mockResult = {
+        items: [],
+        nextCursor: null,
+        hasMore: false
+      };
+
+      vi.mocked(mockRepository.findAllWithCursor).mockResolvedValue(mockResult);
+
+      const result = await service.getAllCreditLinesWithCursor('somecursor', 20);
+      
+      expect(mockRepository.findAllWithCursor).toHaveBeenCalledWith('somecursor', 20);
+      expect(result.nextCursor).toBeNull();
+      expect(result.hasMore).toBe(false);
+    });
+
+    it('should throw error for zero limit', async () => {
+      await expect(service.getAllCreditLinesWithCursor(undefined, 0)).rejects.toThrow('Limit must be greater than 0');
+    });
+
+    it('should throw error for negative limit', async () => {
+      await expect(service.getAllCreditLinesWithCursor(undefined, -5)).rejects.toThrow('Limit must be greater than 0');
+    });
+
+    it('should throw error for oversized limit', async () => {
+      await expect(service.getAllCreditLinesWithCursor(undefined, 101)).rejects.toThrow('Limit cannot exceed 100');
+    });
+
+    it('should return empty result when no more items', async () => {
+      const mockResult = {
+        items: [],
+        nextCursor: null,
+        hasMore: false
+      };
+
+      vi.mocked(mockRepository.findAllWithCursor).mockResolvedValue(mockResult);
+
+      const result = await service.getAllCreditLinesWithCursor('exhaustedcursor', 10);
+      
+      expect(result.items).toHaveLength(0);
+      expect(result.nextCursor).toBeNull();
+      expect(result.hasMore).toBe(false);
     });
   });
 });

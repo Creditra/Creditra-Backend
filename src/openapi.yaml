@@ -9,6 +9,10 @@ info:
     must set `CORS_ORIGINS` to a comma-separated list of exact origins; local
     development falls back to loopback origins when the variable is unset.
 
+    ## Authentication
+    Protected endpoints require a valid API key passed via the `X-API-Key` header.
+    API keys are configured via the `API_KEYS` environment variable (comma-separated).
+
     ## Keeping the spec in sync
     - Every new route **must** have a corresponding entry here before merging.
     - Run `npm run validate:spec` in CI to catch YAML/structural errors early.
@@ -28,12 +32,391 @@ tags:
   - name: Webhooks
     description: Draw confirmation webhook management
 
+security:
+  - ApiKeyAuth: []
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key for authenticated endpoints. Required for admin operations.
+        Keys are configured via the `API_KEYS` environment variable.
+
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service]
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: creditra-backend
+
+    # ── Credit Line Schemas ──────────────────────────────────────────────────
+
+    CreateCreditLineRequest:
+      type: object
+      required: [walletAddress, requestedLimit]
+      properties:
+        walletAddress:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Stellar wallet address
+          example: "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOUJ3LNLRK"
+        requestedLimit:
+          type: string
+          pattern: "^\\d+(\\.\\d+)?$"
+          description: Requested credit limit as a decimal string
+          example: "1000.00"
+      additionalProperties: false
+
+    UpdateCreditLineRequest:
+      type: object
+      properties:
+        creditLimit:
+          type: string
+          pattern: "^\\d+(\\.\\d+)?$"
+          description: Updated credit limit
+          example: "1500.00"
+        interestRateBps:
+          type: number
+          description: Interest rate in basis points
+          example: 640
+        status:
+          type: string
+          enum: [active, suspended, closed]
+          description: Credit line status
+      additionalProperties: false
+
+    CreditLine:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique credit line identifier
+          example: "cl_abc123"
+        walletAddress:
+          type: string
+          description: Associated Stellar wallet address
+          example: "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOUJ3LNLRK"
+        creditLimit:
+          type: string
+          description: Approved credit limit
+          example: "720.00000000"
+        currentBalance:
+          type: string
+          description: Current outstanding balance
+          example: "100.00000000"
+        availableCredit:
+          type: string
+          description: Available credit (creditLimit - currentBalance)
+          example: "620.00000000"
+        interestRateBps:
+          type: number
+          description: Interest rate in basis points
+          example: 640
+        status:
+          type: string
+          enum: [active, suspended, closed]
+          description: Current credit line status
+        createdAt:
+          type: string
+          format: date-time
+          description: ISO 8601 creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: ISO 8601 last update timestamp
+
+    CreditLinesResponse:
+      type: object
+      required: [creditLines, pagination]
+      properties:
+        creditLines:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreditLine"
+        pagination:
+          type: object
+          properties:
+            total:
+              type: integer
+            offset:
+              type: integer
+            limit:
+              type: integer
+          required: [total, offset, limit]
+
+    WalletCreditLinesResponse:
+      type: object
+      required: [creditLines]
+      properties:
+        creditLines:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreditLine"
+
+    CreditLineActionResponse:
+      type: object
+      required: [line, message]
+      properties:
+        line:
+          $ref: "#/components/schemas/CreditLine"
+        message:
+          type: string
+          example: "Credit line suspended."
+
+    # ── Transaction Schemas ──────────────────────────────────────────────────
+
+    Transaction:
+      type: object
+      required: [id, creditLineId, type, amount, currency, timestamp, metadata]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique transaction identifier
+        creditLineId:
+          type: string
+          description: ID of the credit line this transaction belongs to
+        type:
+          type: string
+          enum: [borrow, repay, interest_accrual, fee, status_change]
+          description: Transaction type
+        amount:
+          type: string
+          nullable: true
+          description: Transaction amount as a decimal string; null for status changes
+          example: "500.00000000"
+        currency:
+          type: string
+          nullable: true
+          description: Currency code (e.g. USDC); null for status changes
+          example: USDC
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the transaction occurred
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional context; status changes include an 'action' field
+          example:
+            action: created
+
+    TransactionHistoryResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [transactions, total, page, limit, totalPages]
+          properties:
+            transactions:
+              type: array
+              items:
+                $ref: "#/components/schemas/Transaction"
+            total:
+              type: integer
+              description: Total number of transactions matching the applied filters
+            page:
+              type: integer
+              description: Current page number (1-indexed)
+            limit:
+              type: integer
+              description: Maximum number of transactions per page
+            totalPages:
+              type: integer
+              description: Total number of pages available
+
+    # ── Risk Evaluation Schemas ───────────────────────────────────────────────
+
+    RiskEvaluateRequest:
+      type: object
+      required: [walletAddress]
+      properties:
+        walletAddress:
+          type: string
+          description: Stellar wallet address to evaluate
+          example: "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOUJ3LNLRK"
+        forceRefresh:
+          type: boolean
+          description: Optional hint to bypass cache and recalculate risk
+          default: false
+      additionalProperties: false
+
+    RiskEvaluateResponse:
+      type: object
+      required: [walletAddress, riskScore, creditLimit, interestRateBps, message]
+      properties:
+        walletAddress:
+          type: string
+          example: "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOUJ3LNLRK"
+        riskScore:
+          type: number
+          description: Risk score (0-100)
+          example: 72
+        creditLimit:
+          type: string
+          description: Recommended credit limit
+          example: "720.00000000"
+        interestRateBps:
+          type: number
+          description: Recommended interest rate in basis points
+          example: 640
+        message:
+          type: string
+          example: "New risk evaluation completed"
+
+    RiskEvaluateApiResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/RiskEvaluateResponse"
+        error:
+          type: string
+          nullable: true
+
+    RiskEvaluation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique evaluation identifier
+        walletAddress:
+          type: string
+          description: Evaluated wallet address
+        riskScore:
+          type: number
+          description: Risk score (0-100)
+        creditLimit:
+          type: string
+          description: Recommended credit limit
+        interestRateBps:
+          type: number
+          description: Recommended interest rate in basis points
+        factors:
+          type: object
+          additionalProperties: true
+          description: Risk evaluation factors and weights
+        evaluatedAt:
+          type: string
+          format: date-time
+          description: ISO 8601 evaluation timestamp
+
+    RiskEvaluationHistoryResponse:
+      type: object
+      required: [evaluations]
+      properties:
+        evaluations:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskEvaluation"
+
+    # ── Webhook Schemas ───────────────────────────────────────────────────────
+
+    WebhookConfigResponse:
+      type: object
+      properties:
+        urls:
+          type: array
+          items:
+            type: string
+          example: ["https://example.com/webhook"]
+        maxRetries:
+          type: integer
+          example: 3
+        initialBackoffMs:
+          type: integer
+          example: 1000
+        backoffMultiplier:
+          type: number
+          example: 2.0
+        timeoutMs:
+          type: integer
+          example: 10000
+        configured:
+          type: boolean
+          example: true
+
+    WebhookTestResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        reachable:
+          type: integer
+        unreachable:
+          type: integer
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              reachable:
+                type: boolean
+              error:
+                type: string
+                nullable: true
+
+    WebhookHealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [active, disabled]
+        urls:
+          type: integer
+          description: Number of configured webhook URLs
+        maxRetries:
+          type: integer
+        timeoutMs:
+          type: integer
+
+    AdminRecalibrateResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Risk model recalibration triggered"
+
+    # ── Error Schemas ─────────────────────────────────────────────────────────
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        id:
+          type: string
+          description: Present on 404 responses that reference a specific resource
+
+    RateLimitErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: "Too many requests"
+
 paths:
   /health:
     get:
       tags: [Health]
       operationId: getHealth
       summary: Liveness check
+      security: []
       responses:
         "200":
           description: Service is running
@@ -45,11 +428,14 @@ paths:
                 status: ok
                 service: creditra-backend
 
+  # ── Credit Lines Routes ─────────────────────────────────────────────────────
+
   /api/credit/lines:
     get:
       tags: [Credit]
       operationId: listCreditLines
       summary: List all credit lines
+      security: []
       parameters:
         - name: offset
           in: query
@@ -125,11 +511,40 @@ paths:
               schema:
                 $ref: "#/components/schemas/RateLimitErrorResponse"
 
+    post:
+      tags: [Credit]
+      operationId: createCreditLine
+      summary: Create a new credit line
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCreditLineRequest"
+            example:
+              walletAddress: "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOUJ3LNLRK"
+              requestedLimit: "1000.00"
+      responses:
+        "201":
+          description: Credit line created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditLine"
+        "400":
+          description: Validation error or missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/credit/lines/{id}:
     get:
       tags: [Credit]
       operationId: getCreditLineById
       summary: Get a credit line by ID
+      security: []
       parameters:
         - name: id
           in: path
@@ -183,6 +598,76 @@ paths:
               schema:
                 $ref: "#/components/schemas/RateLimitErrorResponse"
 
+    put:
+      tags: [Credit]
+      operationId: updateCreditLine
+      summary: Update a credit line
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Credit line identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCreditLineRequest"
+            example:
+              creditLimit: "1500.00"
+              interestRateBps: 640
+              status: active
+      responses:
+        "200":
+          description: Credit line updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditLine"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Credit line not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      tags: [Credit]
+      operationId: deleteCreditLine
+      summary: Delete a credit line
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Credit line identifier
+      responses:
+        "204":
+          description: Credit line deleted successfully
+        "404":
+          description: Credit line not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/credit/lines/{id}/transactions:
     get:
       tags: [Credit]
@@ -190,8 +675,8 @@ paths:
       summary: List transaction history for a credit line
       description: |
         Returns a paginated list of transactions for the given credit line.
-        Supports optional filtering by
-        transaction type and date range.
+        Supports optional filtering by transaction type and date range.
+      security: []
       parameters:
         - name: id
           in: path
@@ -259,7 +744,6 @@ paths:
                   page: 1
                   limit: 20
                   totalPages: 1
-                error: null
         "400":
           description: Invalid query parameter
           content:
@@ -267,7 +751,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
-                data: null
                 error: "Invalid type filter. Must be one of: borrow, repay, interest_accrual, fee, status_change."
         "404":
           description: Credit line not found
@@ -275,40 +758,140 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /api/credit/lines/{id}/suspend:
+    post:
+      tags: [Credit]
+      operationId: suspendCreditLine
+      summary: Suspend a credit line
+      description: |
+        Suspends the specified credit line, preventing further draws.
+        Requires API key authentication.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Credit line identifier
+      responses:
+        "200":
+          description: Credit line suspended successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditLineActionResponse"
+        "401":
+          description: API key missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
               example:
-                data: null
-                error: 'Credit line "line-abc" not found.'
+                error: Unauthorized
+        "403":
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Forbidden
+        "404":
+          description: Credit line not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/credit/lines/{id}/close:
+    post:
+      tags: [Credit]
+      operationId: closeCreditLine
+      summary: Close a credit line
+      description: |
+        Closes the specified credit line permanently.
+        Requires API key authentication.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Credit line identifier
+      responses:
+        "200":
+          description: Credit line closed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditLineActionResponse"
+        "401":
+          description: API key missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Unauthorized
+        "403":
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Forbidden
+        "404":
+          description: Credit line not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/credit/wallet/{walletAddress}/lines:
     get:
       tags: [Credit]
       operationId: getCreditLinesByWallet
-      summary: Get all credit lines for a wallet
+      summary: Get credit lines for a specific wallet
+      security: []
       parameters:
         - name: walletAddress
           in: path
           required: true
           schema:
             type: string
-            pattern: '^G[A-Z2-7]{55}$'
-          description: Stellar public key
+          description: Stellar wallet address
       responses:
         "200":
-          description: Array of credit lines
+          description: Credit lines for the wallet
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  creditLines:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/CreditLine"
-        "400":
-          description: Invalid wallet address
+                $ref: "#/components/schemas/WalletCreditLinesResponse"
+              example:
+                creditLines:
+                  - id: "cl_abc123"
+                    walletAddress: "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOUJ3LNLRK"
+                    creditLimit: "720.00000000"
+                    currentBalance: "100.00000000"
+                    availableCredit: "620.00000000"
+                    interestRateBps: 640
+                    status: active
+                    createdAt: "2024-01-15T10:00:00.000Z"
+                    updatedAt: "2024-01-15T10:00:00.000Z"
+        "500":
+          description: Internal server error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Risk Evaluation Routes ──────────────────────────────────────────────────
 
   /api/risk/evaluate:
     post:
@@ -316,8 +899,10 @@ paths:
       operationId: evaluateRisk
       summary: Evaluate on-chain risk for a wallet
       description: |
+        Performs a fresh risk evaluation for the given Stellar wallet address.
         Rate limited: default 10 requests per minute per IP address.
         Configure via RATE_LIMIT_MAX_EVALUATE and RATE_LIMIT_WINDOW_MS env vars.
+      security: []
       requestBody:
         required: true
         content:
@@ -325,7 +910,7 @@ paths:
             schema:
               $ref: "#/components/schemas/RiskEvaluateRequest"
             example:
-              walletAddress: "GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2"
+              walletAddress: "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOUJ3LNLRK"
               forceRefresh: false
       responses:
         "200":
@@ -350,9 +935,9 @@ paths:
                 $ref: "#/components/schemas/RiskEvaluateApiResponse"
               example:
                 data:
-                  walletAddress: "GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2"
+                  walletAddress: "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOUJ3LNLRK"
                   riskScore: 72
-                  creditLimit: "720"
+                  creditLimit: "720.00000000"
                   interestRateBps: 640
                   message: New risk evaluation completed
                 error: null
@@ -364,6 +949,24 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: Validation failed
+        "413":
+          description: Request body exceeds the 100 kb limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                data: null
+                error: Request body too large. Maximum size is 100kb.
+        "415":
+          description: Content-Type is not application/json
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                data: null
+                error: Content-Type must be application/json
 
   /api/webhooks/config:
     get:
@@ -371,6 +974,7 @@ paths:
       operationId: getWebhookConfig
       summary: Get webhook configuration
       description: Returns the current webhook configuration (excluding sensitive data)
+      security: []
       responses:
         "200":
           description: Webhook configuration
@@ -392,6 +996,7 @@ paths:
       operationId: testWebhooks
       summary: Test webhook connectivity
       description: Sends a test payload to all configured webhook endpoints
+      security: []
       responses:
         "200":
           description: Test results
@@ -422,6 +1027,7 @@ paths:
       operationId: getWebhookHealth
       summary: Webhook service health check
       description: Returns the health status of the webhook service
+      security: []
       responses:
         "200":
           description: Webhook service health
@@ -694,8 +1300,13 @@ components:
 
     ErrorResponse:
       type: object
-      required: [error]
+      required: [data, error]
+      description: Standardized error response format used across all endpoints
       properties:
+        data:
+          type: object
+          nullable: true
+          description: Always null for error responses
         error:
           type: string
         id:

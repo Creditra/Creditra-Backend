@@ -1,5 +1,5 @@
-import { CreditLineStatus, type CreditLine, type CreateCreditLineRequest, type UpdateCreditLineRequest } from '../models/CreditLine.js';
-import type { CreditLineRepository } from '../repositories/interfaces/CreditLineRepository.js';
+import type { CreditLine, CreateCreditLineRequest, UpdateCreditLineRequest } from '../models/CreditLine.js';
+import type { CreditLineRepository, CursorPaginationResult } from '../repositories/interfaces/CreditLineRepository.js';
 
 export class CreditLineService {
   constructor(private creditLineRepository: CreditLineRepository) {}
@@ -40,6 +40,16 @@ export class CreditLineService {
       throw new Error('Limit cannot exceed 100');
     }
     return await this.creditLineRepository.findAll(offset, limit);
+  }
+
+  async getAllCreditLinesWithCursor(cursor?: string, limit?: number): Promise<CursorPaginationResult> {
+    if (limit !== undefined && limit <= 0) {
+      throw new Error('Limit must be greater than 0');
+    }
+    if (limit !== undefined && limit > 100) {
+      throw new Error('Limit cannot exceed 100');
+    }
+    return await this.creditLineRepository.findAllWithCursor(cursor, limit);
   }
 
   async updateCreditLine(id: string, request: UpdateCreditLineRequest): Promise<CreditLine | null> {

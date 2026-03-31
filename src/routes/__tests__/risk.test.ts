@@ -26,7 +26,7 @@ async function invokeRoute(args: InvokeArgs): Promise<{ status: number; body: un
   }
 
   const handlers: Array<(req: Request, res: Response, next: NextFunction) => unknown> =
-    layer.route.stack.map((entry: any) => entry.handle);
+    layer.route!.stack.map((entry: any) => entry.handle);
 
   const req = {
     body: args.body ?? {},

@@ -1,8 +1,10 @@
 import { z } from 'zod';
-import { walletAddressSchema } from './common.schema.js';
+import { isValidStellarAddress } from '../utils/stellarAddress.js';
 
 export const riskEvaluateSchema = z.object({
-  walletAddress: walletAddressSchema,
+  walletAddress: z
+    .string()
+    .refine(isValidStellarAddress, 'walletAddress must be a valid Stellar address'),
   forceRefresh: z.boolean().optional(),
 }).strict();
 

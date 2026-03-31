@@ -11,12 +11,12 @@ import {
   transactionHistoryQuerySchema,
 } from '../../src/schemas/credit.schema.js';
 
-/* ------------------------------------------------------------------ */
-/*  riskEvaluateSchema                                                 */
-/* ------------------------------------------------------------------ */
+const VALID_ADDRESS = 'G' + 'A'.repeat(55);
+const INVALID_ADDRESS = 'GABCDEF';
+
 describe('riskEvaluateSchema', () => {
-  it('accepts a valid walletAddress', () => {
-    const result = riskEvaluateSchema.safeParse({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1' });
+  it('accepts a valid Stellar walletAddress', () => {
+    const result = riskEvaluateSchema.safeParse({ walletAddress: VALID_ADDRESS });
     expect(result.success).toBe(true);
   });
 
@@ -30,8 +30,8 @@ describe('riskEvaluateSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects walletAddress exceeding 256 chars', () => {
-    const result = riskEvaluateSchema.safeParse({ walletAddress: 'x'.repeat(257) });
+  it('rejects walletAddress that is not a valid Stellar address', () => {
+    const result = riskEvaluateSchema.safeParse({ walletAddress: INVALID_ADDRESS });
     expect(result.success).toBe(false);
   });
 
@@ -41,23 +41,20 @@ describe('riskEvaluateSchema', () => {
   });
 
   it('accepts optional forceRefresh', () => {
-    const result = riskEvaluateSchema.safeParse({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1', forceRefresh: true });
+    const result = riskEvaluateSchema.safeParse({ walletAddress: VALID_ADDRESS, forceRefresh: true });
     expect(result.success).toBe(true);
   });
 
   it('rejects unknown keys', () => {
-    const result = riskEvaluateSchema.safeParse({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1', extra: 'nope' });
+    const result = riskEvaluateSchema.safeParse({ walletAddress: VALID_ADDRESS, extra: 'nope' });
     expect(result.success).toBe(false);
   });
 });
 
-/* ------------------------------------------------------------------ */
-/*  createCreditLineSchema                                             */
-/* ------------------------------------------------------------------ */
 describe('createCreditLineSchema', () => {
   it('accepts valid body', () => {
     const result = createCreditLineSchema.safeParse({
-      walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
+      walletAddress: VALID_ADDRESS,
       requestedLimit: '1000',
     });
     expect(result.success).toBe(true);
@@ -65,7 +62,7 @@ describe('createCreditLineSchema', () => {
 
   it('accepts decimal requestedLimit', () => {
     const result = createCreditLineSchema.safeParse({
-      walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
+      walletAddress: VALID_ADDRESS,
       requestedLimit: '1000.50',
     });
     expect(result.success).toBe(true);
@@ -76,14 +73,22 @@ describe('createCreditLineSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('rejects invalid Stellar walletAddress', () => {
+    const result = createCreditLineSchema.safeParse({
+      walletAddress: INVALID_ADDRESS,
+      requestedLimit: '100',
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('rejects missing requestedLimit', () => {
-    const result = createCreditLineSchema.safeParse({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1' });
+    const result = createCreditLineSchema.safeParse({ walletAddress: VALID_ADDRESS });
     expect(result.success).toBe(false);
   });
 
   it('rejects non-numeric requestedLimit', () => {
     const result = createCreditLineSchema.safeParse({
-      walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
+      walletAddress: VALID_ADDRESS,
       requestedLimit: 'abc',
     });
     expect(result.success).toBe(false);
@@ -91,7 +96,7 @@ describe('createCreditLineSchema', () => {
 
   it('rejects negative requestedLimit', () => {
     const result = createCreditLineSchema.safeParse({
-      walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
+      walletAddress: VALID_ADDRESS,
       requestedLimit: '-100',
     });
     expect(result.success).toBe(false);
@@ -107,32 +112,39 @@ describe('createCreditLineSchema', () => {
   });
 });
 
-/* ------------------------------------------------------------------ */
-/*  drawSchema                                                         */
-/* ------------------------------------------------------------------ */
 describe('drawSchema', () => {
-  it('accepts a valid amount', () => {
-    const result = drawSchema.safeParse({ amount: '500' });
+  it('accepts a valid walletAddress and amount', () => {
+    const result = drawSchema.safeParse({ walletAddress: VALID_ADDRESS, amount: '500' });
     expect(result.success).toBe(true);
   });
 
   it('accepts a decimal amount', () => {
-    const result = drawSchema.safeParse({ amount: '500.25' });
+    const result = drawSchema.safeParse({ walletAddress: VALID_ADDRESS, amount: '500.25' });
     expect(result.success).toBe(true);
   });
 
+  it('rejects missing walletAddress', () => {
+    const result = drawSchema.safeParse({ amount: '500' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid Stellar walletAddress', () => {
+    const result = drawSchema.safeParse({ walletAddress: INVALID_ADDRESS, amount: '500' });
+    expect(result.success).toBe(false);
+  });
+
   it('rejects missing amount', () => {
-    const result = drawSchema.safeParse({});
+    const result = drawSchema.safeParse({ walletAddress: VALID_ADDRESS });
     expect(result.success).toBe(false);
   });
 
   it('rejects non-numeric amount', () => {
-    const result = drawSchema.safeParse({ amount: 'abc' });
+    const result = drawSchema.safeParse({ walletAddress: VALID_ADDRESS, amount: 'abc' });
     expect(result.success).toBe(false);
   });
 
   it('rejects numeric (non-string) amount', () => {
-    const result = drawSchema.safeParse({ amount: 500 });
+    const result = drawSchema.safeParse({ walletAddress: VALID_ADDRESS, amount: 500 });
     expect(result.success).toBe(false);
   });
 
@@ -142,22 +154,29 @@ describe('drawSchema', () => {
   });
 });
 
-/* ------------------------------------------------------------------ */
-/*  repaySchema                                                        */
-/* ------------------------------------------------------------------ */
 describe('repaySchema', () => {
-  it('accepts a valid amount', () => {
-    const result = repaySchema.safeParse({ amount: '200' });
+  it('accepts a valid walletAddress and amount', () => {
+    const result = repaySchema.safeParse({ walletAddress: VALID_ADDRESS, amount: '200' });
     expect(result.success).toBe(true);
   });
 
+  it('rejects missing walletAddress', () => {
+    const result = repaySchema.safeParse({ amount: '200' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid Stellar walletAddress', () => {
+    const result = repaySchema.safeParse({ walletAddress: INVALID_ADDRESS, amount: '200' });
+    expect(result.success).toBe(false);
+  });
+
   it('rejects missing amount', () => {
-    const result = repaySchema.safeParse({});
+    const result = repaySchema.safeParse({ walletAddress: VALID_ADDRESS });
     expect(result.success).toBe(false);
   });
 
   it('rejects non-numeric amount', () => {
-    const result = repaySchema.safeParse({ amount: 'nope' });
+    const result = repaySchema.safeParse({ walletAddress: VALID_ADDRESS, amount: 'nope' });
     expect(result.success).toBe(false);
   });
 
