@@ -36,7 +36,7 @@ describe('Rate Limiting Integration Tests', () => {
     it('sets X-RateLimit-* headers on POST /api/credit/lines', async () => {
       const response = await request(app)
         .post('/api/credit/lines')
-        .send({ walletAddress: '0x123', requestedLimit: '1000' });
+        .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1', requestedLimit: '1000' });
 
       expect(response.status).toBe(201);
       expect(response.headers).toHaveProperty('x-ratelimit-limit');
@@ -49,7 +49,7 @@ describe('Rate Limiting Integration Tests', () => {
     it('sets X-RateLimit-* headers on POST /api/risk/evaluate', async () => {
       const response = await request(app)
         .post('/api/risk/evaluate')
-        .send({ walletAddress: '0x123' });
+        .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1' });
 
       expect(response.status).toBe(200);
       expect(response.headers).toHaveProperty('x-ratelimit-limit');
@@ -94,12 +94,12 @@ describe('Rate Limiting Integration Tests', () => {
       for (let i = 0; i < 10; i++) {
         await request(app)
           .post('/api/risk/evaluate')
-          .send({ walletAddress: '0xtest' });
+          .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' });
       }
 
       const response = await request(app)
         .post('/api/risk/evaluate')
-        .send({ walletAddress: '0xtest' });
+        .send({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' });
 
       if (response.status === 429) {
         expect(response.body).toHaveProperty('data');

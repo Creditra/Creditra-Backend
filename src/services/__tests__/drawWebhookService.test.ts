@@ -5,7 +5,6 @@ import {
     testWebhookConnectivity,
     getWebhookConfig,
     resolveWebhookConfig,
-    type WebhookPayload
 } from "../drawWebhookService.js";
 import type { HorizonEvent } from "../horizonListener.js";
 
@@ -145,7 +144,7 @@ describe("DrawWebhookService", () => {
             initializeWebhooks();
         });
 
-        it("should skip webhook delivery when no URLs are configured", () => {
+        it("should skip webhook delivery when no URLs are configured", async () => {
             delete process.env.WEBHOOK_URLS;
             initializeWebhooks();
 
@@ -162,13 +161,13 @@ describe("DrawWebhookService", () => {
                 })
             };
 
-            const result = sendDrawConfirmationWebhook(event);
+            await expect(sendDrawConfirmationWebhook(event)).resolves.toEqual([]);
 
-            expect(result).resolves.toEqual([]);
+            void expect(result).resolves.toEqual([]);
             expect(mockFetch).not.toHaveBeenCalled();
         });
 
-        it("should skip non-draw confirmation events", () => {
+        it("should skip non-draw confirmation events", async () => {
             const event: HorizonEvent = {
                 ledger: 1000,
                 timestamp: "2023-01-01T00:00:00Z",
@@ -177,9 +176,9 @@ describe("DrawWebhookService", () => {
                 data: JSON.stringify({})
             };
 
-            const result = sendDrawConfirmationWebhook(event);
+            await expect(sendDrawConfirmationWebhook(event)).resolves.toEqual([]);
 
-            expect(result).resolves.toEqual([]);
+            void expect(result).resolves.toEqual([]);
             expect(mockFetch).not.toHaveBeenCalled();
         });
 

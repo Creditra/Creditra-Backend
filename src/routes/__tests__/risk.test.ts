@@ -15,8 +15,9 @@ interface InvokeArgs {
 }
 
 async function invokeRoute(args: InvokeArgs): Promise<{ status: number; body: unknown }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const layer = riskRouter.stack.find(
-    (entry: any) =>
+    (entry: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
       entry.route?.path === args.path &&
       entry.route?.methods?.[args.method] === true,
   );
@@ -25,8 +26,9 @@ async function invokeRoute(args: InvokeArgs): Promise<{ status: number; body: un
     throw new Error(`Route not found: ${args.method.toUpperCase()} ${args.path}`);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handlers: Array<(req: Request, res: Response, next: NextFunction) => unknown> =
-    layer.route.stack.map((entry: any) => entry.handle);
+    layer.route!.stack.map((entry: any) => entry.handle);
 
   const req = {
     body: args.body ?? {},
@@ -103,13 +105,13 @@ describe('Risk Routes', () => {
       const response = await invokeRoute({
         method: 'post',
         path: '/evaluate',
-        body: { walletAddress: 'wallet123' },
+        body: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
         data: {
-          walletAddress: 'wallet123',
+          walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2',
           message: 'New risk evaluation completed',
         },
         error: null,
@@ -120,32 +122,32 @@ describe('Risk Routes', () => {
       await invokeRoute({
         method: 'post',
         path: '/evaluate',
-        body: { walletAddress: 'wallet123' },
+        body: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       const response = await invokeRoute({
         method: 'post',
         path: '/evaluate',
-        body: { walletAddress: 'wallet123' },
+        body: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
-      expect((response.body as any).data.message).toBe('Using cached risk evaluation');
+      expect((response.body as { data: { message: string } }).data.message).toBe('Using cached risk evaluation');
     });
 
     it('forces refresh when requested', async () => {
       await invokeRoute({
         method: 'post',
         path: '/evaluate',
-        body: { walletAddress: 'wallet123' },
+        body: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       const response = await invokeRoute({
         method: 'post',
         path: '/evaluate',
-        body: { walletAddress: 'wallet123', forceRefresh: true },
+        body: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2', forceRefresh: true },
       });
 
-      expect((response.body as any).data.message).toBe('New risk evaluation completed');
+      expect((response.body as { data: { message: string } }).data.message).toBe('New risk evaluation completed');
     });
 
     it('rejects missing walletAddress via schema validation', async () => {
@@ -165,7 +167,7 @@ describe('Risk Routes', () => {
       const response = await invokeRoute({
         method: 'post',
         path: '/evaluate',
-        body: { walletAddress: 'wallet123', unknown: 'x' },
+        body: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2', unknown: 'x' },
       });
 
       expect(response.status).toBe(400);
@@ -176,6 +178,7 @@ describe('Risk Routes', () => {
 
     it('returns 500 when service throws', async () => {
       const originalService = container.riskEvaluationService;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = {
         ...originalService,
         evaluateRisk: async () => {
@@ -186,20 +189,21 @@ describe('Risk Routes', () => {
       const response = await invokeRoute({
         method: 'post',
         path: '/evaluate',
-        body: { walletAddress: 'wallet123' },
+        body: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ data: null, error: 'Internal server error' });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = originalService;
     });
   });
 
   describe('GET endpoints', () => {
     it('returns evaluation by id', async () => {
-      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123' });
-      const latest = await container.riskEvaluationRepository.findLatestByWalletAddress('wallet123');
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' });
+      const latest = await container.riskEvaluationRepository.findLatestByWalletAddress('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2');
 
       const response = await invokeRoute({
         method: 'get',
@@ -208,7 +212,7 @@ describe('Risk Routes', () => {
       });
 
       expect(response.status).toBe(200);
-      expect((response.body as any).data.id).toBe(latest!.id);
+      expect((response.body as { data: { id: string } }).data.id).toBe(latest!.id);
     });
 
     it('returns 404 when evaluation is missing', async () => {
@@ -224,6 +228,7 @@ describe('Risk Routes', () => {
 
     it('returns 500 when evaluation fetch throws', async () => {
       const originalService = container.riskEvaluationService;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = {
         ...originalService,
         getRiskEvaluation: async () => {
@@ -239,20 +244,21 @@ describe('Risk Routes', () => {
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ data: null, error: 'Failed to fetch risk evaluation' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = originalService;
     });
 
     it('returns latest evaluation for wallet', async () => {
-      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123' });
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' });
 
       const response = await invokeRoute({
         method: 'get',
         path: '/wallet/:walletAddress/latest',
-        params: { walletAddress: 'wallet123' },
+        params: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       expect(response.status).toBe(200);
-      expect((response.body as any).data.walletAddress).toBe('wallet123');
+      expect((response.body as any).data.walletAddress).toBe('GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2');
     });
 
     it('returns 404 for missing latest evaluation', async () => {
@@ -268,6 +274,7 @@ describe('Risk Routes', () => {
 
     it('returns 500 when latest evaluation fetch throws', async () => {
       const originalService = container.riskEvaluationService;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = {
         ...originalService,
         getLatestRiskEvaluation: async () => {
@@ -278,35 +285,36 @@ describe('Risk Routes', () => {
       const response = await invokeRoute({
         method: 'get',
         path: '/wallet/:walletAddress/latest',
-        params: { walletAddress: 'wallet123' },
+        params: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ data: null, error: 'Failed to fetch latest risk evaluation' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = originalService;
     });
 
     it('returns history with pagination', async () => {
-      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123', forceRefresh: true });
-      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123', forceRefresh: true });
-      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'wallet123', forceRefresh: true });
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2', forceRefresh: true });
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2', forceRefresh: true });
+      await container.riskEvaluationService.evaluateRisk({ walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2', forceRefresh: true });
 
       const response = await invokeRoute({
         method: 'get',
         path: '/wallet/:walletAddress/history',
-        params: { walletAddress: 'wallet123' },
+        params: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
         query: { offset: '1', limit: '1' },
       });
 
       expect(response.status).toBe(200);
-      expect((response.body as any).data.evaluations).toHaveLength(1);
+      expect((response.body as { data: { evaluations: unknown[] } }).data.evaluations).toHaveLength(1);
     });
 
     it('rejects invalid query types for history', async () => {
       const response = await invokeRoute({
         method: 'get',
         path: '/wallet/:walletAddress/history',
-        params: { walletAddress: 'wallet123' },
+        params: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
         query: { offset: 'bad', limit: 'bad' },
       });
 
@@ -316,6 +324,7 @@ describe('Risk Routes', () => {
 
     it('returns 500 when history fetch throws', async () => {
       const originalService = container.riskEvaluationService;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = {
         ...originalService,
         getRiskEvaluationHistory: async () => {
@@ -326,11 +335,12 @@ describe('Risk Routes', () => {
       const response = await invokeRoute({
         method: 'get',
         path: '/wallet/:walletAddress/history',
-        params: { walletAddress: 'wallet123' },
+        params: { walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2' },
       });
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ data: null, error: 'Failed to fetch risk evaluation history' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._riskEvaluationService = originalService;
     });
   });

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { DbClient } from './client.js';
 import {
   ensureSchemaMigrations,
@@ -82,7 +82,7 @@ describe('applyMigration', () => {
     await applyMigration(client, migrationsDir, '001_initial_schema.sql');
     expect(client.query).toHaveBeenCalled();
     const insertCall = vi.mocked(client.query).mock.calls.find(
-      (c) => typeof c[0] === 'string' && c[0].includes('INSERT INTO schema_migrations')
+      (c: any[]) => typeof c[0] === 'string' && c[0].includes('INSERT INTO schema_migrations')
     );
     expect(insertCall).toBeDefined();
     expect(insertCall![1]).toEqual(['001_initial_schema']);
@@ -94,7 +94,7 @@ describe('runPendingMigrations', () => {
     const client = createMockClient();
     vi.mocked(client.query)
       .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ version: '001_initial_schema' }] });
+      .mockResolvedValueOnce({ rows: [{ version: '001_initial_schema' }, { version: '002_add_interest_rate_to_credit_lines' }] });
     const migrationsDir = await import('path').then((p) =>
       p.join(process.cwd(), 'migrations')
     );
@@ -112,7 +112,21 @@ describe('runPendingMigrations', () => {
     );
     const run = await runPendingMigrations(client, migrationsDir);
     expect(run).toContain('001_initial_schema');
-    expect(run.length).toBeGreaterThanOrEqual(1);
+    expect(run).toContain('002_add_interest_rate_to_credit_lines');
+    expect(run.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('applies only new migrations when some are already applied', async () => {
+    const client = createMockClient();
+    vi.mocked(client.query)
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ version: '001_initial_schema' }] });
+    const migrationsDir = await import('path').then((p) =>
+      p.join(process.cwd(), 'migrations')
+    );
+    const run = await runPendingMigrations(client, migrationsDir);
+    expect(run).toContain('002_add_interest_rate_to_credit_lines');
+    expect(run).not.toContain('001_initial_schema');
   });
 });
 

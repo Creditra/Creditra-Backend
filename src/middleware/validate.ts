@@ -27,7 +27,7 @@ export function validateBody<T>(schema: z.ZodType<T>) {
         message: issue.message,
       }));
 
-      res.status(400).json({ error: 'Validation failed', details });
+      res.status(400).json({ data: null, error: 'Validation failed', details });
       return;
     }
 
@@ -53,11 +53,33 @@ export function validateQuery<T>(schema: z.ZodType<T>) {
         message: issue.message,
       }));
 
-      res.status(400).json({ error: 'Validation failed', details });
+      res.status(400).json({ data: null, error: 'Validation failed', details });
       return;
     }
 
     req.query = result.data as Request['query'];
+    next();
+  };
+}
+
+/**
+ * Express middleware factory that validates `req.params` against a Zod schema.
+ */
+export function validateParams<T>(schema: z.ZodType<T>) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const result = schema.safeParse(req.params);
+
+    if (!result.success) {
+      const details = result.error.issues.map((issue) => ({
+        field: issue.path.join('.'),
+        message: issue.message,
+      }));
+
+      res.status(400).json({ error: 'Validation failed', details });
+      return;
+    }
+
+    req.params = result.data as any;
     next();
   };
 }

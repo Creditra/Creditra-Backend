@@ -31,7 +31,28 @@ const SHUTDOWN_TIMEOUT_MS = parseInt(
 );
 
 app.use(cors());
-app.use(express.json());
+
+// Reject bodies on mutating requests that don't declare application/json.
+app.use((req, res, next) => {
+  const methodHasBody = req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH';
+  const hasBody =
+    methodHasBody &&
+    (Number(req.headers['content-length']) > 0 || req.headers['transfer-encoding'] != null);
+  if (hasBody) {
+    const ct = req.headers['content-type'] ?? '';
+    if (!ct.includes('application/json')) {
+      res.status(415).json({ data: null, error: 'Content-Type must be application/json' });
+      return;
+    }
+  }
+  next();
+});
+
+// 100 kb hard cap; body-parser emits a 413 that errorHandler converts to a
+// structured response.
+app.use(express.json({ limit: '100kb' }));
+
+app.use(requestLogger);
 
 app.use("/health", healthRouter);
 
@@ -61,6 +82,18 @@ if (isMain) {
   const server = app.listen(port, () => {
     console.log(`Creditra API listening on http://localhost:${port}`);
     console.log(`Swagger UI available at http://localhost:${port}/docs`);
+    
+    // Start reconciliation worker
+    const container = Container.getInstance();
+    const reconciliationInterval = parseInt(
+      process.env.RECONCILIATION_INTERVAL_MS ?? "3600000", // Default: 1 hour
+      10
+    );
+    container.reconciliationWorker.start({
+      intervalMs: reconciliationInterval,
+      runImmediately: process.env.RECONCILIATION_RUN_IMMEDIATELY !== "false",
+    });
+    console.log(`[ReconciliationWorker] Started with ${reconciliationInterval}ms interval`);
   });
 
   // ── Graceful Shutdown ───────────────────────────────────────────────────────

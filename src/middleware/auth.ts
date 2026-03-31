@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import * as crypto from 'node:crypto';
 
 /**
  * Factory that returns a `requireApiKey` Express middleware.
@@ -10,6 +11,7 @@ import type { Request, Response, NextFunction } from 'express';
  *     `process.env.API_KEYS` value without needing a server restart).
  *
  * Security notes:
+ *   - Timing-safe comparison using crypto.timingSafeEqual to prevent timing attacks.
  *   - The received key value is NEVER included in logs or responses.
  *   - 401  → header is absent (caller is unaware of auth).
  *   - 403  → header present but the key is invalid.
@@ -17,28 +19,35 @@ import type { Request, Response, NextFunction } from 'express';
 export function createApiKeyMiddleware(
     validKeysOrResolver: Set<string> | (() => Set<string>),
 ) {
-    const resolve: () => Set<string> =
+    const resolveKeys: () => string[] = 
         typeof validKeysOrResolver === 'function'
-            ? validKeysOrResolver
-            : () => validKeysOrResolver;
+            ? () => Array.from(validKeysOrResolver())
+            : () => Array.from(validKeysOrResolver);
 
     return function requireApiKey(
         req: Request,
         res: Response,
         next: NextFunction,
     ): void {
-        const provided = req.headers['x-api-key'];
+        const provided = (Array.isArray(req.headers['x-api-key']) ? req.headers['x-api-key'][0] : req.headers['x-api-key']) || '';
 
         if (!provided) {
             res.status(401).json({ error: 'Unauthorized' });
             return;
         }
 
-        if (!resolve().has(provided as string)) {
-            res.status(403).json({ error: 'Forbidden' });
-            return;
+        const keys = resolveKeys();
+        const encoder = new TextEncoder();
+        const providedBytes = encoder.encode(provided);
+
+        for (const key of keys) {
+            const keyBytes = encoder.encode(key);
+            if (keyBytes.length === providedBytes.length && crypto.timingSafeEqual(keyBytes, providedBytes)) {
+                next();
+                return;
+            }
         }
 
-        next();
+        res.status(403).json({ error: 'Forbidden' });
     };
 }
