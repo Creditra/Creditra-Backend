@@ -9,8 +9,10 @@ import swaggerUi from "swagger-ui-express";
 import { creditRouter } from "./routes/credit.js";
 import { riskRouter } from "./routes/risk.js";
 import { healthRouter } from "./routes/health.js";
+import { webhookRouter } from "./routes/webhook.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { Container } from "./container/Container.js";
+import { initializeWebhooks } from "./services/drawWebhookService.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const openapiSpec = yaml.parse(
@@ -29,7 +31,26 @@ const SHUTDOWN_TIMEOUT_MS = parseInt(
 );
 
 app.use(cors());
-app.use(express.json());
+
+// Reject bodies on mutating requests that don't declare application/json.
+app.use((req, res, next) => {
+  const methodHasBody = req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH';
+  const hasBody =
+    methodHasBody &&
+    (Number(req.headers['content-length']) > 0 || req.headers['transfer-encoding'] != null);
+  if (hasBody) {
+    const ct = req.headers['content-type'] ?? '';
+    if (!ct.includes('application/json')) {
+      res.status(415).json({ data: null, error: 'Content-Type must be application/json' });
+      return;
+    }
+  }
+  next();
+});
+
+// 100 kb hard cap; body-parser emits a 413 that errorHandler converts to a
+// structured response.
+app.use(express.json({ limit: '100kb' }));
 
 app.use("/health", healthRouter);
 
@@ -41,6 +62,7 @@ app.get("/docs.json", (_req, res) => {
 
 app.use("/api/credit", creditRouter);
 app.use("/api/risk", riskRouter);
+app.use("/api/webhooks", webhookRouter);
 
 // Global error handler — must be registered after routes
 app.use(errorHandler);
@@ -52,6 +74,9 @@ const isMain =
   process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 
 if (isMain) {
+  // Initialize webhooks before starting the server
+  initializeWebhooks();
+
   const server = app.listen(port, () => {
     console.log(`Creditra API listening on http://localhost:${port}`);
     console.log(`Swagger UI available at http://localhost:${port}/docs`);

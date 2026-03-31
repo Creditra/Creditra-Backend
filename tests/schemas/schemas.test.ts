@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   riskEvaluateSchema,
+  riskHistoryQuerySchema,
 } from '../../src/schemas/risk.schema.js';
 import {
   createCreditLineSchema,
+  creditLinesQuerySchema,
   drawSchema,
   repaySchema,
+  transactionHistoryQuerySchema,
 } from '../../src/schemas/credit.schema.js';
 
 /* ------------------------------------------------------------------ */
@@ -34,6 +37,16 @@ describe('riskEvaluateSchema', () => {
 
   it('rejects non-string walletAddress', () => {
     const result = riskEvaluateSchema.safeParse({ walletAddress: 123 });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts optional forceRefresh', () => {
+    const result = riskEvaluateSchema.safeParse({ walletAddress: 'GABCDEF', forceRefresh: true });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects unknown keys', () => {
+    const result = riskEvaluateSchema.safeParse({ walletAddress: 'GABCDEF', extra: 'nope' });
     expect(result.success).toBe(false);
   });
 });
@@ -83,6 +96,15 @@ describe('createCreditLineSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('rejects unknown keys', () => {
+    const result = createCreditLineSchema.safeParse({
+      walletAddress: 'GABCDEF',
+      requestedLimit: '100',
+      extra: 'nope',
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -113,6 +135,11 @@ describe('drawSchema', () => {
     const result = drawSchema.safeParse({ amount: 500 });
     expect(result.success).toBe(false);
   });
+
+  it('rejects unknown keys', () => {
+    const result = drawSchema.safeParse({ amount: '500', extra: true });
+    expect(result.success).toBe(false);
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -131,6 +158,90 @@ describe('repaySchema', () => {
 
   it('rejects non-numeric amount', () => {
     const result = repaySchema.safeParse({ amount: 'nope' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects unknown keys', () => {
+    const result = repaySchema.safeParse({ amount: '200', extra: true });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('creditLinesQuerySchema', () => {
+  it('accepts empty query', () => {
+    const result = creditLinesQuerySchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it('coerces numeric query strings', () => {
+    const result = creditLinesQuerySchema.safeParse({ offset: '0', limit: '25' });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data).toEqual({ offset: 0, limit: 25 });
+  });
+
+  it('rejects invalid limit', () => {
+    const result = creditLinesQuerySchema.safeParse({ limit: '0' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects unknown keys', () => {
+    const result = creditLinesQuerySchema.safeParse({ offset: '0', foo: 'bar' });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('transactionHistoryQuerySchema', () => {
+  it('accepts valid filters and pagination', () => {
+    const result = transactionHistoryQuerySchema.safeParse({
+      type: 'borrow',
+      from: '2026-01-01T00:00:00.000Z',
+      to: '2026-01-02T00:00:00.000Z',
+      page: '1',
+      limit: '20',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects invalid transaction type', () => {
+    const result = transactionHistoryQuerySchema.safeParse({ type: 'draw' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid date', () => {
+    const result = transactionHistoryQuerySchema.safeParse({ from: 'not-a-date' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid page/limit bounds', () => {
+    const result = transactionHistoryQuerySchema.safeParse({ page: '0', limit: '101' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects unknown keys', () => {
+    const result = transactionHistoryQuerySchema.safeParse({ page: '1', unknown: 'x' });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('riskHistoryQuerySchema', () => {
+  it('accepts empty query', () => {
+    const result = riskHistoryQuerySchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it('coerces valid pagination values', () => {
+    const result = riskHistoryQuerySchema.safeParse({ offset: '0', limit: '50' });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data).toEqual({ offset: 0, limit: 50 });
+  });
+
+  it('rejects negative offset', () => {
+    const result = riskHistoryQuerySchema.safeParse({ offset: '-1' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects unknown keys', () => {
+    const result = riskHistoryQuerySchema.safeParse({ limit: '10', foo: 'bar' });
     expect(result.success).toBe(false);
   });
 });

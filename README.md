@@ -125,8 +125,14 @@ docker build --target runner -t creditra-backend:latest .
 | `API_KEYS`  | **Yes**  | Comma-separated list of valid admin API keys (see below) |
 | `CORS_ORIGINS` | Prod   | Comma-separated allowlist of exact browser origins        |
 | `DATABASE_URL` | No    | PostgreSQL connection string (required for migrations)   |
+| `HTTP_CONNECT_TIMEOUT_MS` | No | Connection timeout for outbound HTTP (default: `5000`) |
+| `HTTP_READ_TIMEOUT_MS` | No | Read timeout for outbound HTTP (default: `10000`) |
 
 Optional later: `REDIS_URL`, `HORIZON_URL`, etc.
+
+### HTTP Timeouts
+
+All outbound HTTP requests (Horizon API, risk providers) use configurable timeouts to prevent hanging connections. See [docs/http-timeouts.md](docs/http-timeouts.md) for configuration and usage details.
 
 ### Browser origins
 
@@ -217,7 +223,44 @@ The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push and 
 |------|---------|-----------------|
 | TypeScript typecheck | `npm run typecheck` | Any type error |
 | Lint | `npm run lint` | Any ESLint warning or error |
-| Tests + Coverage | `npm test` | Failing test OR coverage < 95% |
+| Dependency audit | `npm audit --production` | Moderate+ vulnerabilities |
+
+## 🔐 Dependency Security
+
+This project enforces automated dependency vulnerability checks as part of CI.
+
+### Checks in place
+
+- `npm audit --production` runs on every push
+- GitHub Dependency Review runs on every pull request
+
+These checks help prevent vulnerable dependencies from reaching production.
+
+### Severity policy
+
+| Severity   | Policy |
+|-----------|--------|
+| Low       | Allowed |
+| Moderate  | Allowed with justification |
+| High      | Must be fixed before merge |
+| Critical  | Blocker — cannot be merged |
+
+### Exceptions
+
+Moderate vulnerabilities may be accepted only if:
+
+- No fix is available
+- The vulnerable code path is not used in production
+- There is no impact on security-sensitive data (API keys, PII, Stellar data)
+
+All exceptions **must be documented in the pull request description**.
+
+### Local validation
+
+Before pushing changes, run:
+
+```bash
+npm audit --production
 
 ### Run locally
 
@@ -242,10 +285,51 @@ npm run test:watch
 
 ## API (current)
 
-- `GET /health` — Service health
-- `GET /api/credit/lines` — List credit lines (placeholder)
-- `GET /api/credit/lines/:id` — Get credit line by id (placeholder)
-- `POST /api/risk/evaluate` — Request risk evaluation; body: `{ "walletAddress": "..." }`; returns `400` with `{ "error": "Invalid wallet address format." }` for invalid Stellar addresses
+### Response Envelope
+
+All API endpoints use a standardized response envelope format for consistency:
+
+```typescript
+{
+  data: T | null,      // Success payload or null on error
+  error: string | null // Error message or null on success
+}
+```
+
+Examples:
+
+```json
+// Success response (200)
+{
+  "data": {
+    "id": "line-123",
+    "walletAddress": "GABCDEF...",
+    "creditLimit": "5000.00"
+  },
+  "error": null
+}
+
+// Error response (400)
+{
+  "data": null,
+  "error": "Credit line not found"
+}
+```
+
+The envelope is implemented via helper functions in `src/utils/response.ts`:
+- `ok(res, data, statusCode?)` - Send success response (default 200)
+- `fail(res, error, statusCode?)` - Send error response (default 500)
+
+HTTP status codes follow REST conventions:
+- `200` - Success
+- `201` - Created
+- `204` - No Content (DELETE operations)
+- `400` - Bad Request (client error)
+- `401` - Unauthorized (missing auth)
+- `403` - Forbidden (invalid auth)
+- `404` - Not Found
+- `500` - Internal Server Error
+
 ### Public
 
 - `GET  /health` — Service health
@@ -258,6 +342,12 @@ npm run test:watch
 - `POST /api/credit/lines/:id/suspend` — Suspend a credit line
 - `POST /api/credit/lines/:id/close` — Close a credit line
 - `POST /api/risk/admin/recalibrate` — Trigger risk model recalibration
+- `POST /api/webhooks/test` — Test webhook connectivity
+
+### Webhooks (public)
+
+- `GET /api/webhooks/config` — Get webhook configuration
+- `GET /api/webhooks/health` — Webhook service health check
 
 ## Running tests
 
@@ -274,6 +364,8 @@ Target: ≥ 95 % coverage on all middleware and route files.
 src/
   config/
     apiKeys.ts                              # loads + validates API_KEYS env var
+    cors.ts                                 # loads + validates CORS_ORIGINS env var
+    env.ts                                  # Zod schema; validates all env vars at startup
   container/
     Container.ts                            # DI container; wires repos → services
   middleware/
@@ -295,6 +387,7 @@ src/
     health.ts                               # GET /health
     credit.ts                               # credit-line endpoints (public + admin)
     risk.ts                                 # risk endpoints (public + admin)
+    webhook.ts                              # webhook management endpoints
   schemas/                                  # Zod request-body schemas
   services/
     creditService.ts                        # credit-line state machine + draw logic
@@ -302,6 +395,7 @@ src/
     riskService.ts                          # wallet risk evaluation
     RiskEvaluationService.ts               # repo-backed risk service
     horizonListener.ts                      # Stellar Horizon event poller
+    drawWebhookService.ts                   # draw confirmation webhook delivery
     jobQueue.ts                             # background job scheduler
   utils/
     response.ts                             # ok() / fail() envelope helpers
@@ -312,6 +406,7 @@ docs/
   data-model.md                            # PostgreSQL schema documentation
   REPOSITORY_ARCHITECTURE.md              # deep-dive on the repository pattern
   security-checklist-backend.md
+  security-pentest-checklist.md           # pre-engagement API pentest readiness
 migrations/                                # sequential SQL migration files
 .github/workflows/
   ci.yml                                   # CI: typecheck → lint → test → coverage
@@ -458,6 +553,82 @@ setInterval(pollOnce, POLL_INTERVAL_MS)
 
 ---
 
+### Draw Confirmation Webhooks
+
+The backend provides optional webhook notifications when draw confirmations are detected via Horizon polling. Webhooks are delivered with HMAC signatures and include retry logic with exponential backoff.
+
+#### Configuration
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `WEBHOOK_URLS` | No | _(empty)_ | Comma-separated webhook endpoint URLs |
+| `WEBHOOK_SECRET` | Yes (if URLs configured) | _(empty)_ | HMAC secret for payload signing |
+| `WEBHOOK_MAX_RETRIES` | No | `3` | Maximum retry attempts |
+| `WEBHOOK_INITIAL_BACKOFF_MS` | No | `1000` | Initial backoff delay in milliseconds |
+| `WEBHOOK_BACKOFF_MULTIPLIER` | No | `2.0` | Exponential backoff multiplier |
+| `WEBHOOK_TIMEOUT_MS` | No | `10000` | Request timeout in milliseconds |
+
+#### Webhook Payload
+
+When a draw confirmation event is detected, the following payload is sent:
+
+```json
+{
+  "event": "draw_confirmed",
+  "timestamp": "2024-01-15T10:00:00.000Z",
+  "data": {
+    "ledger": 12345,
+    "contractId": "CC7P3M7JZB3J5K5L5M5N5O5P5Q5R5S5T5U5V5W5X5Y5Z",
+    "drawAmount": "1000.00000000",
+    "drawId": "draw_abc123",
+    "borrowerWallet": "GABC1234567890DEF1234567890DEF1234567890",
+    "creditLineId": "credit_line_456",
+    "horizonTimestamp": "2024-01-15T09:59:58.000Z"
+  }
+}
+```
+
+#### Security
+
+- **HMAC Signature**: Each webhook includes an `X-Webhook-Signature` header with format `sha256=<hex-signature>`
+- **Signature Verification**: Verify signatures using your configured `WEBHOOK_SECRET`:
+  ```bash
+  echo -n "<payload>" | openssl dgst -sha256 -hmac "<your-secret>"
+  ```
+- **Timestamp**: `X-Webhook-Timestamp` header helps prevent replay attacks
+- **User Agent**: `Creditra-Webhook/1.0` identifies legitimate webhook requests
+
+#### Retry Logic
+
+Failed webhook deliveries are retried with exponential backoff:
+- Initial delay: `WEBHOOK_INITIAL_BACKOFF_MS` (default 1000ms)
+- Subsequent delays: `previous_delay * WEBHOOK_BACKOFF_MULTIPLIER` (default 2.0x)
+- Maximum attempts: `WEBHOOK_MAX_RETRIES` (default 3)
+
+#### Management Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/webhooks/config` | Get current webhook configuration (excludes secrets) |
+| `POST` | `/api/webhooks/test` | Test connectivity to all configured webhook URLs |
+| `GET` | `/api/webhooks/health` | Check webhook service health status |
+
+#### Example Usage
+
+```bash
+# Test webhook connectivity
+curl -X POST http://localhost:3000/api/webhooks/test \
+  -H "X-API-Key: your-api-key"
+
+# Check webhook configuration
+curl http://localhost:3000/api/webhooks/config
+
+# Check webhook service health
+curl http://localhost:3000/api/webhooks/health
+```
+
+---
+
 ### OpenAPI specification
 
 The full API contract is the machine-readable source of truth:
@@ -475,8 +646,9 @@ Keep `openapi.yaml` in sync with route behaviour; the CI pipeline validates the 
 Security is a priority for Creditra. Before deploying or contributing:
 
 - Review the [Backend Security Checklist](docs/security-checklist-backend.md)
+- Before an external pentest, work through the [API pentest readiness checklist](docs/security-pentest-checklist.md)
 - Ensure all security requirements are met
-- Run `npm audit` to check for vulnerabilities
+- Run `npm audit --production` to check for vulnerabilities
 - Maintain minimum 95% test coverage
 
 ## Merging to remote

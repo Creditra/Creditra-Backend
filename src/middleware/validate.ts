@@ -36,3 +36,28 @@ export function validateBody<T>(schema: z.ZodType<T>) {
     next();
   };
 }
+
+/**
+ * Express middleware factory that validates `req.query` against a Zod schema.
+ *
+ * Parsed values replace `req.query` so handlers can consume validated and
+ * coerced pagination/filter fields (e.g. numbers parsed from query strings).
+ */
+export function validateQuery<T>(schema: z.ZodType<T>) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const result = schema.safeParse(req.query);
+
+    if (!result.success) {
+      const details = result.error.issues.map((issue) => ({
+        field: issue.path.join('.'),
+        message: issue.message,
+      }));
+
+      res.status(400).json({ error: 'Validation failed', details });
+      return;
+    }
+
+    req.query = result.data as Request['query'];
+    next();
+  };
+}

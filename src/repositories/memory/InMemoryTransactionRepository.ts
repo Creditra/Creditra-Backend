@@ -5,6 +5,14 @@ import { randomUUID } from 'crypto';
 export class InMemoryTransactionRepository implements TransactionRepository {
   private transactions: Map<string, Transaction> = new Map();
 
+  private sortByNewest(transactions: Transaction[]): Transaction[] {
+    return transactions.sort((a, b) => {
+      const tsDiff = b.createdAt.getTime() - a.createdAt.getTime();
+      if (tsDiff !== 0) return tsDiff;
+      return a.id.localeCompare(b.id);
+    });
+  }
+
   async create(request: CreateTransactionRequest): Promise<Transaction> {
     const id = randomUUID();
     const now = new Date();
@@ -29,17 +37,17 @@ export class InMemoryTransactionRepository implements TransactionRepository {
   }
 
   async findByCreditLineId(creditLineId: string, offset = 0, limit = 100): Promise<Transaction[]> {
-    const filtered = Array.from(this.transactions.values())
-      .filter(tx => tx.creditLineId === creditLineId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const filtered = this.sortByNewest(
+      Array.from(this.transactions.values()).filter(tx => tx.creditLineId === creditLineId)
+    );
 
     return filtered.slice(offset, offset + limit);
   }
 
   async findByWalletAddress(walletAddress: string, offset = 0, limit = 100): Promise<Transaction[]> {
-    const filtered = Array.from(this.transactions.values())
-      .filter(tx => tx.walletAddress === walletAddress)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const filtered = this.sortByNewest(
+      Array.from(this.transactions.values()).filter(tx => tx.walletAddress === walletAddress)
+    );
 
     return filtered.slice(offset, offset + limit);
   }
@@ -61,8 +69,7 @@ export class InMemoryTransactionRepository implements TransactionRepository {
   }
 
   async findAll(offset = 0, limit = 100): Promise<Transaction[]> {
-    const all = Array.from(this.transactions.values())
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const all = this.sortByNewest(Array.from(this.transactions.values()));
     
     return all.slice(offset, offset + limit);
   }
@@ -72,9 +79,9 @@ export class InMemoryTransactionRepository implements TransactionRepository {
   }
 
   async findByStatus(status: TransactionStatus, offset = 0, limit = 100): Promise<Transaction[]> {
-    const filtered = Array.from(this.transactions.values())
-      .filter(tx => tx.status === status)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const filtered = this.sortByNewest(
+      Array.from(this.transactions.values()).filter(tx => tx.status === status)
+    );
 
     return filtered.slice(offset, offset + limit);
   }
