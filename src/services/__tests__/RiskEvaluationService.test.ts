@@ -1,51 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { RiskEvaluationService } from "../RiskEvaluationService.js";
-import type { RiskEvaluationRepository } from "../../repositories/interfaces/RiskEvaluationRepository.js";
-import type { IRiskProvider } from "../providers/IRiskProvider.js";
-import type { RiskEvaluation } from "../../models/RiskEvaluation.js";
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { RiskEvaluationService } from '../RiskEvaluationService.js';
+import type { RiskEvaluationRepository } from '../../repositories/interfaces/RiskEvaluationRepository.js';
+import type { RiskEvaluation } from '../../models/RiskEvaluation.js';
 
-const WALLET = "wallet123";
-
-function buildMockRepo(): RiskEvaluationRepository {
-  return {
-    save: vi.fn(),
-    findLatestByWalletAddress: vi.fn(),
-    findById: vi.fn(),
-    findByWalletAddress: vi.fn(),
-    deleteExpired: vi.fn(),
-    isValid: vi.fn(),
-    findAll: vi.fn(),
-    count: vi.fn(),
-  };
-}
-
-function buildMockProvider(score = 70): IRiskProvider {
-  return {
-    name: "mock",
-    evaluate: vi.fn().mockResolvedValue({
-      score,
-      factors: [{ name: "mock_factor", value: score / 100, weight: 1.0 }],
-    }),
-  };
-}
-
-function buildCachedEval(
-  overrides: Partial<RiskEvaluation> = {},
-): RiskEvaluation {
-  return {
-    id: "eval-123",
-    walletAddress: WALLET,
-    riskScore: 75,
-    creditLimit: "750.00",
-    interestRateBps: 625,
-    factors: [],
-    evaluatedAt: new Date(),
-    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    ...overrides,
-  };
-}
-
-describe("RiskEvaluationService", () => {
+describe('RiskEvaluationService', () => {
   let service: RiskEvaluationService;
   let mockRepository: RiskEvaluationRepository;
   let mockProvider: IRiskProvider;

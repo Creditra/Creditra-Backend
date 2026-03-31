@@ -2,6 +2,8 @@
 
 This checklist ensures the Creditra backend maintains security best practices across authentication, authorization, input validation, logging, and dependency management.
 
+For **external penetration-test preparation** (scope, auth bypass checks, rate limits, validation, error leakage, evidence), use **[security-pentest-checklist.md](security-pentest-checklist.md)** in addition to this file.
+
 ## 1. Authentication & Authorization
 
 ### API Authentication
