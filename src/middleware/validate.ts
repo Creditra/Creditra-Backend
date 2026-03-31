@@ -27,7 +27,7 @@ export function validateBody<T>(schema: z.ZodType<T>) {
         message: issue.message,
       }));
 
-      res.status(400).json({ error: 'Validation failed', details });
+      res.status(400).json({ data: null, error: 'Validation failed', details });
       return;
     }
 
@@ -53,7 +53,7 @@ export function validateQuery<T>(schema: z.ZodType<T>) {
         message: issue.message,
       }));
 
-      res.status(400).json({ error: 'Validation failed', details });
+      res.status(400).json({ data: null, error: 'Validation failed', details });
       return;
     }
 
