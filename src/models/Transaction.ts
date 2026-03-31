@@ -14,7 +14,8 @@ export enum TransactionType {
   BORROW = 'borrow',
   REPAY = 'repay',
   INTEREST_ACCRUAL = 'interest_accrual',
-  FEE = 'fee'
+  FEE = 'fee',
+  STATUS_CHANGE = 'status_change'
 }
 
 export enum TransactionStatus {

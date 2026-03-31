@@ -148,3 +148,66 @@ describe('loadApiKeys', () => {
         expect(keys.has('key-y')).toBe(true);
     });
 });
+
+// ---------------------------------------------------------------------------
+// Dynamic resolver tests (with loadApiKeys)
+// ---------------------------------------------------------------------------
+
+describe('requireApiKey with dynamic resolver (loadApiKeys)', () => {
+    let loadApiKeys: any;
+    let next: NextFunction;
+    let dynamicMiddleware: any;
+
+    beforeAll(async () => {
+        const mod = await import('../config/apiKeys.js');
+        loadApiKeys = mod.loadApiKeys;
+    });
+
+    beforeEach(() => {
+        next = vi.fn();
+        process.env.API_KEYS = 'dynamic-valid-key,test-key';
+        dynamicMiddleware = createApiKeyMiddleware(() => loadApiKeys());
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        delete process.env.API_KEYS;
+    });
+
+    it('calls next() with valid key from dynamic loader', () => {
+        const req = makeReq('dynamic-valid-key');
+        const res = makeRes();
+
+        dynamicMiddleware(req as Request, res, next);
+
+        expect(next).toHaveBeenCalledOnce();
+    });
+
+    it('returns 403 for invalid key with dynamic loader', () => {
+        const req = makeReq('invalid-dynamic-key');
+        const res = makeRes();
+
+        dynamicMiddleware(req as Request, res, next);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(next).not.toHaveBeenCalled();
+    });
+
+    it('timing-safe: short invalid key returns 403 quickly', () => {
+        const req = makeReq('short');
+        const res = makeRes();
+
+        dynamicMiddleware(req as Request, res, next);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    it('timing-safe: long invalid key has same timing', () => {
+        const req = makeReq('dynamic-valid-key-but-changed-last-byte-wrong');
+        const res = makeRes();
+
+        dynamicMiddleware(req as Request, res, next);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+    });
+});
