@@ -1,9 +1,10 @@
 import { Router } from 'express';
+import { ok } from '../utils/response.js';
 
 export const healthRouter = Router();
 
 healthRouter.get('/', (_req, res) => {
-     res.status(200).json({
+     ok(res, {
           status: 'ok',
           service: 'creditra-backend',
      });
