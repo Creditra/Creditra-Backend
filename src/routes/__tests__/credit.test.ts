@@ -3,7 +3,7 @@ import express from 'express';
 import request from 'supertest';
 import { creditRouter } from '../credit.js';
 import { Container } from '../../container/Container.js';
-import { CreditLineStatus } from '../../models/CreditLine.js';
+import { CreditLineStatus, type CreditLine } from '../../models/CreditLine.js';
 
 describe('Credit Routes', () => {
   let app: express.Application;
@@ -20,7 +20,9 @@ describe('Credit Routes', () => {
 
   afterEach(() => {
     // Clear repository data after each test
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (container.creditLineRepository && typeof (container.creditLineRepository as any).clear === 'function') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container.creditLineRepository as any).clear();
     }
   });
@@ -247,6 +249,7 @@ describe('Credit Routes', () => {
         }
       };
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._creditLineService = mockService;
 
       const response = await request(app)
@@ -257,6 +260,7 @@ describe('Credit Routes', () => {
       expect(response.body.data).toBeNull();
 
       // Restore original service
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._creditLineService = originalService;
     });
   });
@@ -319,6 +323,7 @@ describe('Credit Routes', () => {
         }
       };
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._creditLineService = mockService;
 
       const response = await request(app)
@@ -334,6 +339,7 @@ describe('Credit Routes', () => {
       expect(response.body.data).toBeNull();
 
       // Restore original service
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._creditLineService = originalService;
     });
   });
@@ -409,6 +415,7 @@ describe('Credit Routes', () => {
         }
       };
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._creditLineService = mockService;
 
       const response = await request(app)
@@ -420,6 +427,7 @@ describe('Credit Routes', () => {
       expect(response.body.data).toBeNull();
 
       // Restore original service
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._creditLineService = originalService;
     });
   });
@@ -460,6 +468,7 @@ describe('Credit Routes', () => {
         }
       };
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._creditLineService = mockService;
 
       const response = await request(app)
@@ -470,6 +479,7 @@ describe('Credit Routes', () => {
       expect(response.body.data).toBeNull();
 
       // Restore original service
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._creditLineService = originalService;
     });
   });
@@ -502,7 +512,7 @@ describe('Credit Routes', () => {
         .expect(200);
 
       expect(response.body.data.creditLines).toHaveLength(2);
-      expect(response.body.data.creditLines.every((cl: any) => cl.walletAddress === walletAddress)).toBe(true);
+      expect(response.body.data.creditLines.every((cl: CreditLine) => cl.walletAddress === walletAddress)).toBe(true);
       expect(response.body.error).toBeNull();
     });
 
@@ -525,6 +535,7 @@ describe('Credit Routes', () => {
         }
       };
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._creditLineService = mockService;
 
       const response = await request(app)
@@ -535,6 +546,7 @@ describe('Credit Routes', () => {
       expect(response.body.data).toBeNull();
 
       // Restore original service
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._creditLineService = originalService;
     });
   });
