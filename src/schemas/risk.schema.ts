@@ -1,10 +1,10 @@
 import { z } from 'zod';
+import { isValidStellarAddress } from '../utils/stellarAddress.js';
 
 export const riskEvaluateSchema = z.object({
   walletAddress: z
     .string()
-    .min(1, 'walletAddress is required')
-    .max(256, 'walletAddress must be at most 256 characters'),
+    .refine(isValidStellarAddress, 'walletAddress must be a valid Stellar address'),
   forceRefresh: z.boolean().optional(),
 }).strict();
 
