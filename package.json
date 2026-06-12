@@ -13,6 +13,18 @@
     "api"
   ],
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Creditra/Creditra-Backend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Creditra/Creditra-Backend/issues"
+  },
+  "homepage": "https://github.com/Creditra/Creditra-Backend#readme",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "build": "tsc && cp src/openapi.yaml dist/openapi.yaml",
     "start": "node dist/index.js",
