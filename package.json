@@ -2,6 +2,7 @@
   "name": "creditra-backend",
   "version": "0.1.0",
   "private": true,
+  "description": "Creditra backend API for credit lines, draws, and Stellar/Soroban reconciliation",
   "type": "module",
   "scripts": {
     "build": "tsc && cp src/openapi.yaml dist/openapi.yaml",
