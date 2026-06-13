@@ -7,12 +7,38 @@ import type { RiskEvaluationRepository } from "../repositories/interfaces/RiskEv
 import type { IRiskProvider } from "./providers/IRiskProvider.js";
 import { createRiskProvider } from "./providers/providerFactory.js";
 
+/**
+ * Orchestrates risk evaluations: cache check → provider call → persist.
+ *
+ * The signal-collection pipeline (see `docs/SIGNALS_INGEST.md`) is encapsulated
+ * behind {@link IRiskProvider}. Implementations include `RulesEngineRiskProvider`
+ * (default, deterministic), `StaticRiskProvider` (tests), and
+ * `ExternalApiRiskProvider` (HTTP-pluggable). The provider is injected at
+ * construction so tests can swap it without env-var gymnastics.
+ *
+ * Score-to-economics translation:
+ * - `creditLimit = baseCreditLimit (1000) × score / 100`
+ * - `interestRateBps = baseRateBps (500) + baseRateBps × (100 − score) / 100`
+ *
+ * Higher score ⇒ larger limit, lower rate. Pure function of `score`.
+ *
+ * Cache behaviour: evaluations are TTL'd for 24h via the repository's
+ * `isValid` helper. Pass `forceRefresh: true` to bypass.
+ */
 export class RiskEvaluationService {
   constructor(
     private riskEvaluationRepository: RiskEvaluationRepository,
     private provider: IRiskProvider = createRiskProvider(),
   ) {}
 
+  /**
+   * Evaluate risk for `request.walletAddress`. Returns the cached evaluation
+   * when one exists and is still valid (unless `forceRefresh` is set).
+   * Otherwise calls the configured provider, persists the result, and
+   * returns the summary.
+   *
+   * @throws if `walletAddress` is empty.
+   */
   async evaluateRisk(
     request: RiskEvaluationRequest,
   ): Promise<RiskEvaluationResult> {
@@ -57,10 +83,12 @@ export class RiskEvaluationService {
     };
   }
 
+  /** Fetch a single evaluation by id; `null` if not found. */
   async getRiskEvaluation(id: string): Promise<RiskEvaluation | null> {
     return await this.riskEvaluationRepository.findById(id);
   }
 
+  /** Most recent evaluation for a wallet, regardless of TTL. */
   async getLatestRiskEvaluation(
     walletAddress: string,
   ): Promise<RiskEvaluation | null> {
@@ -69,6 +97,13 @@ export class RiskEvaluationService {
     );
   }
 
+  /**
+   * Paginated history of evaluations for `walletAddress`. Useful for
+   * auditing how a borrower's risk has moved over time.
+   *
+   * @param offset zero-based row offset
+   * @param limit page size (default and ceiling set by the repository)
+   */
   async getRiskEvaluationHistory(
     walletAddress: string,
     offset?: number,
@@ -81,10 +116,23 @@ export class RiskEvaluationService {
     );
   }
 
+  /**
+   * Delete every evaluation whose `expiresAt` has passed. Intended to be
+   * called periodically from an operations job; returns the number of
+   * rows removed for logging.
+   */
   async cleanupExpiredEvaluations(): Promise<number> {
     return await this.riskEvaluationRepository.deleteExpired();
   }
 
+  /**
+   * Pull a fresh evaluation from the configured provider, derive the
+   * economics (credit limit + interest rate), and stamp expiry 24h out.
+   *
+   * Pure function of `(provider.evaluate(wallet))`; called only on cache
+   * miss or `forceRefresh`. The `factors[]` array returned by the provider
+   * is persisted verbatim so the decision is fully auditable.
+   */
   private async performRiskEvaluation(
     walletAddress: string,
   ): Promise<Omit<RiskEvaluation, "id">> {
