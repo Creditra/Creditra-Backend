@@ -1,3 +1,21 @@
+/**
+ * Functional credit-line service module.
+ *
+ * Companion to the OO {@link CreditLineService} class — exposes a set of
+ * top-level functions over an in-process store (`creditLineStore`). Used by
+ * routes that need lightweight, synchronous flow (suspend / close,
+ * transaction filtering, draw / repay submission) without spinning up a
+ * repository.
+ *
+ * Error classes are the contract between this module and
+ * `routes/credit.ts`:
+ * - `CreditLineNotFoundError` → 404
+ * - `InvalidTransitionError`  → 409
+ *
+ * For new code prefer {@link CreditLineService} (in `CreditLineService.ts`)
+ * — it is the path that ties into the repository pattern and the DI
+ * container.
+ */
 import { randomUUID } from 'node:crypto';
 import { creditLines } from '../models/creditLineStore.js';
 import { TransactionType } from '../models/Transaction.js';
