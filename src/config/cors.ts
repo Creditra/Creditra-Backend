@@ -1,3 +1,16 @@
+/**
+ * CORS policy loader.
+ *
+ * Two operating modes:
+ * - **Allowlist (production)** — strict comma-separated origins from
+ *   `CORS_ORIGINS`. Production deployments must set this; absence raises.
+ * - **Loopback fallback (dev / test)** — any `localhost`, `127.0.0.1`, or
+ *   `::1` origin is allowed so the dev frontend and Postman work without
+ *   ceremony.
+ *
+ * See `isAllowedCorsOrigin()` for the matrix and `docs/SECURITY.md`
+ * §10 for the security context.
+ */
 const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
 
 export type CorsPolicy =
