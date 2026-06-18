@@ -65,7 +65,7 @@ describe('ReconciliationService', () => {
       };
 
       const chainRecord: OnChainCreditRecord = {
-        id: 'cl-1',
+        id: '7',
         walletAddress: 'GTEST123',
         creditLimit: '10000.00',
         availableCredit: '10000.00',
@@ -81,6 +81,36 @@ describe('ReconciliationService', () => {
       expect(result.mismatches).toHaveLength(0);
       expect(result.totalChecked).toBe(1);
       expect(result.errors).toHaveLength(0);
+    });
+
+    it('matches records by borrower wallet instead of mismatching DB UUIDs with contract ids', async () => {
+      const creditLine: CreditLine = {
+        id: '7e5f5b84-e325-4a27-bf2a-241a2f12fd66',
+        walletAddress: 'GTEST123',
+        creditLimit: '10000.00',
+        availableCredit: '7500.00',
+        interestRateBps: 500,
+        status: CreditLineStatus.ACTIVE,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const chainRecord: OnChainCreditRecord = {
+        id: '0',
+        walletAddress: 'GTEST123',
+        creditLimit: '10000.00',
+        availableCredit: '7500.00',
+        interestRateBps: 500,
+        status: 'active',
+      };
+
+      mockRepo.setCreditLines([creditLine]);
+      mockClient.setRecords([chainRecord]);
+
+      const result = await service.reconcile();
+
+      expect(result.mismatches).toEqual([]);
+      expect(result.errors).toEqual([]);
     });
 
     it('detects credit limit mismatch', async () => {
