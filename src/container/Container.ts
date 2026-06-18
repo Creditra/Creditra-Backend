@@ -29,7 +29,7 @@ import { RiskEvaluationService } from "../services/RiskEvaluationService.js";
 import { createRiskProvider } from "../services/providers/providerFactory.js";
 import { ReconciliationService } from "../services/reconciliationService.js";
 import { ReconciliationWorker } from "../services/reconciliationWorker.js";
-import { MockSorobanClient, resolveSorobanConfig } from "../services/sorobanClient.js";
+import { createSorobanClient, resolveSorobanConfig } from "../services/sorobanClient.js";
 import { defaultJobQueue } from "../services/jobQueue.js";
 
 export class Container {
@@ -62,7 +62,7 @@ export class Container {
     
     // Initialize Soroban client and reconciliation services
     const sorobanConfig = resolveSorobanConfig();
-    const sorobanClient = new MockSorobanClient(sorobanConfig);
+    const sorobanClient = createSorobanClient(sorobanConfig);
     this._reconciliationService = new ReconciliationService(
       this._creditLineRepository,
       sorobanClient,

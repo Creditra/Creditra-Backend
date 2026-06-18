@@ -4,6 +4,7 @@ import type { CreditLineRepository } from '../../repositories/interfaces/CreditL
 import type { CreditLine } from '../../models/CreditLine.js';
 import { CreditLineStatus } from '../../models/CreditLine.js';
 import { InMemoryJobQueue } from '../jobQueue.js';
+import { SorobanCreditRecordDecodeError } from '../sorobanClient.js';
 
 const TEST_PUBLIC_KEY = `G${'A'.repeat(55)}`;
 
@@ -518,10 +519,10 @@ describe('ReconciliationService', () => {
       expect(result.mismatches).toHaveLength(0);
     });
 
-    it('captures reconciliation failures with Stellar keys redacted', async () => {
+    it('captures typed decode failures with Stellar keys redacted', async () => {
       const errorClient = {
         async fetchAllCreditRecords(): Promise<OnChainCreditRecord[]> {
-          throw new Error(`RPC connection failed for ${TEST_PUBLIC_KEY}`);
+          throw new SorobanCreditRecordDecodeError(`bad XDR for ${TEST_PUBLIC_KEY}`);
         },
       };
 
@@ -534,7 +535,7 @@ describe('ReconciliationService', () => {
       const result = await errorService.reconcile();
 
       expect(result.errors).toEqual([
-        expect.stringContaining('Error: RPC connection failed for [REDACTED_STELLAR_PUBLIC_KEY]'),
+        expect.stringContaining('SorobanCreditRecordDecodeError: bad XDR for [REDACTED_STELLAR_PUBLIC_KEY]'),
       ]);
       expect(result.errors[0]).not.toContain(TEST_PUBLIC_KEY);
       expect(result.mismatches).toHaveLength(0);

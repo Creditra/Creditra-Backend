@@ -16,7 +16,7 @@ flowchart LR
     HND --> SVC[CreditLineService / TransactionRepository]
 
     DB[(PostgreSQL)] -->|findAll| RCS
-    SRPC[(Soroban RPC)] -->|fetchAllCreditRecords| SOR[MockSorobanClient]
+    SRPC[(Soroban RPC)] -->|enumerate_credit_lines| SOR[StellarSorobanClient / Mock fallback]
     SOR --> RCS[ReconciliationService]
     RCS --> JQ[jobQueue]
     JQ --> RCW[ReconciliationWorker]
@@ -128,6 +128,24 @@ sequenceDiagram
 ```
 
 ### 6.1 Compared fields
+
+`ReconciliationService` reads on-chain state through `createSorobanClient()`.
+An empty `CREDIT_CONTRACT_ID` deliberately selects `MockSorobanClient` for
+local development and tests. A non-empty contract id selects
+`StellarSorobanClient`, which builds read-only `simulateTransaction` requests
+against the Credit contract's `enumerate_credit_lines(start_after, limit)`
+query and follows the contract's stable numeric cursor in pages of 100.
+
+The contract returns `(u32, CreditLineData)` entries. The numeric id is the
+contract enumeration cursor, not the backend database UUID, so reconciliation
+matches DB rows and chain rows by borrower wallet address. `availableCredit` is
+computed from `credit_limit - utilized_amount`; it is not expected as a stored
+contract field. Timeout, retry, and jitter are controlled by
+`SOROBAN_TIMEOUT_MS`, `SOROBAN_MAX_RETRIES`, and `SOROBAN_RETRY_JITTER_MS`.
+Thrown and logged diagnostics redact Stellar public keys and secret seeds. If
+either source has duplicate rows for the same borrower wallet, reconciliation
+records an error instead of guessing which DB UUID belongs to which contract
+cursor.
 
 | Field | Severity if mismatched |
 |---|---|

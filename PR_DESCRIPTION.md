@@ -9,7 +9,7 @@ Implements a scheduled background job that compares on-chain Credit contract rec
 ### New Services
 - **ReconciliationService** - Core reconciliation logic comparing DB vs blockchain records
 - **ReconciliationWorker** - Scheduled job execution with retry logic and alerting
-- **SorobanClient** - Mock Soroban RPC client (ready for production SDK integration)
+- **SorobanClient** - Mock fallback plus Stellar SDK-backed read client for reconciliation
 
 ### New API Endpoints (Admin Only)
 - `POST /api/reconciliation/trigger` - Manually trigger reconciliation job
@@ -114,11 +114,11 @@ RECONCILIATION_RUN_IMMEDIATELY=true
 - ✅ Logging and monitoring hooks
 
 ### Next Steps for Production
-1. Install `@stellar/stellar-sdk` package
-2. Replace `MockSorobanClient` with real Soroban SDK implementation
+1. Configure `CREDIT_CONTRACT_ID`, `SOROBAN_RPC_URL`, and `STELLAR_NETWORK_PASSPHRASE`
+2. Configure timeout/retry env vars for the deployment's RPC latency profile
 3. Configure external alerting (email, Slack, PagerDuty)
 4. Set up monitoring dashboards
-5. Configure production environment variables
+5. Keep `CREDIT_CONTRACT_ID` empty only in tests/local environments that should use the mock fallback
 
 ## Files Changed
 

@@ -137,7 +137,7 @@ Output paths after `npm run test:coverage`:
 - The DI container makes substitution trivial: tests call `Container.getInstance().setRepositories(stubs)` to swap implementations.
 - Risk providers default to `StaticRiskProvider` in tests for determinism.
 - HTTP fakes use Supertest against the Express app — **never** the real network.
-- The Soroban client default is `MockSorobanClient`, returning empty datasets, so reconciliation tests can assert behaviour under various drift conditions by composing repository state vs mock client output.
+- Reconciliation tests normally leave `CREDIT_CONTRACT_ID` empty so `createSorobanClient()` selects `MockSorobanClient`; real Soroban read tests inject `StellarSorobanClient` with a mocked fetch implementation and contract-shaped XDR fixtures.
 
 ---
 

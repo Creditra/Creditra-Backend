@@ -58,13 +58,17 @@
 - ✅ Returns true after start
 - ✅ Returns false after stop
 
-### 3. SorobanClient Tests (8 tests)
+### 3. SorobanClient Tests
 **File**: `src/services/__tests__/sorobanClient.test.ts`
 
 **MockSorobanClient:**
 - ✅ Returns empty array in mock implementation
-- ✅ Logs fetch attempt with config details
+- ✅ Logs mock fallback selection without exposing Stellar keys
 - ✅ Completes without throwing
+
+**StellarSorobanClient:**
+- ✅ Decodes contract-shaped `enumerate_credit_lines` XDR fixtures
+- ✅ Exercises pagination, retry, timeout, and redaction behavior
 
 **Config Resolution:**
 - ✅ Returns default config when no env vars set

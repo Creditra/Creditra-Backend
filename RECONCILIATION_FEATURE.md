@@ -132,8 +132,8 @@ npm test src/__tests__/reconciliation.integration.test.ts
 ### To Deploy
 
 1. Set environment variables (see Configuration section)
-2. Install @stellar/stellar-sdk: `npm install @stellar/stellar-sdk`
-3. Replace MockSorobanClient with real implementation
+2. Configure Soroban RPC and contract env vars for production
+3. Leave `CREDIT_CONTRACT_ID` empty only when the mock fallback is desired
 4. Configure monitoring/alerting for failed jobs
 5. Set up dead-letter queue processing
 
@@ -152,7 +152,7 @@ feat(credit): chain versus DB reconciliation job
 
 - Implement ReconciliationService for comparing on-chain and DB records
 - Add ReconciliationWorker with scheduled job execution
-- Create SorobanClient mock (ready for production SDK integration)
+- Create SorobanClient mock fallback and Stellar SDK-backed read path
 - Add admin API endpoints for manual trigger and status checks
 - Integrate with jobQueue for async processing and retry logic
 - Alert on critical mismatches via logging and job failure
@@ -183,7 +183,7 @@ feat(credit): chain versus DB reconciliation job
 
 ## Next Steps
 
-1. Replace MockSorobanClient with real Soroban SDK implementation
+1. Configure production Soroban RPC and contract env vars
 2. Configure production alerting (email, Slack, PagerDuty)
 3. Set up monitoring dashboards
 4. Add metrics collection for reconciliation runs
