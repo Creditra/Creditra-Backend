@@ -358,8 +358,21 @@ function parseCreditLineData(value: unknown, index: number): {
       index,
       'interestRateBps',
     ),
-    status: normalizeCreditStatus(readField(value, ['status'], 4, index), index),
+    status: normalizeCreditStatus(readCreditStatusField(value, index), index),
   };
+}
+
+function readCreditStatusField(value: unknown, recordIndex: number): unknown {
+  if (Array.isArray(value)) {
+    // CreditLineData in Creditra-Contracts v1 stores risk_score before status.
+    // Older compact fixtures omitted risk_score, so keep that shape readable.
+    const tupleIndex = value.length >= 6 ? 5 : 4;
+    if (tupleIndex < value.length) {
+      return value[tupleIndex];
+    }
+  }
+
+  return readField(value, ['status'], 4, recordIndex);
 }
 
 function readField(value: unknown, fieldNames: string[], tupleIndex: number, recordIndex: number): unknown {

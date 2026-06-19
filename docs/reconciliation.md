@@ -115,6 +115,13 @@ ScVal/XDR into `OnChainCreditRecord`, computes `availableCredit` from
 `credit_limit - utilized_amount`, and records typed decode failures in
 `ReconciliationResult.errors[]`.
 
+The expected contract ABI is checked in at
+`src/services/__fixtures__/soroban/credit-contract-interface.v1.json`, pinned to
+`Creditra/Creditra-Contracts@3f3ef2f318641005e3b2fb970df8e54f927ce606`.
+Compatibility tests assert the backend call shape, cursor type, page limit,
+`CreditLineData` field order, and `CreditStatus` discriminants against that
+fixture.
+
 The contract enumeration cursor is not the backend UUID. Reconciliation matches
 records by borrower wallet address and fails the pass with an explicit error if
 either side contains duplicate borrower wallets, because those rows cannot be

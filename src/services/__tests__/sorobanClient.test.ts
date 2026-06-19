@@ -346,7 +346,7 @@ describe('parseEnumeratedCreditLinesScVal', () => {
 
   it('accepts tuple CreditLineData in contract field order', () => {
     expect(
-      parseEnumeratedCreditLinesScVal(nativeToScVal([[1, [TEST_PUBLIC_KEY, 1000n, 250n, 300, 0]]])),
+      parseEnumeratedCreditLinesScVal(nativeToScVal([[1, [TEST_PUBLIC_KEY, 1000n, 250n, 300, 70, 0, 0, 0, 0, 0]]])),
     ).toEqual([
       {
         id: '1',
@@ -404,8 +404,8 @@ describe('parseEnumeratedCreditLinesScVal', () => {
     try {
       parseEnumeratedCreditLinesScVal(
         nativeToScVal([
-          [0, [TEST_PUBLIC_KEY, 1000n, 0n, 300, 'Active']],
-          [1, [TEST_PUBLIC_KEY, 2000n, 0n, 300, 'Active']],
+          [0, [TEST_PUBLIC_KEY, 1000n, 0n, 300, 70, 'Active', 0, 0, 0, 0]],
+          [1, [TEST_PUBLIC_KEY, 2000n, 0n, 300, 70, 'Active', 0, 0, 0, 0]],
         ]),
       );
     } catch (error) {

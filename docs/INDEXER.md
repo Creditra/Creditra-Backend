@@ -148,6 +148,14 @@ either source has duplicate rows for the same borrower wallet, reconciliation
 records an error instead of guessing which DB UUID belongs to which contract
 cursor.
 
+Contract compatibility is pinned in
+[`src/services/__fixtures__/soroban/credit-contract-interface.v1.json`](../src/services/__fixtures__/soroban/credit-contract-interface.v1.json)
+against `Creditra/Creditra-Contracts@3f3ef2f318641005e3b2fb970df8e54f927ce606`.
+The fixture captures the `enumerate_credit_lines(start_after: Option<u32>,
+limit: u32) -> Vec<(u32, CreditLineData)>` surface, the `u32` cursor, the
+100-record page cap, `CreditLineData` field order, and `CreditStatus`
+discriminants.
+
 | Field | Severity if mismatched |
 |---|---|
 | Existence (DB has, chain doesn't, or vice versa) | **critical** |
