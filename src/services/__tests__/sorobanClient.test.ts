@@ -199,10 +199,19 @@ describe('StellarSorobanClient', () => {
       .mockResolvedValue(jsonResponse({ error: `failed for ${TEST_PUBLIC_KEY} using ${TEST_SECRET_KEY}` }));
     const client = new StellarSorobanClient(TEST_CONFIG, TEST_RPC_CONFIG, fetchImpl as unknown as typeof fetch);
 
-    await expect(client.fetchAllCreditRecords()).rejects.toThrow('[REDACTED_STELLAR_PUBLIC_KEY]');
-    await expect(client.fetchAllCreditRecords()).rejects.toThrow('[REDACTED_STELLAR_SECRET_KEY]');
-    await expect(client.fetchAllCreditRecords()).rejects.not.toThrow(TEST_PUBLIC_KEY);
-    await expect(client.fetchAllCreditRecords()).rejects.not.toThrow(TEST_SECRET_KEY);
+    let thrown: unknown;
+    try {
+      await client.fetchAllCreditRecords();
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    const message = (thrown as Error).message;
+    expect(message).toContain('[REDACTED_STELLAR_PUBLIC_KEY]');
+    expect(message).toContain('[REDACTED_STELLAR_SECRET_KEY]');
+    expect(message).not.toContain(TEST_PUBLIC_KEY);
+    expect(message).not.toContain(TEST_SECRET_KEY);
   });
 
   it('retries retryable RPC failures with exponential backoff and jitter', async () => {
@@ -291,8 +300,9 @@ describe('StellarSorobanClient', () => {
 
     try {
       const pending = client.fetchAllCreditRecords();
+      const rejection = expect(pending).rejects.toThrow('Soroban RPC timed out after 25ms');
       await vi.advanceTimersByTimeAsync(25);
-      await expect(pending).rejects.toThrow('Soroban RPC timed out after 25ms');
+      await rejection;
     } finally {
       vi.useRealTimers();
     }

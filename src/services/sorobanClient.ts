@@ -449,6 +449,12 @@ function normalizeCreditStatus(value: unknown, index: number): string {
     return ['active', 'suspended', 'defaulted', 'closed', 'restricted'][value] ?? String(value);
   }
 
+  if (typeof value === 'bigint') {
+    return value >= 0n && value <= BigInt(Number.MAX_SAFE_INTEGER)
+      ? (['active', 'suspended', 'defaulted', 'closed', 'restricted'][Number(value)] ?? value.toString())
+      : value.toString();
+  }
+
   if (isRecord(value) && typeof value['tag'] === 'string') {
     return normalizeStatusString(value['tag']);
   }
