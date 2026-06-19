@@ -42,7 +42,7 @@ describe('ReconciliationService', () => {
     jobQueue = new InMemoryJobQueue(10, 20);
     
     service = new ReconciliationService(
-      mockRepo as CreditLineRepository,
+      mockRepo as unknown as CreditLineRepository,
       mockClient,
       jobQueue
     );
@@ -397,7 +397,7 @@ describe('ReconciliationService', () => {
       };
 
       const errorService = new ReconciliationService(
-        mockRepo as CreditLineRepository,
+        mockRepo as unknown as CreditLineRepository,
         errorClient,
         jobQueue
       );

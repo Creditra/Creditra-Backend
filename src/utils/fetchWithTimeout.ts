@@ -130,7 +130,7 @@ export async function fetchWithTimeout(
   const timeoutId = setTimeout(() => controller.abort(), totalTimeoutMs);
 
   try {
-    const signal = mergeAbortSignals(options.signal, controller.signal);
+    const signal = mergeAbortSignals(options.signal ?? undefined, controller.signal);
 
     const response = await fetch(url, {
       ...options,

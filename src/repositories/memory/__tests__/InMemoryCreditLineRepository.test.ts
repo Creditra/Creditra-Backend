@@ -386,7 +386,7 @@ describe('InMemoryCreditLineRepository', () => {
 
       // Fetch all pages
       const allItems = [];
-      let cursor: string | null = undefined;
+      let cursor: string | null | undefined = undefined;
       
       do {
         const result = await repository.findAllWithCursor(cursor || undefined, 3);
