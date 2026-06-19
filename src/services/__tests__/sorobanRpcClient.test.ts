@@ -1,10 +1,9 @@
 import {
   createSorobanRpcClient,
   resolveSorobanRpcConfig,
-  SorobanRpcConfig,
-  ContractReadResult,
-  ContractSubmitResult,
-} from '../sorobanRpcClient';
+  type SorobanRpcConfig,
+} from '../sorobanRpcClient.js';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 
 describe('SorobanRpcClient', () => {
   const mockConfig: SorobanRpcConfig = {
@@ -16,7 +15,7 @@ describe('SorobanRpcClient', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('createSorobanRpcClient', () => {
@@ -60,7 +59,7 @@ describe('SorobanRpcClient', () => {
       const client = createSorobanRpcClient(mockConfig);
       
       // Mock a failure scenario
-      jest.spyOn(client as any, 'makeRpcCall').mockRejectedValueOnce(
+      vi.spyOn(client as any, 'makeRpcCall').mockRejectedValueOnce(
         new Error('Contract not found')
       );
 
@@ -78,7 +77,7 @@ describe('SorobanRpcClient', () => {
       const client = createSorobanRpcClient(mockConfig);
       
       const privateKeyError = new Error('Failed with private key SABK5Q5Z...');
-      jest.spyOn(client as any, 'makeRpcCall').mockRejectedValueOnce(privateKeyError);
+      vi.spyOn(client as any, 'makeRpcCall').mockRejectedValueOnce(privateKeyError);
 
       const result = await client.simulateContractRead('contract-123', 'get_value');
 
@@ -105,7 +104,7 @@ describe('SorobanRpcClient', () => {
       const client = createSorobanRpcClient(mockConfig);
       const transactionXdr = 'INVALID_XDR';
 
-      jest.spyOn(client as any, 'makeRpcCall').mockRejectedValueOnce(
+      vi.spyOn(client as any, 'makeRpcCall').mockRejectedValueOnce(
         new Error('Invalid transaction XDR')
       );
 
@@ -162,7 +161,7 @@ describe('SorobanRpcClient', () => {
       });
 
       let attemptCount = 0;
-      jest.spyOn(client as any, 'makeRpcCall').mockImplementation(() => {
+      vi.spyOn(client as any, 'makeRpcCall').mockImplementation(() => {
         attemptCount++;
         if (attemptCount < 2) {
           throw new Error('Temporary failure');
@@ -183,7 +182,7 @@ describe('SorobanRpcClient', () => {
         retryJitterMs: 10,
       });
 
-      jest.spyOn(client as any, 'makeRpcCall').mockRejectedValue(
+      vi.spyOn(client as any, 'makeRpcCall').mockRejectedValue(
         new Error('Persistent failure')
       );
 
@@ -197,7 +196,7 @@ describe('SorobanRpcClient', () => {
   describe('parameter sanitization', () => {
     it('should not log private keys in parameters', async () => {
       const client = createSorobanRpcClient(mockConfig);
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       await client.simulateContractRead('contract-123', 'get_value', [
         { privateKey: 'SABK5Q5Z...' }

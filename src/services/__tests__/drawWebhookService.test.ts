@@ -162,8 +162,6 @@ describe("DrawWebhookService", () => {
             };
 
             await expect(sendDrawConfirmationWebhook(event)).resolves.toEqual([]);
-
-            void expect(result).resolves.toEqual([]);
             expect(mockFetch).not.toHaveBeenCalled();
         });
 
@@ -177,8 +175,6 @@ describe("DrawWebhookService", () => {
             };
 
             await expect(sendDrawConfirmationWebhook(event)).resolves.toEqual([]);
-
-            void expect(result).resolves.toEqual([]);
             expect(mockFetch).not.toHaveBeenCalled();
         });
 

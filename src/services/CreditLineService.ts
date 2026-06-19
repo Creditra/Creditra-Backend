@@ -1,4 +1,4 @@
-import type { CreditLine, CreateCreditLineRequest, UpdateCreditLineRequest } from '../models/CreditLine.js';
+import { type CreditLine, type CreateCreditLineRequest, type UpdateCreditLineRequest, CreditLineStatus } from '../models/CreditLine.js';
 import type { CreditLineRepository, CursorPaginationResult } from '../repositories/interfaces/CreditLineRepository.js';
 
 /**
@@ -172,7 +172,7 @@ export class CreditLineService {
    * state. The on-chain repay transaction is broadcast separately and
    * confirmed by the indexer.
    */
-  async repay(id: string, walletAddress: string, amount: string): Promise<CreditLine> {
+  async repay(id: string, _walletAddress: string, amount: string): Promise<CreditLine> {
     const line = await this.creditLineRepository.findById(id);
     if (!line) {
       throw new Error('Credit line not found');

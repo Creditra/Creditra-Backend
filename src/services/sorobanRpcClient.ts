@@ -245,7 +245,7 @@ class SorobanRpcClient {
     };
   }
 
-  private simulateSubmitResponse(params: any): any {
+  private simulateSubmitResponse(_params: any): any {
     // Simulate transaction hash
     const hash = Array.from({ length: 64 }, () => 
       Math.floor(Math.random() * 16).toString(16)

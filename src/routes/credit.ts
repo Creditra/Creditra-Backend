@@ -23,11 +23,12 @@
  * from `src/utils/response.ts` so every body looks like `{ data, error }`.
  */
 import { Router, type Request, type Response } from 'express';
-import { validateBody } from '../middleware/validate.js';
+import { validateBody, validateParams } from '../middleware/validate.js';
 import {
   createCreditLineSchema,
   drawSchema,
   repaySchema,
+  walletAddressParamSchema,
 } from '../schemas/index.js';
 import type { DrawBody, RepayBody } from '../schemas/index.js';
 import { Container } from '../container/Container.js';
@@ -89,7 +90,8 @@ creditRouter.get('/lines/:id', (req, res) => {
 
 creditRouter.post('/lines', validateBody(createCreditLineSchema), async (req, res) => {
   try {
-    const { walletAddress, requestedLimit } = req.body ?? {};
+    const { walletAddress, creditLimit, requestedLimit, interestRateBps } = req.body ?? {};
+    const finalLimit = creditLimit ?? requestedLimit;
     const creditLine = await container.creditLineService.createCreditLine({
       walletAddress,
       creditLimit: finalLimit,
@@ -198,7 +200,7 @@ creditRouter.post(
       const line = suspendCreditLine(req.params.id);
       res.status(200).json({ data: line, message: 'Credit line suspended.', error: null });
     } catch (err) {
-      handleServiceError(err, req, res, next);
+      handleServiceError(err, res);
     }
   },
 );
@@ -211,7 +213,7 @@ creditRouter.post(
       const line = closeCreditLine(req.params.id);
       res.status(200).json({ data: line, message: 'Credit line closed.', error: null });
     } catch (err) {
-      handleServiceError(err, req, res, next);
+      handleServiceError(err, res);
     }
   },
 );

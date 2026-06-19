@@ -19,12 +19,14 @@
 import { type CreditLineRepository } from "../repositories/interfaces/CreditLineRepository.js";
 import { type RiskEvaluationRepository } from "../repositories/interfaces/RiskEvaluationRepository.js";
 import { type TransactionRepository } from "../repositories/interfaces/TransactionRepository.js";
+import { getConnection, type DbClient } from "../db/client.js";
 import { InMemoryCreditLineRepository } from "../repositories/memory/InMemoryCreditLineRepository.js";
 import { InMemoryRiskEvaluationRepository } from "../repositories/memory/InMemoryRiskEvaluationRepository.js";
 import { InMemoryTransactionRepository } from "../repositories/memory/InMemoryTransactionRepository.js";
 import { PostgresCreditLineRepository } from "../repositories/postgres/PostgresCreditLineRepository.js";
 import { CreditLineService } from "../services/CreditLineService.js";
 import { RiskEvaluationService } from "../services/RiskEvaluationService.js";
+import { createRiskProvider } from "../services/providers/providerFactory.js";
 import { ReconciliationService } from "../services/reconciliationService.js";
 import { ReconciliationWorker } from "../services/reconciliationWorker.js";
 import { MockSorobanClient, resolveSorobanConfig } from "../services/sorobanClient.js";

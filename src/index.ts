@@ -11,6 +11,7 @@ import { riskRouter } from "./routes/risk.js";
 import { healthRouter } from "./routes/health.js";
 import { webhookRouter } from "./routes/webhook.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { requestLogger } from "./middleware/requestLogger.js";
 import { Container } from "./container/Container.js";
 import { initializeWebhooks } from "./services/drawWebhookService.js";
 

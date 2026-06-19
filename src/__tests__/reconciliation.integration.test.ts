@@ -3,7 +3,6 @@ import { ReconciliationService, type OnChainCreditRecord, type SorobanRpcClient 
 import { ReconciliationWorker } from '../services/reconciliationWorker.js';
 import { InMemoryCreditLineRepository } from '../repositories/memory/InMemoryCreditLineRepository.js';
 import { InMemoryJobQueue } from '../services/jobQueue.js';
-import { CreditLineStatus } from '../models/CreditLine.js';
 
 class TestSorobanClient implements SorobanRpcClient {
   private records: OnChainCreditRecord[] = [];

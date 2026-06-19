@@ -1,5 +1,5 @@
 
-import express, { type Express } from "express";
+import express, { type Express, type Response as ExpressResponse } from "express";
 import request from "supertest";
 import {
   _resetStore,
@@ -37,7 +37,7 @@ function allowAdmin() {
 }
 
 function denyAdmin() {
-  mockAdminAuth.mockImplementation((_req, res: Response, _next) => {
+  mockAdminAuth.mockImplementation((_req, res: ExpressResponse, _next) => {
     res.status(401).json({ error: "Unauthorized: valid X-Admin-Api-Key header is required." });
   });
 }

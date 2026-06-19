@@ -44,19 +44,6 @@ export function drawFromCreditLine({ id, borrowerId, amount }: DrawRequest) {
 
 export type CreditLineStatus = 'active' | 'suspended' | 'closed';
 
-function normalizeStoredCreditLineStatus(
-    status: StoredCreditLineStatus,
-): CreditLineStatus {
-    switch (status) {
-        case "Active":
-            return "active";
-        case "Suspended":
-            return "suspended";
-        case "Closed":
-            return "closed";
-    }
-}
-
 export interface CreditLineEvent {
   action: 'created' | 'suspended' | 'closed';
   timestamp: string;

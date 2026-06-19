@@ -132,9 +132,8 @@ describe('InMemoryCreditLineRepository', () => {
 
     it('should return all credit lines sorted by creation date (newest first)', async () => {
       // Create 3 credit lines with slight delays
-      const cls = [] as any[];
       for (let i = 0; i < 3; i++) {
-        cls.push(await repository.create({ walletAddress: `w${i}`, creditLimit: '1000.00', interestRateBps: 500 }));
+        await repository.create({ walletAddress: `w${i}`, creditLimit: '1000.00', interestRateBps: 500 });
         await new Promise(r => setTimeout(r, 1));
       }
 

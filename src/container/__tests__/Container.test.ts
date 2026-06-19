@@ -112,6 +112,7 @@ describe('Container', () => {
       async findById(): Promise<any> { return null; }
       async findByWalletAddress(): Promise<any[]> { return []; }
       async findAll(): Promise<any[]> { return []; }
+      async findAllWithCursor(): Promise<any> { return { items: [], nextCursor: null, hasMore: false }; }
       async update(): Promise<any> { return null; }
       async delete(): Promise<boolean> { return false; }
       async exists(): Promise<boolean> { return false; }
