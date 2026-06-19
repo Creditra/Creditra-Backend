@@ -8,7 +8,7 @@
  *
  * Signature contract sent to subscribers:
  * - `X-Webhook-Signature: sha256=<hex HMAC over raw body>`
- * - `X-Webhook-Timestamp: <ms since epoch>`
+ * - `X-Webhook-Timestamp: <payload ISO timestamp>`
  * - `User-Agent: Creditra-Webhook/1.0`
  *
  * Subscribers must (a) re-compute the HMAC and compare in constant time,

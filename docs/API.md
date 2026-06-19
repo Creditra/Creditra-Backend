@@ -286,6 +286,8 @@ HMAC is computed over the **raw JSON body** with `WEBHOOK_SECRET`. Subscribers m
 
 Server retries up to `WEBHOOK_MAX_RETRIES + 1` times with exponential backoff — implement idempotency on receive.
 
+Subscriber onboarding, verification code, and operator endpoint details are documented in [`webhook-subscribers.md`](./webhook-subscribers.md).
+
 ---
 
 ### Reconciliation

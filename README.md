@@ -162,7 +162,7 @@ Full machine-readable spec: [`src/openapi.yaml`](./src/openapi.yaml). Human-read
 - **`ReconciliationService` / `ReconciliationWorker`** — periodic diff of DB credit lines vs on-chain state. Severity levels: `critical` (identity, limit, status) and `warning` (available credit, rate). Runs every hour by default (`RECONCILIATION_INTERVAL_MS`).
 - **`HorizonListener`** — Stellar Horizon poller with cursor persistence, exponential backoff + jitter, gap recovery, and SHA-256 idempotency cache (10k entries, LRU). Metrics exposed via `getMetrics()`.
 - **`SorobanRpcClient`** — read/submit wrapper with AbortController timeouts, retry budget, and Stellar key sanitization in error messages.
-- **`drawWebhookService`** — multi-URL HMAC-SHA256 webhook fan-out with retry/backoff and connectivity probe.
+- **`drawWebhookService`** — multi-URL HMAC-SHA256 webhook fan-out with retry/backoff and connectivity probe. Subscriber onboarding: [`docs/webhook-subscribers.md`](./docs/webhook-subscribers.md).
 - **`jobQueue`** — in-process at-least-once queue with visibility timeout, attempt tracking, and dead-letter list.
 
 Implementation files: [`src/services/`](./src/services/), entry composition in [`src/container/Container.ts`](./src/container/Container.ts).
