@@ -72,14 +72,14 @@ describe('InMemoryTransactionRepository', () => {
         type: TransactionType.BORROW
       });
 
-      // Add small delay for different timestamps
-      await new Promise(resolve => setTimeout(resolve, 1));
-
       const tx2 = await repository.create({
         creditLineId,
         amount: '50.00',
         type: TransactionType.REPAY
       });
+
+      repository['transactions'].set(tx1.id, { ...tx1, createdAt: new Date('2026-01-01T00:00:00.000Z') });
+      repository['transactions'].set(tx2.id, { ...tx2, createdAt: new Date('2026-01-01T00:00:01.000Z') });
 
       await repository.create({
         creditLineId: 'other-cl',
