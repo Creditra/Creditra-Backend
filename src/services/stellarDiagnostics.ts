@@ -2,11 +2,11 @@ const STELLAR_PUBLIC_KEY_REGEX = /\bG[A-Z2-7]{55}\b/g;
 const STELLAR_SECRET_KEY_REGEX = /\bS[A-Z2-7]{55}\b/g;
 
 const REDACTED_PUBLIC_KEY = '[REDACTED_STELLAR_PUBLIC_KEY]';
-const REDACTED_SECRET_KEY = '[REDACTED_STELLAR_SECRET_KEY]';
+const REDACTED_STELLAR_SEED = '[REDACTED_STELLAR_SECRET_KEY]';
 
 export function sanitizeStellarDiagnostic(value: unknown): string {
   return stringifyForDiagnostic(value)
-    .replace(STELLAR_SECRET_KEY_REGEX, REDACTED_SECRET_KEY)
+    .replace(STELLAR_SECRET_KEY_REGEX, REDACTED_STELLAR_SEED)
     .replace(STELLAR_PUBLIC_KEY_REGEX, REDACTED_PUBLIC_KEY);
 }
 

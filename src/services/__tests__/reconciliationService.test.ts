@@ -92,6 +92,7 @@ describe('ReconciliationService', () => {
         walletAddress: 'GTEST123',
         creditLimit: '10000.00',
         availableCredit: '7500.00',
+        utilized: '2500.00',
         interestRateBps: 500,
         status: CreditLineStatus.ACTIVE,
         createdAt: new Date(),
@@ -207,6 +208,7 @@ describe('ReconciliationService', () => {
           walletAddress: 'GTEST123',
           creditLimit: '10000.00',
           availableCredit: '10000.00',
+          utilized: '0.00',
           interestRateBps: 500,
           status: CreditLineStatus.ACTIVE,
           createdAt: new Date(),
@@ -217,6 +219,7 @@ describe('ReconciliationService', () => {
           walletAddress: 'GTEST123',
           creditLimit: '5000.00',
           availableCredit: '5000.00',
+          utilized: '0.00',
           interestRateBps: 300,
           status: CreditLineStatus.ACTIVE,
           createdAt: new Date(),
@@ -526,7 +529,7 @@ describe('ReconciliationService', () => {
       };
 
       const errorService = new ReconciliationService(
-        mockRepo as CreditLineRepository,
+        mockRepo as unknown as CreditLineRepository,
         errorClient,
         jobQueue
       );
