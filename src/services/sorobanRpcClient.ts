@@ -82,8 +82,8 @@ class SorobanRpcClient {
     method: string,
     args: any[] = []
   ): Promise<ContractReadResult<T>> {
-    return this.withRetry(async () => {
-      try {
+    try {
+      return await this.withRetry(async () => {
         // In a real implementation, this would use Stellar SDK to call the contract
         // For now, we'll simulate the RPC call with proper error handling
         const response = await this.makeRpcCall('simulateTransaction', {
@@ -104,13 +104,13 @@ class SorobanRpcClient {
           data: response.result as T,
           ledger: response.ledger,
         };
-      } catch (error) {
-        return {
-          success: false,
-          error: this.sanitizeError(error),
-        };
-      }
-    });
+      });
+    } catch (error) {
+      return {
+        success: false,
+        error: this.sanitizeError(error),
+      };
+    }
   }
 
   /**
@@ -119,8 +119,8 @@ class SorobanRpcClient {
   async submitTransaction(
     transactionXdr: string
   ): Promise<ContractSubmitResult> {
-    return this.withRetry(async () => {
-      try {
+    try {
+      return await this.withRetry(async () => {
         // In a real implementation, this would submit the transaction via Stellar SDK
         const response = await this.makeRpcCall('sendTransaction', {
           transaction: transactionXdr,
@@ -138,13 +138,13 @@ class SorobanRpcClient {
           transactionId: response.hash,
           ledger: response.ledger,
         };
-      } catch (error) {
-        return {
-          success: false,
-          error: this.sanitizeError(error),
-        };
-      }
-    });
+      });
+    } catch (error) {
+      return {
+        success: false,
+        error: this.sanitizeError(error),
+      };
+    }
   }
 
   /**
@@ -262,25 +262,32 @@ class SorobanRpcClient {
     if (error instanceof Error) {
       // Remove any potential private keys or sensitive data from error messages
       return error.message
-        .replace(/[A-Z9]{56}/g, '[REDACTED_PRIVATE_KEY]')
+        .replace(/S[A-Z0-9.]{7,}/g, '[REDACTED_PRIVATE_KEY]')
         .replace(/G[A-Z0-9]{55}/g, '[REDACTED_PUBLIC_KEY]');
     }
     return 'Unknown error occurred';
   }
 
   private sanitizeParams(params: any): any {
-    // Remove private keys from logged parameters
-    const sanitized = { ...params };
-    
-    if (sanitized.privateKey) {
-      sanitized.privateKey = '[REDACTED]';
-    }
-    
-    if (sanitized.secret) {
-      sanitized.secret = '[REDACTED]';
+    if (Array.isArray(params)) {
+      return params.map((value) => this.sanitizeParams(value));
     }
 
-    return sanitized;
+    if (params !== null && typeof params === 'object') {
+      const sanitized: Record<string, unknown> = {};
+
+      for (const [key, value] of Object.entries(params)) {
+        if (key === 'privateKey' || key === 'secret') {
+          sanitized[key] = '[REDACTED]';
+        } else {
+          sanitized[key] = this.sanitizeParams(value);
+        }
+      }
+
+      return sanitized;
+    }
+
+    return params;
   }
 
   private sleep(ms: number): Promise<void> {
