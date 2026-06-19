@@ -133,8 +133,8 @@ export class CreditLineService {
    * - `utilized + amount` must not exceed `creditLimit`
    *
    * On success the persisted `utilized` field is incremented atomically by
-   * the repository. The on-chain transaction is submitted separately via
-   * `SorobanRpcClient` — confirmation flows back through the indexer.
+   * the repository. The on-chain transaction is submitted separately by the
+   * caller's wallet or integration; confirmation flows back through the indexer.
    */
   async draw(id: string, borrowerId: string, amount: string): Promise<CreditLine> {
     const line = await this.creditLineRepository.findById(id);

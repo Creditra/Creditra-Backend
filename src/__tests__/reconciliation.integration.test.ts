@@ -130,8 +130,8 @@ describe('Reconciliation Integration', () => {
                   0,
                   {
                     borrower: TEST_PUBLIC_KEY,
-                    credit_limit: creditLine.creditLimit,
-                    utilized_amount: '0.00',
+                    credit_limit: 10000n,
+                    utilized_amount: 0n,
                     interest_rate_bps: creditLine.interestRateBps,
                     status: 'active',
                   },

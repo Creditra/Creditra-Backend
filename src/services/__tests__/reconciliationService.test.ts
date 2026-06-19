@@ -140,6 +140,32 @@ describe('ReconciliationService', () => {
       expect(result.errors).toEqual([]);
     });
 
+    it('does not report amount drift for numerically equal decimal strings', async () => {
+      mockRepo.setCreditLines([
+        makeCreditLine({
+          walletAddress: 'GTEST123',
+          creditLimit: '10000.00',
+          availableCredit: '7500.00000000',
+          utilized: '2500.00',
+        }),
+      ]);
+      mockClient.setRecords([
+        {
+          id: '0',
+          walletAddress: 'GTEST123',
+          creditLimit: '10000',
+          availableCredit: '7500',
+          interestRateBps: 500,
+          status: 'active',
+        },
+      ]);
+
+      const result = await service.reconcile();
+
+      expect(result.mismatches).toEqual([]);
+      expect(result.errors).toEqual([]);
+    });
+
     it('detects credit limit mismatch', async () => {
       const creditLine: CreditLine = {
         id: 'cl-1',

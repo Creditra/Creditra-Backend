@@ -29,7 +29,6 @@ flowchart LR
 | `horizonListener` | Polls Horizon for contract events, emits to handlers | [`src/services/horizonListener.ts`](../src/services/horizonListener.ts) |
 | `drawWebhookService` | Receives confirmed events, fans them out to subscribers | [`src/services/drawWebhookService.ts`](../src/services/drawWebhookService.ts) |
 | `StellarSorobanClient` / `MockSorobanClient` | Reconciliation read path for enumerating Credit contract records | [`src/services/sorobanClient.ts`](../src/services/sorobanClient.ts) |
-| `SorobanRpcClient` legacy helper | Legacy/simulated generic RPC helper; not the reconciliation source of truth | [`src/services/sorobanRpcClient.ts`](../src/services/sorobanRpcClient.ts) |
 | `ReconciliationService` | Diffs DB vs chain, classifies mismatches | [`src/services/reconciliationService.ts`](../src/services/reconciliationService.ts) |
 | `ReconciliationWorker` | Schedules reconciliation jobs on an interval | [`src/services/reconciliationWorker.ts`](../src/services/reconciliationWorker.ts) |
 | `jobQueue` | In-process, at-least-once queue with retry & dead-letter | [`src/services/jobQueue.ts`](../src/services/jobQueue.ts) |
@@ -225,7 +224,7 @@ This wiring is intentionally not in the default container so the in-memory liste
 - [`src/services/reconciliationService.ts`](../src/services/reconciliationService.ts)
 - [`src/services/reconciliationWorker.ts`](../src/services/reconciliationWorker.ts)
 - [`src/services/jobQueue.ts`](../src/services/jobQueue.ts)
-- [`src/services/sorobanRpcClient.ts`](../src/services/sorobanRpcClient.ts)
+- [`src/services/sorobanClient.ts`](../src/services/sorobanClient.ts)
 - [`src/services/drawWebhookService.ts`](../src/services/drawWebhookService.ts)
 - [`docs/HORIZON_LISTENER_CONFIG.md`](./HORIZON_LISTENER_CONFIG.md)
 - [`docs/reconciliation.md`](./reconciliation.md)

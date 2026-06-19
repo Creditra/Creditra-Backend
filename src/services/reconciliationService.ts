@@ -199,7 +199,7 @@ export class ReconciliationService {
     }
 
     // Compare credit limit
-    if (dbLine.creditLimit !== chainRecord.creditLimit) {
+    if (!decimalStringsEqual(dbLine.creditLimit, chainRecord.creditLimit)) {
       mismatches.push({
         creditLineId: dbLine.id,
         walletAddress: dbLine.walletAddress,
@@ -211,7 +211,7 @@ export class ReconciliationService {
     }
 
     // Compare available credit
-    if (dbLine.availableCredit !== chainRecord.availableCredit) {
+    if (!decimalStringsEqual(dbLine.availableCredit, chainRecord.availableCredit)) {
       mismatches.push({
         creditLineId: dbLine.id,
         walletAddress: dbLine.walletAddress,
@@ -275,6 +275,36 @@ function findDuplicateWallets(walletAddresses: string[]): string[] {
 
 function reconciliationDiagnostic(message: string): string {
   return sanitizeStellarDiagnostic(message);
+}
+
+function decimalStringsEqual(left: string, right: string): boolean {
+  const leftDecimal = parseDecimalForComparison(left);
+  const rightDecimal = parseDecimalForComparison(right);
+
+  if (leftDecimal === undefined || rightDecimal === undefined) {
+    return left === right;
+  }
+
+  return leftDecimal.value === rightDecimal.value && leftDecimal.scale === rightDecimal.scale;
+}
+
+function parseDecimalForComparison(value: string): { value: bigint; scale: number } | undefined {
+  const match = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(value.trim());
+  if (!match) {
+    return undefined;
+  }
+
+  const sign = match[1] === '-' ? -1n : 1n;
+  const whole = match[2] ?? '0';
+  const fraction = (match[3] ?? '').replace(/0+$/, '');
+  const digits = `${whole}${fraction}`.replace(/^0+/, '') || '0';
+  const magnitude = BigInt(digits);
+
+  if (magnitude === 0n) {
+    return { value: 0n, scale: 0 };
+  }
+
+  return { value: sign * magnitude, scale: fraction.length };
 }
 
 async function fetchAllDbCreditLines(repository: CreditLineRepository): Promise<CreditLine[]> {

@@ -23,7 +23,7 @@ The backend ships with a layered test suite designed so every domain decision is
 flowchart TB
     subgraph Unit
       U1[Utils tests<br/>numbers · result · time · ...]
-      U2[Service unit tests<br/>CreditLineService · RiskEvaluationService<br/>sorobanRpcClient · drawWebhookService]
+      U2[Service unit tests<br/>CreditLineService · RiskEvaluationService<br/>sorobanClient · drawWebhookService]
       U3[Repository unit tests<br/>InMemory* + Postgres*]
       U4[Provider unit tests<br/>Rules · Static · External · factory]
       U5[Schema unit tests]
@@ -47,7 +47,7 @@ flowchart TB
 Domain rules, in isolation, no I/O:
 
 - `src/utils/__tests__/` — `fetchWithTimeout`, `httpStatus`, `numbers`, `objects`, `result`, `strings`, `time`, `constants`.
-- `src/services/__tests__/` — `CreditLineService`, `RiskEvaluationService`, `sorobanClient`, `sorobanRpcClient`, `drawWebhookService`.
+- `src/services/__tests__/` — `CreditLineService`, `RiskEvaluationService`, `sorobanClient`, Soroban RPC config, `drawWebhookService`.
 - `src/repositories/memory/__tests__/` — In-memory implementations of all repositories.
 - `src/repositories/postgres/__tests__/` — Postgres CreditLine repository with a stub `DbClient`.
 - `src/services/providers/__tests__/` — `RulesEngineRiskProvider`, `StaticRiskProvider`, `ExternalApiRiskProvider`, `providerFactory`.
