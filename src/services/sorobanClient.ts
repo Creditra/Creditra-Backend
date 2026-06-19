@@ -6,6 +6,7 @@
  */
 
 import type { OnChainCreditRecord, SorobanRpcClient } from './reconciliationService.js';
+import { serviceLogger } from '../utils/serviceLogger.js';
 
 export interface SorobanClientConfig {
   rpcUrl: string;
@@ -26,7 +27,7 @@ export class MockSorobanClient implements SorobanRpcClient {
    * - Parse XDR responses into OnChainCreditRecord format
    */
   async fetchAllCreditRecords(): Promise<OnChainCreditRecord[]> {
-    console.log(
+    serviceLogger.info(
       `[SorobanClient] Fetching credit records from ${this.config.rpcUrl} ` +
       `(contract: ${this.config.contractId})`
     );

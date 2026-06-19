@@ -6,6 +6,7 @@
  */
 
 import type { JobQueue, Job } from './jobQueue.js';
+import { serviceLogger } from '../utils/serviceLogger.js';
 import type { ReconciliationService } from './reconciliationService.js';
 
 export interface ReconciliationWorkerConfig {
@@ -25,7 +26,7 @@ export class ReconciliationWorker {
   ) {
     // Register the job handler
     this.jobQueue.registerHandler('credit-reconciliation', async (job: Job) => {
-      console.log(`[ReconciliationWorker] Processing job ${job.id} (attempt ${job.attempts + 1})`);
+      serviceLogger.info(`[ReconciliationWorker] Processing job ${job.id} (attempt ${job.attempts + 1})`);
       
       try {
         const result = await this.reconciliationService.reconcile();
@@ -35,7 +36,7 @@ export class ReconciliationWorker {
           const criticalCount = result.mismatches.filter(m => m.severity === 'critical').length;
           const warningCount = result.mismatches.filter(m => m.severity === 'warning').length;
           
-          console.error(
+          serviceLogger.error(
             `[ReconciliationWorker] ALERT: Reconciliation found ${result.mismatches.length} mismatches ` +
             `(${criticalCount} critical, ${warningCount} warnings)`
           );
@@ -50,19 +51,19 @@ export class ReconciliationWorker {
         }
         
         if (result.errors.length > 0) {
-          console.error(
+          serviceLogger.error(
             `[ReconciliationWorker] Reconciliation completed with errors:`,
             result.errors
           );
           throw new Error(`Reconciliation errors: ${result.errors.join(', ')}`);
         }
         
-        console.log(
+        serviceLogger.info(
           `[ReconciliationWorker] Job ${job.id} completed successfully. ` +
           `Checked ${result.totalChecked} records.`
         );
       } catch (error) {
-        console.error(`[ReconciliationWorker] Job ${job.id} failed:`, error);
+        serviceLogger.error(`[ReconciliationWorker] Job ${job.id} failed:`, error);
         throw error; // Re-throw to trigger job retry logic
       }
     });
@@ -73,7 +74,7 @@ export class ReconciliationWorker {
    */
   start(config: ReconciliationWorkerConfig = {}): void {
     if (this.running) {
-      console.warn('[ReconciliationWorker] Already running');
+      serviceLogger.warn('[ReconciliationWorker] Already running');
       return;
     }
 
@@ -84,16 +85,16 @@ export class ReconciliationWorker {
     this.jobQueue.start();
 
     if (runImmediately) {
-      console.log('[ReconciliationWorker] Scheduling immediate reconciliation');
+      serviceLogger.info('[ReconciliationWorker] Scheduling immediate reconciliation');
       this.reconciliationService.scheduleReconciliation(0);
     }
 
     this.intervalHandle = setInterval(() => {
-      console.log('[ReconciliationWorker] Scheduling periodic reconciliation');
+      serviceLogger.info('[ReconciliationWorker] Scheduling periodic reconciliation');
       this.reconciliationService.scheduleReconciliation(0);
     }, intervalMs);
 
-    console.log(
+    serviceLogger.info(
       `[ReconciliationWorker] Started. Running every ${intervalMs}ms ` +
       `(${Math.round(intervalMs / 60000)} minutes)`
     );
@@ -104,7 +105,7 @@ export class ReconciliationWorker {
    */
   stop(): void {
     if (!this.running) {
-      console.warn('[ReconciliationWorker] Not running');
+      serviceLogger.warn('[ReconciliationWorker] Not running');
       return;
     }
 
@@ -114,7 +115,7 @@ export class ReconciliationWorker {
     }
 
     this.running = false;
-    console.log('[ReconciliationWorker] Stopped');
+    serviceLogger.info('[ReconciliationWorker] Stopped');
   }
 
   isRunning(): boolean {

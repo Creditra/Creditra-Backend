@@ -13,6 +13,8 @@
  * without changing call sites.
  */
 
+import { serviceLogger } from '../utils/serviceLogger.js';
+
 export interface Job<Data = unknown> {
   /** Stable job identifier (unique within a queue instance). */
   readonly id: string;
@@ -244,7 +246,7 @@ export class InMemoryJobQueue implements JobQueue {
 
         if (!handler) {
           // No handler registered — dead-letter immediately and alert operator.
-          console.error(
+          serviceLogger.error(
             `[JobQueue] No handler for type "${job.type}". Job ${job.id} moved to dead-letter.`,
           );
           this.failed.push(job);
@@ -267,7 +269,7 @@ export class InMemoryJobQueue implements JobQueue {
           } else {
             // Exceeded maxAttempts — move to dead-letter set.
             this.failed.push(job);
-            console.error(
+            serviceLogger.error(
               `[JobQueue] Job ${job.id} (type "${job.type}") exhausted ${job.attempts} attempts. ` +
               `Last error: ${job.lastError}`,
             );

@@ -8,7 +8,7 @@ The backend is built to be debuggable from a single correlation ID. This documen
 
 ### 1.1 Logger
 
-A single Pino logger lives in [`src/utils/logger.ts`](../src/utils/logger.ts) and is reused everywhere. JSON-by-default, ISO timestamps, silent in `NODE_ENV=test`. Plug a `pino-pretty` sidecar in dev only.
+A single Pino logger lives in [`src/utils/logger.ts`](../src/utils/logger.ts) and is reused by request middleware and service-layer diagnostics. JSON-by-default, ISO timestamps, silent in `NODE_ENV=test`. Plug a `pino-pretty` sidecar in dev only.
 
 ### 1.2 Correlation IDs
 
@@ -25,7 +25,7 @@ Notice `walletAddress` is **sanitized** to `first6...last4` so logs are useful w
 
 ### 1.3 Redaction
 
-[`src/utils/logRedact.ts`](../src/utils/logRedact.ts) walks string args, object values, and `Error.message`, redacting any Stellar address (`G[A-Z2-7]{55}`) to `Gxxxxx...xxxx`. Call sites should prefer the helpers `redactLogArgs(...)` or `redactObject(...)` when constructing log lines from external strings.
+[`src/utils/logRedact.ts`](../src/utils/logRedact.ts) walks string args, object values, and `Error.message`, redacting any Stellar address (`G[A-Z2-7]{55}`) to `Gxxxxx...xxxx`. Service code logs through [`src/utils/serviceLogger.ts`](../src/utils/serviceLogger.ts), which applies the same redaction before handing diagnostics to Pino.
 
 Set `LOG_REDACTION_DEBUG=1` to suppress redaction temporarily during incident response.
 

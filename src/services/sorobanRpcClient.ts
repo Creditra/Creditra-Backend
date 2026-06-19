@@ -21,6 +21,8 @@
  *
  * See `docs/INDEXER.md` for how reads, writes, and the listener combine.
  */
+import { serviceLogger } from '../utils/serviceLogger.js';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -204,7 +206,7 @@ class SorobanRpcClient {
     // In a real implementation, this would make an actual HTTP request to Soroban RPC
     // For now, we'll simulate the response structure
     
-    console.log(`[SorobanRpcClient] Simulating RPC call: ${method}`, {
+    serviceLogger.info(`[SorobanRpcClient] Simulating RPC call: ${method}`, {
       params: this.sanitizeParams(params),
     });
 

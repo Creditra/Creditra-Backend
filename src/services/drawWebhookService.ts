@@ -16,6 +16,7 @@
  * (c) deduplicate by `data.drawId`. See `docs/API.md` §Webhooks.
  */
 import { createHmac } from "node:crypto";
+import { serviceLogger } from "../utils/serviceLogger.js";
 import type { HorizonEvent } from "./horizonListener.js";
 
 // ---------------------------------------------------------------------------
@@ -190,7 +191,7 @@ async function retryWithBackoff<T>(
             lastError = error as Error;
             
             if (attempt <= maxRetries) {
-                console.warn(
+                serviceLogger.warn(
                     `[DrawWebhook] Attempt ${attempt} failed, retrying in ${delay}ms:`,
                     lastError.message
                 );
@@ -230,7 +231,7 @@ function parseDrawConfirmedEvent(event: HorizonEvent): WebhookPayload | null {
             }
         };
     } catch (error) {
-        console.error("[DrawWebhook] Failed to parse event data:", error);
+        serviceLogger.error("[DrawWebhook] Failed to parse event data:", error);
         return null;
     }
 }
@@ -246,13 +247,13 @@ export function getWebhookConfig(): WebhookConfig | null {
 export function initializeWebhooks(): void {
     try {
         activeConfig = resolveWebhookConfig();
-        console.log("[DrawWebhook] Initialized with config:", {
+        serviceLogger.info("[DrawWebhook] Initialized with config:", {
             urls: activeConfig.urls.length,
             maxRetries: activeConfig.maxRetries,
             timeoutMs: activeConfig.timeoutMs
         });
     } catch (error) {
-        console.error("[DrawWebhook] Failed to initialize:", error);
+        serviceLogger.error("[DrawWebhook] Failed to initialize:", error);
         activeConfig = null;
     }
 }
@@ -261,20 +262,20 @@ export async function sendDrawConfirmationWebhook(
     event: HorizonEvent
 ): Promise<WebhookDeliveryResult[]> {
     if (!activeConfig || activeConfig.urls.length === 0) {
-        console.log("[DrawWebhook] No webhook URLs configured, skipping");
+        serviceLogger.info("[DrawWebhook] No webhook URLs configured, skipping");
         return [];
     }
 
     const payload = parseDrawConfirmedEvent(event);
     if (!payload) {
-        console.log("[DrawWebhook] Event is not a draw confirmation, skipping");
+        serviceLogger.info("[DrawWebhook] Event is not a draw confirmation, skipping");
         return [];
     }
 
     const payloadString = JSON.stringify(payload);
     const signature = generateSignature(payloadString, activeConfig.secret);
 
-    console.log(
+    serviceLogger.info(
         `[DrawWebhook] Processing draw confirmation for draw ID: ${payload.data.drawId}`
     );
 
@@ -309,7 +310,7 @@ export async function sendDrawConfirmationWebhook(
     const successCount = results.filter(r => r.success).length;
     const failureCount = results.length - successCount;
     
-    console.log(
+    serviceLogger.info(
         `[DrawWebhook] Delivery complete: ${successCount} successful, ${failureCount} failed`
     );
 

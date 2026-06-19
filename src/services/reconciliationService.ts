@@ -6,6 +6,7 @@
  */
 
 import type { CreditLineRepository } from '../repositories/interfaces/CreditLineRepository.js';
+import { serviceLogger } from '../utils/serviceLogger.js';
 import type { JobQueue } from './jobQueue.js';
 
 export interface OnChainCreditRecord {
@@ -125,12 +126,12 @@ export class ReconciliationService {
 
       // Log results
       if (result.mismatches.length > 0) {
-        console.error(
+        serviceLogger.error(
           `[ReconciliationService] Found ${result.mismatches.length} mismatches:`,
           JSON.stringify(result.mismatches, null, 2)
         );
       } else {
-        console.log(
+        serviceLogger.info(
           `[ReconciliationService] Reconciliation complete. ${result.totalChecked} records checked, no mismatches found.`
         );
       }
@@ -138,7 +139,7 @@ export class ReconciliationService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       result.errors.push(errorMessage);
-      console.error('[ReconciliationService] Reconciliation failed:', error);
+      serviceLogger.error('[ReconciliationService] Reconciliation failed:', error);
     }
 
     return result;

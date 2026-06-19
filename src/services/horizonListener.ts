@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { redactLogArgs } from "../utils/logRedact.js";
+import { serviceLogger } from "../utils/serviceLogger.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -109,15 +110,15 @@ const retryState = {
 };
 
 function logInfo(...args: unknown[]): void {
-    console.log(...redactLogArgs(args));
+    serviceLogger.info(...redactLogArgs(args));
 }
 
 function logWarn(...args: unknown[]): void {
-    console.warn(...redactLogArgs(args));
+    serviceLogger.warn(...redactLogArgs(args));
 }
 
 function logError(...args: unknown[]): void {
-    console.error(...redactLogArgs(args));
+    serviceLogger.error(...redactLogArgs(args));
 }
 
 // ---------------------------------------------------------------------------
