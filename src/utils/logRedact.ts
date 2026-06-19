@@ -1,4 +1,7 @@
 const STELLAR_ADDRESS_REGEX = /\bG[A-Z2-7]{55}\b/g;
+const STELLAR_SECRET_SEED_REGEX = /\bS[A-Z2-7]{55}\b/g;
+const STELLAR_MUXED_ACCOUNT_REGEX = /\bM[A-Z2-7]{68}\b/g;
+const EMAIL_REGEX = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 
 function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -33,7 +36,11 @@ export function redactLogString(
     return value;
   }
 
-  return value.replace(STELLAR_ADDRESS_REGEX, truncateAddress);
+  return value
+    .replace(STELLAR_SECRET_SEED_REGEX, '[REDACTED_STELLAR_SECRET]')
+    .replace(STELLAR_MUXED_ACCOUNT_REGEX, '[REDACTED_MUXED_ACCOUNT]')
+    .replace(EMAIL_REGEX, '[REDACTED_EMAIL]')
+    .replace(STELLAR_ADDRESS_REGEX, truncateAddress);
 }
 
 function redactValueInternal(

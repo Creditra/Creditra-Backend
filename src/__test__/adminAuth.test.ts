@@ -1,7 +1,8 @@
 import express from "express";
 import request from "supertest";
 import { adminAuth, ADMIN_KEY_HEADER } from "../middleware/adminAuth.js";
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import type { Request, Response } from "express";
 
 const SECRET = "test-admin-secret-key";
 
@@ -59,6 +60,24 @@ describe("adminAuth middleware", () => {
 
         expect(res.status).toBe(401);
         expect(res.body.error).toContain("Unauthorized");
+        });
+
+        it("returns 401 when duplicate header values are provided as an array", () => {
+        const req = {
+            headers: {
+            [ADMIN_KEY_HEADER]: [SECRET],
+            },
+        } as unknown as Request;
+        const res = {
+            status: vi.fn().mockReturnThis(),
+            json: vi.fn(),
+        } as unknown as Response;
+        const next = vi.fn();
+
+        adminAuth(req, res, next);
+
+        expect(res.status).toHaveBeenCalledWith(401);
+        expect(next).not.toHaveBeenCalled();
         });
 
         it("returns 401 when the header is an empty string", async () => {

@@ -175,6 +175,7 @@ Subscriber expectation (documented in [`docs/API.md`](./API.md) §Webhooks):
 - **Rotation.** `loadApiKeys()` is invoked per-request via a resolver closure so partner keys can be rotated by updating the env source (e.g. Kubernetes Secret + restart-free reload) without redeploying.
 - **Out of logs.** The Pino-based [`logger`](../src/utils/logger.ts) is paired with [`logRedact.ts`](../src/utils/logRedact.ts) which:
   - Redacts Stellar pubkeys (`G[A-Z2-7]{55}`) to `Gxxxxx...xxxx` form.
+  - Masks Stellar secret seeds, muxed accounts, and email addresses.
   - Walks nested objects and `Error.message`.
   - Is opt-out via `LOG_REDACTION_DEBUG` for incident response.
 - **Sanitized errors.** [`sorobanRpcClient`](../src/services/sorobanRpcClient.ts) strips Stellar keys from any thrown error before propagation.
