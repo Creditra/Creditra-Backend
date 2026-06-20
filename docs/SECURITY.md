@@ -9,10 +9,10 @@ This document is the backend's threat model and the catalogue of in-tree mitigat
 | Asset | Threat | In-tree mitigation |
 |---|---|---|
 | Risk evaluations | Forgery / replay of risk inputs | Server-derived only — never trust client-supplied factors. `RiskEvaluationService` ignores anything but `walletAddress` + `forceRefresh`. |
-| Credit-line state transitions | Unauthorised suspend/close | `X-Admin-Api-Key` gate ([`adminAuth.ts`](../src/middleware/adminAuth.ts)) + 503 fail-closed when key unset |
+| Credit-line state transitions | Unauthorised suspend/close | `X-Admin-Api-Key` gate with constant-time comparison ([`adminAuth.ts`](../src/middleware/adminAuth.ts)) + 503 fail-closed when key unset |
 | Outbound webhooks | Spoofed delivery / replay | HMAC-SHA256 signature, monotonic `X-Webhook-Timestamp`, `drawId` for dedup |
 | API keys | Timing leaks during comparison | `crypto.timingSafeEqual` in [`auth.ts`](../src/middleware/auth.ts) |
-| Logs | PII / secret exfiltration | `redactLogArgs` + `sanitizeWallet` truncation |
+| Logs | PII / secret exfiltration | `redactLogArgs`, Stellar public/secret/muxed account masking, email masking, and `sanitizeWallet` truncation |
 | DB | Drift from on-chain truth | `ReconciliationWorker` runs every `RECONCILIATION_INTERVAL_MS` |
 | Service availability | Brute force / abusive scrapers | Token-bucket rate limit with `Retry-After` |
 | Service availability | Large body payloads | 100 kB body cap, 413 mapped to envelope |

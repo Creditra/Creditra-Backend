@@ -28,7 +28,7 @@ export function adminAuth(
 
     if (typeof providedKey !== "string" || !timingSafeStringEqual(providedKey, expectedKey)) {
         res.status(401).json({
-        error: "Unauthorized: valid X-Admin-Api-Key header is required.",
+            error: "Unauthorized: valid X-Admin-Api-Key header is required.",
         });
         return;
     }
