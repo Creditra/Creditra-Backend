@@ -51,6 +51,13 @@ function redactValueInternal(
     return redactLogString(value, false);
   }
 
+  if (typeof value === 'object' && value !== null) {
+    if (seen.has(value)) {
+      return '[Circular]';
+    }
+    seen.add(value);
+  }
+
   if (value instanceof Error) {
     const redactedError = new Error(redactLogString(value.message, false));
     redactedError.name = value.name;
@@ -72,11 +79,6 @@ function redactValueInternal(
   }
 
   if (isPlainObject(value)) {
-    if (seen.has(value)) {
-      return '[Circular]';
-    }
-
-    seen.add(value);
     const redacted: Record<string, unknown> = {};
     for (const [key, nested] of Object.entries(value)) {
       redacted[key] = redactValueInternal(nested, seen);

@@ -79,6 +79,16 @@ describe("logRedact", () => {
     expect(output.self).not.toBe(payload);
   });
 
+  it("redacts cyclic arrays without recursing indefinitely", () => {
+    const payload: unknown[] = [STELLAR_ADDRESS];
+    payload.push(payload);
+
+    const output = redactLogValue(payload, false);
+
+    expect(output[0]).toBe("GCKFBE...EKJA");
+    expect(output[1]).toBe("[Circular]");
+  });
+
   it("redacts Error message and stack", () => {
     const error = new Error(`failed for ${STELLAR_ADDRESS} and ${EMAIL}`);
     error.stack = `Error: failed for ${STELLAR_ADDRESS} and ${STELLAR_SECRET_SEED}`;
@@ -91,6 +101,16 @@ describe("logRedact", () => {
     expect(output.stack).toContain("GCKFBE...EKJA");
     expect(output.stack).not.toContain(STELLAR_ADDRESS);
     expect(output.stack).not.toContain(STELLAR_SECRET_SEED);
+  });
+
+  it("redacts cyclic Error properties without recursing indefinitely", () => {
+    const error = new Error(`failed for ${EMAIL}`);
+    (error as Error & { cause?: unknown }).cause = error;
+
+    const output = redactLogValue(error, false) as Error & { cause?: unknown };
+
+    expect(output.message).toBe("failed for [REDACTED_EMAIL]");
+    expect(output.cause).toBe("[Circular]");
   });
 
   it("returns original log args when debug mode is enabled", () => {
