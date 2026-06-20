@@ -71,40 +71,19 @@ RECONCILIATION_RUN_IMMEDIATELY=true
 
 ### Test Coverage
 
-- **reconciliationService.test.ts**: 15 test cases
-  - Empty mismatches when in sync
-  - Field-specific mismatch detection (all fields)
-  - Existence checks (DB-only, chain-only records)
-  - Multiple mismatches across fields
-  - Error handling and logging
+The reconciliation feature is covered across service, worker, Soroban client,
+route, and integration tests. Keep the exact test count and coverage percentage
+anchored to the current CI run rather than this document.
 
-- **reconciliationWorker.test.ts**: 13 test cases
-  - Worker lifecycle (start/stop/isRunning)
-  - Immediate and periodic scheduling
-  - Job handler success/failure paths
-  - Retry logic with maxAttempts
-  - Critical vs warning severity handling
+Key scenarios covered:
 
-- **sorobanClient.test.ts**: 6 test cases
-  - Mock client behavior
-  - Config resolution from env vars
-  - Default values
-
-- **reconciliation.test.ts**: 8 test cases
-  - API authentication requirements
-  - Manual trigger endpoint
-  - Status endpoint
-  - Error handling
-
-- **reconciliation.integration.test.ts**: 7 test cases
-  - End-to-end reconciliation flow
-  - Critical mismatch alerting
-  - Warning-level mismatch handling
-  - Transient failure retry
-  - Periodic scheduling
-  - Multiple mismatch types
-
-**Total: 49 test cases** covering all reconciliation functionality
+- Empty mismatches when DB and chain are in sync
+- Field-specific mismatch detection
+- Existence checks for DB-only and chain-only records
+- Multiple mismatches across fields
+- Worker lifecycle, immediate scheduling, periodic scheduling, and retry paths
+- Mock-client fallback and real Soroban contract read parsing
+- API authentication, manual trigger, status endpoint, and error handling
 
 ### Run Tests
 
@@ -112,8 +91,8 @@ RECONCILIATION_RUN_IMMEDIATELY=true
 npm test src/services/__tests__/reconciliationService.test.ts
 npm test src/services/__tests__/reconciliationWorker.test.ts
 npm test src/services/__tests__/sorobanClient.test.ts
-npm test src/routes/__tests__/reconciliation.test.ts
 npm test src/__tests__/reconciliation.integration.test.ts
+npm run test:coverage
 ```
 
 ## Security Considerations
