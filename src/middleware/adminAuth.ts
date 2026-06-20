@@ -1,25 +1,25 @@
 import type { Request, Response, NextFunction } from "express";
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 export const ADMIN_KEY_HEADER = "x-admin-api-key" as const;
 
 function timingSafeStringEqual(left: string, right: string): boolean {
-    const leftBytes = Buffer.from(left, "utf8");
-    const rightBytes = Buffer.from(right, "utf8");
+    const leftDigest = createHash("sha256").update(left, "utf8").digest();
+    const rightDigest = createHash("sha256").update(right, "utf8").digest();
 
-    return leftBytes.length === rightBytes.length && timingSafeEqual(leftBytes, rightBytes);
+    return timingSafeEqual(leftDigest, rightDigest) && left.length === right.length;
 }
 
 export function adminAuth(
     req: Request,
     res: Response,
     next: NextFunction,
-    ): void {
+): void {
     const expectedKey = process.env["ADMIN_API_KEY"];
 
     if (!expectedKey) {
         res.status(503).json({
-        error: "Admin authentication is not configured on this server.",
+            error: "Admin authentication is not configured on this server.",
         });
         return;
     }

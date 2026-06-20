@@ -73,7 +73,7 @@ function redactValueInternal(
 
   if (isPlainObject(value)) {
     if (seen.has(value)) {
-      return value;
+      return '[Circular]';
     }
 
     seen.add(value);

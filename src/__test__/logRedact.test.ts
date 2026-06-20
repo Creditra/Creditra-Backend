@@ -66,6 +66,19 @@ describe("logRedact", () => {
     expect(output.list[2]).toBe("[REDACTED_MUXED_ACCOUNT]");
   });
 
+  it("does not return original cyclic objects during redaction", () => {
+    const payload: { walletAddress: string; self?: unknown } = {
+      walletAddress: STELLAR_ADDRESS,
+    };
+    payload.self = payload;
+
+    const output = redactLogValue(payload, false);
+
+    expect(output.walletAddress).toBe("GCKFBE...EKJA");
+    expect(output.self).toBe("[Circular]");
+    expect(output.self).not.toBe(payload);
+  });
+
   it("redacts Error message and stack", () => {
     const error = new Error(`failed for ${STELLAR_ADDRESS} and ${EMAIL}`);
     error.stack = `Error: failed for ${STELLAR_ADDRESS} and ${STELLAR_SECRET_SEED}`;

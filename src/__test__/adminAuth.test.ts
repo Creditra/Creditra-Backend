@@ -62,6 +62,15 @@ describe("adminAuth middleware", () => {
             expect(res.body.error).toContain("Unauthorized");
         });
 
+        it("returns 401 when the header length differs from the configured key", async () => {
+            const res = await request(buildApp())
+                .post("/protected")
+                .set(ADMIN_KEY_HEADER, `${SECRET}-extra`);
+
+            expect(res.status).toBe(401);
+            expect(res.body.error).toContain("Unauthorized");
+        });
+
         it("returns 401 when duplicate header values are provided as an array", () => {
             const req = {
                 headers: {
