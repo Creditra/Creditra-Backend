@@ -19,6 +19,7 @@ This directory holds the long-form documentation for the Creditra backend. The t
 | [`SECURITY.md`](./SECURITY.md) | Threat model and in-tree mitigations. |
 | [`OBSERVABILITY.md`](./OBSERVABILITY.md) | Structured logging, metrics, health probes, tracing strategy. |
 | [`TESTING.md`](./TESTING.md) | Test pyramid, file counts, coverage gate, run commands. |
+| [`webhook-subscribers.md`](./webhook-subscribers.md) | Subscriber onboarding, HMAC verification, retry, and idempotency guidance. |
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Commit conventions, PR / review checklists, migration discipline. |
 
 ## Reference
