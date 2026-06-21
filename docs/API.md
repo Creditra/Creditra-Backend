@@ -237,7 +237,7 @@ Hook for triggering a recalibration of the risk model.
 
 ### Webhooks
 
-Implemented in [`src/routes/webhook.ts`](../src/routes/webhook.ts). These describe the **server's outbound webhook fan-out**, not inbound webhooks.
+Implemented in [`src/routes/webhook.ts`](../src/routes/webhook.ts). These describe the **server's outbound webhook fan-out**, not inbound webhooks. Subscriber setup and verification details live in [`webhook-subscribers.md`](./webhook-subscribers.md).
 
 #### `GET /api/webhooks/config`
 
@@ -258,7 +258,7 @@ Reachability probe for every configured URL. Returns `{ total, reachable, unreac
 ```http
 Content-Type: application/json
 X-Webhook-Signature: sha256=<hex HMAC>
-X-Webhook-Timestamp: <epoch ms>
+X-Webhook-Timestamp: <ISO-8601 payload timestamp>
 User-Agent: Creditra-Webhook/1.0
 ```
 
@@ -278,7 +278,7 @@ User-Agent: Creditra-Webhook/1.0
 }
 ```
 
-HMAC is computed over the **raw JSON body** with `WEBHOOK_SECRET`. Subscribers must:
+HMAC is computed over the **raw JSON body** with `WEBHOOK_SECRET`. The timestamp header currently carries the same ISO-8601 value as `payload.timestamp`. Subscribers must:
 
 1. Re-compute `HMAC-SHA256(body, secret)` and compare in constant time.
 2. Reject when `now - X-Webhook-Timestamp` exceeds your tolerance window.
