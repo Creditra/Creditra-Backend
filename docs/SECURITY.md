@@ -160,7 +160,7 @@ Producer:
 - HMAC computed over the **raw JSON body** prior to send; subscribers should validate against the body bytes they received, not a re-serialized form.
 - Retries up to `WEBHOOK_MAX_RETRIES + 1` with `WEBHOOK_INITIAL_BACKOFF_MS × multiplier^attempt`.
 
-Subscriber expectation (documented in [`docs/API.md`](./API.md) §Webhooks):
+Subscriber expectation (documented in [`docs/API.md`](./API.md) §Webhooks and expanded in the [`webhook subscriber guide`](./webhook-subscriber-guide.md)):
 
 1. Recompute `HMAC-SHA256(body, secret)` and compare in constant time.
 2. Reject deliveries older than your tolerance window (`X-Webhook-Timestamp`).
