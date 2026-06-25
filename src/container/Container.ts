@@ -31,6 +31,8 @@ import { ReconciliationService, type SorobanRpcClient } from "../services/reconc
 import { ReconciliationWorker } from "../services/reconciliationWorker.js";
 import { createSorobanClient, resolveSorobanConfig } from "../services/sorobanClient.js";
 import { defaultJobQueue } from "../services/jobQueue.js";
+import { DataRetentionService } from "../services/dataRetentionService.js";
+import { DataRetentionWorker } from "../services/dataRetentionWorker.js";
 
 export class Container {
   private static instance: Container;
@@ -44,11 +46,12 @@ export class Container {
   private _transactionRepository!: TransactionRepository;
 
   // Services
-  private _creditLineService!: CreditLineService;
-  private _riskEvaluationService!: RiskEvaluationService;
-  private _reconciliationService!: ReconciliationService;
-  private _reconciliationWorker!: ReconciliationWorker;
-  private _sorobanClient!: SorobanRpcClient;
+  private _creditLineService: CreditLineService;
+  private _riskEvaluationService: RiskEvaluationService;
+  private _reconciliationService: ReconciliationService;
+  private _reconciliationWorker: ReconciliationWorker;
+  private _dataRetentionService?: DataRetentionService;
+  private _dataRetentionWorker?: DataRetentionWorker;
 
   private constructor() {
     // Initialize repositories based on environment
@@ -74,6 +77,16 @@ export class Container {
       this._reconciliationService,
       defaultJobQueue,
     );
+
+    // Data retention requires a real Postgres connection (pgcrypto digest(),
+    // borrowers.anonymized_at) — unavailable for in-memory/test repositories.
+    if (this._dbClient) {
+      this._dataRetentionService = new DataRetentionService(this._dbClient);
+      this._dataRetentionWorker = new DataRetentionWorker(
+        this._dataRetentionService,
+        defaultJobQueue,
+      );
+    }
   }
 
   private initializeRepositories(): void {
@@ -131,6 +144,11 @@ export class Container {
     return this._reconciliationWorker;
   }
 
+  /** Undefined when running against in-memory repositories (no Postgres connection). */
+  get dataRetentionWorker(): DataRetentionWorker | undefined {
+    return this._dataRetentionWorker;
+  }
+
   // Method to replace repositories (useful for testing or switching to DB implementations)
   public setRepositories(repositories: {
     creditLineRepository?: CreditLineRepository;
@@ -176,6 +194,11 @@ export class Container {
     // Stop reconciliation worker
     if (this._reconciliationWorker.isRunning()) {
       this._reconciliationWorker.stop();
+    }
+
+    // Stop data retention worker
+    if (this._dataRetentionWorker?.isRunning()) {
+      this._dataRetentionWorker.stop();
     }
 
     // Stop job queue
