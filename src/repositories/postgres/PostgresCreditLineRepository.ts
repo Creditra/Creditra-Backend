@@ -318,15 +318,35 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
   }
 
   /**
-   * Calculate available credit by subtracting total draws from credit limit.
-   * For now, returns the full credit limit since we don't have transaction tracking yet.
+   * Calculate available credit by subtracting net utilization (draws minus
+   * repayments) from the credit limit. Draws (borrows) reduce available
+   * credit; repayments restore it. Failed/cancelled transactions are excluded.
    */
-  private async calculateAvailableCredit(_creditLineId: string, creditLimit: string): Promise<string> {
-    // TODO: When transaction repository is implemented, calculate:
-    // creditLimit - SUM(transactions where type = 'draw' and credit_line_id = creditLineId)
-    
-    // For now, return full credit limit
-    return creditLimit;
+  private async calculateAvailableCredit(creditLineId: string, creditLimit: string): Promise<string> {
+    const query = `
+      SELECT COALESCE(SUM(
+        CASE
+          WHEN type = 'borrow' THEN amount
+          WHEN type = 'repay'  THEN -amount
+          ELSE 0
+        END
+      ), 0) AS utilized
+      FROM transactions
+      WHERE credit_line_id = $1
+        AND status NOT IN ('failed', 'cancelled')
+    `;
+
+    const result = await this.client.query(query, [creditLineId]);
+    const row = result.rows[0] as { utilized: string } | undefined;
+    const utilized = Number.parseFloat(row?.utilized ?? '0');
+    const limit = Number.parseFloat(creditLimit);
+
+    if (!Number.isFinite(utilized) || !Number.isFinite(limit)) {
+      return creditLimit;
+    }
+
+    const available = Math.max(0, limit - Math.max(0, utilized));
+    return available.toString();
   }
 
   private calculateUtilized(creditLimit: string, availableCredit: string): string {
