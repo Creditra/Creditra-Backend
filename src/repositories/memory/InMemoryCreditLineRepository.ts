@@ -104,10 +104,16 @@ export class InMemoryCreditLineRepository implements CreditLineRepository {
       return null;
     }
 
+    const now = new Date();
+    const previousUpdatedAt = existing.updatedAt.getTime();
+    const updatedAt = now.getTime() <= previousUpdatedAt
+      ? new Date(previousUpdatedAt + 1)
+      : now;
+
     const updated: CreditLine = {
       ...existing,
       ...request,
-      updatedAt: new Date()
+      updatedAt
     };
 
     // Keep availableCredit in sync if utilized changes

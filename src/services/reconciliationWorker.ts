@@ -8,6 +8,9 @@
 import type { JobQueue, Job } from './jobQueue.js';
 import type { ReconciliationService } from './reconciliationService.js';
 import { sanitizeJsonForStellarDiagnostics, sanitizeStellarDiagnostic } from './stellarDiagnostics.js';
+import { createServiceLogger } from '../utils/serviceLogger.js';
+
+const log = createServiceLogger('ReconciliationWorker');
 
 export interface ReconciliationWorkerConfig {
   /** How often to run reconciliation (in milliseconds). Default: 1 hour */
@@ -26,7 +29,10 @@ export class ReconciliationWorker {
   ) {
     // Register the job handler
     this.jobQueue.registerHandler('credit-reconciliation', async (job: Job) => {
-      console.log(`[ReconciliationWorker] Processing job ${job.id} (attempt ${job.attempts + 1})`);
+      log.info('reconciliation-worker:job:start', {
+        jobId: job.id,
+        attempt: job.attempts + 1,
+      });
       
       try {
         const result = await this.reconciliationService.reconcile();
@@ -36,10 +42,11 @@ export class ReconciliationWorker {
           const criticalCount = result.mismatches.filter(m => m.severity === 'critical').length;
           const warningCount = result.mismatches.filter(m => m.severity === 'warning').length;
           
-          console.error(
-            `[ReconciliationWorker] ALERT: Reconciliation found ${result.mismatches.length} mismatches ` +
-            `(${criticalCount} critical, ${warningCount} warnings)`
-          );
+          log.error('reconciliation-worker:mismatches-alert', {
+            mismatchCount: result.mismatches.length,
+            criticalCount,
+            warningCount,
+          });
           
           // In production, send alerts via email, Slack, PagerDuty, etc.
           // For now, log to console and dead-letter queue via job failure
@@ -52,19 +59,21 @@ export class ReconciliationWorker {
         
         if (result.errors.length > 0) {
           const sanitizedErrors = result.errors.map(sanitizeStellarDiagnostic);
-          console.error(
-            `[ReconciliationWorker] Reconciliation completed with errors:`,
-            sanitizeJsonForStellarDiagnostics(sanitizedErrors)
-          );
+          log.error('reconciliation-worker:errors', {
+            errors: sanitizeJsonForStellarDiagnostics(sanitizedErrors),
+          });
           throw new Error(`Reconciliation errors: ${sanitizedErrors.join(', ')}`);
         }
         
-        console.log(
-          `[ReconciliationWorker] Job ${job.id} completed successfully. ` +
-          `Checked ${result.totalChecked} records.`
-        );
+        log.info('reconciliation-worker:job:complete', {
+          jobId: job.id,
+          totalChecked: result.totalChecked,
+        });
       } catch (error) {
-        console.error(`[ReconciliationWorker] Job ${job.id} failed:`, sanitizeStellarDiagnostic(error));
+        log.error('reconciliation-worker:job:failed', {
+          jobId: job.id,
+          error: sanitizeStellarDiagnostic(error),
+        });
         throw error; // Re-throw to trigger job retry logic
       }
     });
@@ -75,7 +84,7 @@ export class ReconciliationWorker {
    */
   start(config: ReconciliationWorkerConfig = {}): void {
     if (this.running) {
-      console.warn('[ReconciliationWorker] Already running');
+      log.warn('reconciliation-worker:already-running');
       return;
     }
 
@@ -86,19 +95,19 @@ export class ReconciliationWorker {
     this.jobQueue.start();
 
     if (runImmediately) {
-      console.log('[ReconciliationWorker] Scheduling immediate reconciliation');
+      log.info('reconciliation-worker:schedule:immediate');
       this.reconciliationService.scheduleReconciliation(0);
     }
 
     this.intervalHandle = setInterval(() => {
-      console.log('[ReconciliationWorker] Scheduling periodic reconciliation');
+      log.info('reconciliation-worker:schedule:periodic');
       this.reconciliationService.scheduleReconciliation(0);
     }, intervalMs);
 
-    console.log(
-      `[ReconciliationWorker] Started. Running every ${intervalMs}ms ` +
-      `(${Math.round(intervalMs / 60000)} minutes)`
-    );
+    log.info('reconciliation-worker:started', {
+      intervalMs,
+      intervalMinutes: Math.round(intervalMs / 60000),
+    });
   }
 
   /**
@@ -106,7 +115,7 @@ export class ReconciliationWorker {
    */
   stop(): void {
     if (!this.running) {
-      console.warn('[ReconciliationWorker] Not running');
+      log.warn('reconciliation-worker:not-running');
       return;
     }
 
@@ -116,7 +125,7 @@ export class ReconciliationWorker {
     }
 
     this.running = false;
-    console.log('[ReconciliationWorker] Stopped');
+    log.info('reconciliation-worker:stopped');
   }
 
   isRunning(): boolean {

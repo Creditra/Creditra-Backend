@@ -8,6 +8,16 @@ import { InMemoryCreditLineRepository } from '../../repositories/memory/InMemory
 import { InMemoryJobQueue } from '../jobQueue.js';
 import { SorobanCreditRecordDecodeError, StellarSorobanClient } from '../sorobanClient.js';
 
+const serviceLoggerMock = vi.hoisted(() => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
+vi.mock('../../utils/serviceLogger.js', () => ({
+  createServiceLogger: () => serviceLoggerMock,
+}));
+
 const TEST_PUBLIC_KEY = `G${'A'.repeat(55)}`;
 const TEST_SECRET_KEY = `S${'C'.repeat(55)}`;
 const TEST_CONTRACT_ID = StrKey.encodeContract(Buffer.alloc(32, 1));
@@ -63,6 +73,9 @@ describe('ReconciliationService', () => {
   let jobQueue: InMemoryJobQueue;
 
   beforeEach(() => {
+    serviceLoggerMock.info.mockReset();
+    serviceLoggerMock.warn.mockReset();
+    serviceLoggerMock.error.mockReset();
     mockRepo = new MockCreditLineRepository();
     mockClient = new MockSorobanClient();
     jobQueue = new InMemoryJobQueue(10, 20);
@@ -899,9 +912,9 @@ describe('ReconciliationService', () => {
 
       await service.reconcile();
 
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('Found 1 mismatches'),
-        expect.any(String)
+      expect(serviceLoggerMock.error).toHaveBeenCalledWith(
+        'reconciliation:mismatches-found',
+        expect.objectContaining({ mismatchCount: 1 }),
       );
     });
 
@@ -911,8 +924,9 @@ describe('ReconciliationService', () => {
 
       await service.reconcile();
 
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('no mismatches found')
+      expect(serviceLoggerMock.info).toHaveBeenCalledWith(
+        'reconciliation:complete',
+        expect.objectContaining({ mismatchCount: 0 }),
       );
     });
   });

@@ -10,6 +10,8 @@ The backend is built to be debuggable from a single correlation ID. This documen
 
 A single Pino logger lives in [`src/utils/logger.ts`](../src/utils/logger.ts) and is reused everywhere. JSON-by-default, ISO timestamps, silent in `NODE_ENV=test`. Plug a `pino-pretty` sidecar in dev only.
 
+Service modules log through [`src/utils/serviceLogger.ts`](../src/utils/serviceLogger.ts), a thin wrapper around the shared Pino logger. It attaches a stable `service` field, emits fixed event-style messages such as `reconciliation-worker:job:complete`, and redacts structured context before it reaches Pino. Do not add bare `console.*` calls in `src/services`; use `createServiceLogger(...)` instead.
+
 ### 1.2 Correlation IDs
 
 Every inbound request is assigned a UUID (or honoured if a client supplies `x-request-id`) by [`src/middleware/requestLogger.ts`](../src/middleware/requestLogger.ts) and echoed back in the response. The same id is attached to `req.requestId` so downstream handlers can include it in domain logs.
@@ -26,6 +28,8 @@ Notice `walletAddress` is **sanitized** to `first6...last4` so logs are useful w
 ### 1.3 Redaction
 
 [`src/utils/logRedact.ts`](../src/utils/logRedact.ts) walks string args, object values, and `Error.message`, redacting any Stellar address (`G[A-Z2-7]{55}`) to `Gxxxxx...xxxx`. Call sites should prefer the helpers `redactLogArgs(...)` or `redactObject(...)` when constructing log lines from external strings.
+
+Service logger contexts are passed through `redactLogValue(...)`, so strings, nested objects, arrays, and `Error` instances are sanitized consistently before they are logged.
 
 Set `LOG_REDACTION_DEBUG=1` to suppress redaction temporarily during incident response.
 
@@ -201,6 +205,7 @@ node dist/index.js | npx pino-pretty
 ## 7. References
 
 - [`src/utils/logger.ts`](../src/utils/logger.ts)
+- [`src/utils/serviceLogger.ts`](../src/utils/serviceLogger.ts)
 - [`src/utils/logRedact.ts`](../src/utils/logRedact.ts)
 - [`src/middleware/requestLogger.ts`](../src/middleware/requestLogger.ts)
 - [`src/routes/health.ts`](../src/routes/health.ts)
