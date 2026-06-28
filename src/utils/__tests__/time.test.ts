@@ -6,6 +6,10 @@ import {
     ONE_DAY_MS,
     sleep,
     nowSeconds,
+    toUtcIso,
+    nowUtcIso,
+    parseUtc,
+    isUtcIso,
 } from '../time.js';
 
 describe('time utils', () => {
@@ -43,6 +47,46 @@ describe('time utils', () => {
             const value = nowSeconds();
             expect(Number.isInteger(value)).toBe(true);
             expect(value).toBeGreaterThan(0);
+        });
+    });
+
+    describe('UTC handling', () => {
+        const iso = '2026-06-29T12:34:56.789Z';
+
+        it('formats a Date as a UTC ISO-8601 string with Z suffix', () => {
+            expect(toUtcIso(new Date(iso))).toBe(iso);
+            expect(toUtcIso(new Date(iso)).endsWith('Z')).toBe(true);
+        });
+
+        it('nowUtcIso returns a valid UTC ISO string', () => {
+            expect(isUtcIso(nowUtcIso())).toBe(true);
+        });
+
+        it('parses ISO strings and epoch millis as UTC', () => {
+            expect(parseUtc(iso)?.toISOString()).toBe(iso);
+            expect(parseUtc(Date.parse(iso))?.toISOString()).toBe(iso);
+        });
+
+        it('parses a date-only string as UTC midnight (no local drift)', () => {
+            expect(parseUtc('2026-06-29')?.toISOString()).toBe('2026-06-29T00:00:00.000Z');
+        });
+
+        it('returns null for invalid input', () => {
+            expect(parseUtc('not-a-date')).toBeNull();
+            expect(parseUtc(Number.NaN)).toBeNull();
+        });
+
+        it('isUtcIso rejects offset-bearing or non-Z timestamps', () => {
+            expect(isUtcIso(iso)).toBe(true);
+            expect(isUtcIso('2026-06-29T12:34:56.789+02:00')).toBe(false);
+            expect(isUtcIso('2026-06-29T12:34:56.789')).toBe(false);
+            expect(isUtcIso('garbageZ')).toBe(false);
+        });
+
+        it('round-trips stably regardless of host time zone', () => {
+            const original = '2026-01-01T00:00:00.000Z';
+            const reparsed = parseUtc(original);
+            expect(reparsed && toUtcIso(reparsed)).toBe(original);
         });
     });
 });
