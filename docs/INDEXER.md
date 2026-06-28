@@ -98,6 +98,18 @@ jitter = ±10 % of computed delay
 - **Hard 4xx (non-429)**: log once, no retry — these indicate misconfiguration.
 - **Webhook fan-out** uses its own retry/backoff (`WEBHOOK_*` env vars).
 
+### 5.1 Debugging a missing webhook — delivery-state lookup
+
+Outbound draw webhooks persist their delivery state keyed by `(drawId, url)`
+in `src/services/webhookDeliveryState.ts`. To debug a missing notification:
+
+1. `GET /api/webhooks/health` reports `delivery.{total,delivered,failed,deadLetter}`.
+2. A `(drawId, url)` already marked `delivered` is **not** re-POSTed when a
+   re-emitted Horizon event arrives (exactly-once guarantee).
+3. Deliveries that exhaust `WEBHOOK_MAX_RETRIES` move to the **dead-letter**
+   list (status `dead_letter`) with a redacted structured warning rather than
+   being silently dropped — query `deadLetters()` on the store for details.
+
 Metrics tracked: `totalPolls`, `successfulPolls`, `failedPolls`, `eventsProcessed`, `eventsDuplicated`, `retryAttempts`, `rateLimitHits`, `cursorGapsDetected`, `cursorGapsRecovered`, `lastSuccessfulPoll`, `lastError`, `averagePollTime`. See `getMetrics()`.
 
 ---

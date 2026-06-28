@@ -17,6 +17,8 @@
  */
 import { createHmac } from "node:crypto";
 import type { HorizonEvent } from "./horizonListener.js";
+import { getWebhookDeliveryStateStore } from "./webhookDeliveryState.js";
+import { redactLogArgs } from "../utils/logRedact.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -286,7 +288,18 @@ export async function sendDrawConfirmationWebhook(
         `[DrawWebhook] Processing draw confirmation for draw ID: ${payload.data.drawId}`
     );
 
+    const store = getWebhookDeliveryStateStore();
+
     const deliveryPromises = activeConfig.urls.map(async (url) => {
+        // Exactly-once: a re-emitted Horizon event for an already-delivered
+        // (drawId, url) must not re-POST to a URL that previously succeeded.
+        if (store.isDelivered(payload.data.drawId, url)) {
+            console.log(
+                `[DrawWebhook] Skipping already-delivered draw ${payload.data.drawId} for a subscriber`
+            );
+            return { url, success: true, attempt: 0 };
+        }
+
         try {
             const { result, attempts } = await retryWithBackoff(
                 () => deliverWebhook(url, payload, signature, activeConfig!.timeoutMs),
@@ -294,6 +307,15 @@ export async function sendDrawConfirmationWebhook(
                 activeConfig!.initialBackoffMs,
                 activeConfig!.backoffMultiplier
             );
+
+            store.record({
+                drawId: payload.data.drawId,
+                url,
+                status: result.success ? "delivered" : "failed",
+                attempts,
+                lastError: result.error,
+                deliveredAt: result.success ? new Date().toISOString() : undefined
+            });
 
             return {
                 url,
@@ -303,12 +325,23 @@ export async function sendDrawConfirmationWebhook(
                 error: result.error
             };
         } catch (error) {
-            return {
+            const attempts = activeConfig!.maxRetries + 1;
+            const lastError = error instanceof Error ? error.message : "Unknown error";
+
+            // Exhausted all retries — dead-letter instead of silently dropping.
+            store.record({
+                drawId: payload.data.drawId,
                 url,
-                success: false,
-                attempt: activeConfig!.maxRetries + 1,
-                error: error instanceof Error ? error.message : "Unknown error"
-            };
+                status: "dead_letter",
+                attempts,
+                lastError
+            });
+            console.warn(...redactLogArgs([
+                "[DrawWebhook] Delivery permanently failed, moved to dead-letter:",
+                { drawId: payload.data.drawId, url, attempts, lastError }
+            ]));
+
+            return { url, success: false, attempt: attempts, error: lastError };
         }
     });
 
