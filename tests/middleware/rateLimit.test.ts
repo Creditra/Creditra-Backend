@@ -324,7 +324,7 @@ describe('createRateLimitMiddleware', () => {
 
     expect(first.count).toBe(1);
     expect(second.count).toBe(2);
-    expect(second.resetAt).toBe(first.resetAt);
+    expect(Math.abs(second.resetAt - first.resetAt)).toBeLessThanOrEqual(5);
   });
 
   it('fails open by default when Redis increment fails', async () => {

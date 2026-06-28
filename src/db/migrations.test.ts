@@ -92,12 +92,17 @@ describe('applyMigration', () => {
 describe('runPendingMigrations', () => {
   it('skips already applied migrations', async () => {
     const client = createMockClient();
-    vi.mocked(client.query)
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ version: '001_initial_schema' }, { version: '002_add_interest_rate_to_credit_lines' }] });
     const migrationsDir = await import('path').then((p) =>
       p.join(process.cwd(), 'migrations')
     );
+    const appliedVersions = (await listMigrationFiles(migrationsDir)).map(
+      versionFromFilename
+    );
+    vi.mocked(client.query)
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: appliedVersions.map((version) => ({ version })),
+      });
     const run = await runPendingMigrations(client, migrationsDir);
     expect(run).toEqual([]);
   });
