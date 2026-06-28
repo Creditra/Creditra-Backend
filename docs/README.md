@@ -18,6 +18,7 @@ This directory holds the long-form documentation for the Creditra backend. The t
 | [`INDEXER.md`](./INDEXER.md) | Stellar Horizon listener, cursor model, gap recovery, reconciliation runbook. |
 | [`SECURITY.md`](./SECURITY.md) | Threat model and in-tree mitigations. |
 | [`DATA_RETENTION.md`](./DATA_RETENTION.md) | Retention windows, anonymization, and deletion tooling for logs, audit events, and wallet-linked data. |
+| [`webhook-subscribers.md`](./webhook-subscribers.md) | Subscriber onboarding for outbound draw webhooks, HMAC verification, delivery settings, and idempotency. |
 | [`OBSERVABILITY.md`](./OBSERVABILITY.md) | Structured logging, metrics, health probes, tracing strategy. |
 | [`TESTING.md`](./TESTING.md) | Test pyramid, file counts, coverage gate, run commands. |
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Commit conventions, PR / review checklists, migration discipline. |

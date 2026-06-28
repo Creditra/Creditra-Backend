@@ -243,6 +243,10 @@ Implemented in [`src/routes/webhook.ts`](../src/routes/webhook.ts). These descri
 
 Returns subscriber URLs, retry/backoff settings, and timeout — never the secret.
 
+Subscriber implementation details, HMAC verification code, timestamp checks,
+and idempotency guidance are documented in
+[`webhook-subscribers.md`](./webhook-subscribers.md).
+
 #### `POST /api/webhooks/test`
 
 Reachability probe for every configured URL. Returns `{ total, reachable, unreachable, results[] }`.
@@ -258,7 +262,7 @@ Reachability probe for every configured URL. Returns `{ total, reachable, unreac
 ```http
 Content-Type: application/json
 X-Webhook-Signature: sha256=<hex HMAC>
-X-Webhook-Timestamp: <epoch ms>
+X-Webhook-Timestamp: <payload ISO timestamp>
 User-Agent: Creditra-Webhook/1.0
 ```
 
@@ -281,10 +285,10 @@ User-Agent: Creditra-Webhook/1.0
 HMAC is computed over the **raw JSON body** with `WEBHOOK_SECRET`. Subscribers must:
 
 1. Re-compute `HMAC-SHA256(body, secret)` and compare in constant time.
-2. Reject when `now - X-Webhook-Timestamp` exceeds your tolerance window.
+2. Reject when `X-Webhook-Timestamp` falls outside your tolerance window.
 3. Deduplicate by `data.drawId`.
 
-Server retries up to `WEBHOOK_MAX_RETRIES + 1` times with exponential backoff — implement idempotency on receive.
+Webhook delivery settings expose retry and backoff knobs. Implement idempotency on receive so repeated deliveries are safe.
 
 ---
 
