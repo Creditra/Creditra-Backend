@@ -13,6 +13,18 @@ import { z } from "zod";
 // Schema
 // ---------------------------------------------------------------------------
 
+const redisUrlSchema = z
+  .string()
+  .url("RATE_LIMIT_REDIS_URL must be a valid URL")
+  .refine((value) => {
+    try {
+      const protocol = new URL(value).protocol;
+      return protocol === "redis:" || protocol === "rediss:";
+    } catch {
+      return false;
+    }
+  }, "RATE_LIMIT_REDIS_URL must use redis:// or rediss://");
+
 const envSchema = z.object({
   // ── Required ──────────────────────────────────────────────────────────────
 
@@ -71,6 +83,12 @@ const envSchema = z.object({
 
   /** Admin API key for admin-only endpoints. Optional — 503 when absent. */
   ADMIN_API_KEY: z.string().optional(),
+
+  /** Optional Redis URL for rate-limit counters shared across API replicas. */
+  RATE_LIMIT_REDIS_URL: redisUrlSchema.optional(),
+
+  /** Redis outage policy for rate limiting. Defaults to fail-open. */
+  RATE_LIMIT_REDIS_FAILURE_MODE: z.enum(["open", "closed"]).default("open"),
 });
 
 // ---------------------------------------------------------------------------

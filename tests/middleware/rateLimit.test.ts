@@ -3,10 +3,80 @@ import express from 'express';
 import request from 'supertest';
 import type { Request, Response, NextFunction } from 'express';
 import {
+  RedisRateLimitStore,
   createRateLimitMiddleware,
   createIpKeyGenerator,
   createApiKeyKeyGenerator,
 } from '../../src/middleware/rateLimit.js';
+
+interface FakeRedisBucket {
+  count: number;
+  resetAt: number;
+}
+
+class FakeRedisClient {
+  isOpen = false;
+
+  constructor(private readonly buckets = new Map<string, FakeRedisBucket>()) {}
+
+  async connect(): Promise<void> {
+    this.isOpen = true;
+  }
+
+  async eval(
+    _script: string,
+    options: { keys: string[]; arguments: string[] },
+  ): Promise<[number, number]> {
+    const key = options.keys[0];
+    const windowMs = Number(options.arguments[0]);
+    const now = Date.now();
+    const existing = this.buckets.get(key);
+    const active = existing && existing.resetAt > now
+      ? existing
+      : { count: 0, resetAt: now + windowMs };
+
+    active.count++;
+    this.buckets.set(key, active);
+
+    return [active.count, Math.max(0, active.resetAt - now)];
+  }
+}
+
+class RejectingRedisClient {
+  isOpen = false;
+
+  async connect(): Promise<void> {
+    this.isOpen = true;
+  }
+
+  async eval(): Promise<never> {
+    throw new Error('redis unavailable');
+  }
+}
+
+class ConnectRejectingRedisClient {
+  isOpen = false;
+
+  async connect(): Promise<never> {
+    throw new Error('redis connection refused');
+  }
+
+  async eval(): Promise<never> {
+    throw new Error('eval should not be called');
+  }
+}
+
+class HangingRedisClient {
+  isOpen = false;
+
+  async connect(): Promise<never> {
+    return new Promise(() => undefined);
+  }
+
+  async eval(): Promise<never> {
+    throw new Error('eval should not be called');
+  }
+}
 
 function makeReq(overrides: Partial<Request> = {}): Partial<Request> {
   return {
@@ -23,6 +93,12 @@ function makeRes() {
     json: vi.fn().mockReturnThis(),
   };
   return res as unknown as Response;
+}
+
+async function waitForAsyncMiddleware(): Promise<void> {
+  await new Promise((resolve) => {
+    setImmediate(resolve);
+  });
 }
 
 describe('createRateLimitMiddleware', () => {
@@ -228,6 +304,116 @@ describe('createRateLimitMiddleware', () => {
       (res.json as ReturnType<typeof vi.fn>).mock.calls[0][0],
     );
     expect(jsonStr).not.toContain('super-secret-key-123');
+  });
+
+  it('shares Redis counters across simulated middleware instances', async () => {
+    const buckets = new Map<string, FakeRedisBucket>();
+    const storeA = new RedisRateLimitStore({
+      url: 'redis://localhost:6379',
+      prefix: 'test:ratelimit',
+      client: new FakeRedisClient(buckets),
+    });
+    const storeB = new RedisRateLimitStore({
+      url: 'redis://localhost:6379',
+      prefix: 'test:ratelimit',
+      client: new FakeRedisClient(buckets),
+    });
+
+    const first = await storeA.increment('client-1', 60_000);
+    const second = await storeB.increment('client-1', 60_000);
+
+    expect(first.count).toBe(1);
+    expect(second.count).toBe(2);
+    expect(second.resetAt).toBe(first.resetAt);
+  });
+
+  it('fails open by default when Redis increment fails', async () => {
+    const middleware = createRateLimitMiddleware(
+      {
+        windowMs: 60_000,
+        maxRequests: 1,
+        keyGenerator: createIpKeyGenerator(),
+      },
+      new RedisRateLimitStore({
+        url: 'redis://localhost:6379',
+        client: new RejectingRedisClient(),
+      }),
+    );
+
+    const res = makeRes();
+    middleware(makeReq() as Request, res, next);
+    await waitForAsyncMiddleware();
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        'X-RateLimit-Limit': '1',
+        'X-RateLimit-Remaining': '1',
+        'X-RateLimit-Reset': expect.any(String),
+      }),
+    );
+  });
+
+  it('can fail closed when Redis increment fails', async () => {
+    const middleware = createRateLimitMiddleware(
+      {
+        windowMs: 60_000,
+        maxRequests: 1,
+        keyGenerator: createIpKeyGenerator(),
+      },
+      new RedisRateLimitStore({
+        url: 'redis://localhost:6379',
+        failureMode: 'closed',
+        client: new RejectingRedisClient(),
+      }),
+    );
+
+    const res = makeRes();
+    middleware(makeReq() as Request, res, next);
+    await waitForAsyncMiddleware();
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(429);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: null,
+        error: expect.stringContaining('Too many requests'),
+        retryAfter: expect.any(Number),
+      }),
+    );
+  });
+
+  it('fails open when Redis connection fails before incrementing', async () => {
+    const onError = vi.fn();
+    const store = new RedisRateLimitStore({
+      url: 'redis://localhost:6379',
+      client: new ConnectRejectingRedisClient(),
+      onError,
+    });
+
+    const entry = await store.increment('client-1', 60_000);
+
+    expect(entry.count).toBe(0);
+    expect(entry.resetAt).toBeGreaterThan(Date.now());
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
+  });
+
+  it('applies failure mode when Redis connection stalls', async () => {
+    const onError = vi.fn();
+    const store = new RedisRateLimitStore({
+      url: 'redis://localhost:6379',
+      failureMode: 'closed',
+      operationTimeoutMs: 1,
+      client: new HangingRedisClient(),
+      onError,
+    });
+
+    const entry = await store.increment('client-1', 60_000);
+
+    expect(entry.count).toBe(Number.MAX_SAFE_INTEGER);
+    expect(entry.resetAt).toBeGreaterThan(Date.now());
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
   });
 });
 

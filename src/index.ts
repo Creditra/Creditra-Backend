@@ -13,13 +13,30 @@ import { webhookRouter } from "./routes/webhook.js";
 import { reconciliationRouter } from "./routes/reconciliation.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/requestLogger.js";
-import { createIpKeyGenerator, createRateLimitMiddleware } from "./middleware/rateLimit.js";
+import {
+  InMemoryRateLimitStore,
+  RedisRateLimitStore,
+  createIpKeyGenerator,
+  createRateLimitMiddleware,
+} from "./middleware/rateLimit.js";
 import { loadCorsPolicy, isAllowedCorsOrigin } from "./config/cors.js";
-import { loadRateLimitConfig } from "./config/rateLimit.js";
+import { loadRateLimitConfig, loadRateLimitStoreConfig } from "./config/rateLimit.js";
+import { validateEnv } from "./config/env.js";
 import { Container } from "./container/Container.js";
 import { initializeWebhooks } from "./services/drawWebhookService.js";
+import { logger } from "./utils/logger.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const isMain =
+  process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+const hasRedisRateLimitConfig =
+  process.env.RATE_LIMIT_REDIS_URL !== undefined ||
+  process.env.RATE_LIMIT_REDIS_FAILURE_MODE !== undefined;
+
+if (isMain && hasRedisRateLimitConfig) {
+  validateEnv();
+}
+
 const openapiSpec = yaml.parse(
   readFileSync(join(__dirname, "openapi.yaml"), "utf8"),
 ) as Record<string, unknown>;
@@ -37,6 +54,46 @@ const SHUTDOWN_TIMEOUT_MS = parseInt(
 
 const corsPolicy = loadCorsPolicy();
 const rateLimitConfig = loadRateLimitConfig();
+const rateLimitStoreConfig = loadRateLimitStoreConfig();
+const createRateLimitStore = (namespace: string): InMemoryRateLimitStore | RedisRateLimitStore => {
+  if (rateLimitStoreConfig.redisUrl) {
+    return new RedisRateLimitStore({
+      url: rateLimitStoreConfig.redisUrl,
+      prefix: `creditra:ratelimit:${namespace}`,
+      failureMode: rateLimitStoreConfig.redisFailureMode,
+      onError: createRedisRateLimitErrorLogger(namespace),
+    });
+  }
+
+  return new InMemoryRateLimitStore();
+};
+const closeRateLimitStore = async (
+  store: InMemoryRateLimitStore | RedisRateLimitStore,
+): Promise<void> => {
+  if (store instanceof RedisRateLimitStore) {
+    await store.close();
+  }
+};
+function createRedisRateLimitErrorLogger(namespace: string): (error: unknown) => void {
+  let lastLoggedAt = 0;
+
+  return (error: unknown): void => {
+    const now = Date.now();
+    if (now - lastLoggedAt < 60_000) {
+      return;
+    }
+    lastLoggedAt = now;
+
+    logger.warn(
+      {
+        namespace,
+        failureMode: rateLimitStoreConfig.redisFailureMode,
+        error: error instanceof Error ? error.message : "unknown Redis error",
+      },
+      "Redis rate-limit store unavailable",
+    );
+  };
+}
 const appRateLimitConfig =
   process.env.NODE_ENV === "test"
     ? {
@@ -44,14 +101,16 @@ const appRateLimitConfig =
         evaluate: { ...rateLimitConfig.evaluate, maxRequests: Number.MAX_SAFE_INTEGER },
       }
     : rateLimitConfig;
+const defaultRateLimitStore = createRateLimitStore("default");
+const evaluateRateLimitStore = createRateLimitStore("evaluate");
 const defaultRateLimit = createRateLimitMiddleware({
   ...appRateLimitConfig.default,
   keyGenerator: createIpKeyGenerator(),
-});
+}, defaultRateLimitStore);
 const evaluateRateLimit = createRateLimitMiddleware({
   ...appRateLimitConfig.evaluate,
   keyGenerator: createIpKeyGenerator(),
-});
+}, evaluateRateLimitStore);
 
 app.use(cors({
   origin(origin, callback) {
@@ -102,9 +161,6 @@ app.use(errorHandler);
 /**
  * Normalised Startup Logic
  */
-const isMain =
-  process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
-
 if (isMain) {
   // Initialize webhooks before starting the server
   initializeWebhooks();
@@ -169,6 +225,10 @@ if (isMain) {
 
       const container = Container.getInstance();
       await container.shutdown();
+      await Promise.all([
+        closeRateLimitStore(defaultRateLimitStore),
+        closeRateLimitStore(evaluateRateLimitStore),
+      ]);
 
       clearTimeout(forceExitTimeout);
       console.log("[Server] Shutdown complete. Process exiting.");

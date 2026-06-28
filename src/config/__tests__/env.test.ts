@@ -18,6 +18,8 @@ const ENV_KEYS = [
   "POLL_INTERVAL_MS",
   "HORIZON_START_LEDGER",
   "ADMIN_API_KEY",
+  "RATE_LIMIT_REDIS_URL",
+  "RATE_LIMIT_REDIS_FAILURE_MODE",
 ] as const;
 
 type EnvKey = (typeof ENV_KEYS)[number];
@@ -80,6 +82,7 @@ describe("validateEnv — happy path", () => {
     expect(env.HORIZON_URL).toBe("https://horizon-testnet.stellar.org");
     expect(env.POLL_INTERVAL_MS).toBe(5000);
     expect(env.HORIZON_START_LEDGER).toBe("latest");
+    expect(env.RATE_LIMIT_REDIS_FAILURE_MODE).toBe("open");
   });
 
   it("coerces PORT from string to number", () => {
@@ -132,6 +135,15 @@ describe("validateEnv — happy path", () => {
     expect(env.ADMIN_API_KEY).toBe("admin-secret");
   });
 
+  it("accepts Redis rate-limit settings when provided", () => {
+    setValidEnv();
+    process.env["RATE_LIMIT_REDIS_URL"] = "redis://localhost:6379";
+    process.env["RATE_LIMIT_REDIS_FAILURE_MODE"] = "closed";
+    const env = validateEnv();
+    expect(env.RATE_LIMIT_REDIS_URL).toBe("redis://localhost:6379");
+    expect(env.RATE_LIMIT_REDIS_FAILURE_MODE).toBe("closed");
+  });
+
   it("accepts all NODE_ENV values: development, production, test", () => {
     for (const value of ["development", "production", "test"] as const) {
       setValidEnv();
@@ -154,6 +166,7 @@ describe("validateEnv — happy path", () => {
     expect(env.CORS_ORIGINS).toBeUndefined();
     expect(env.CONTRACT_IDS).toBeUndefined();
     expect(env.ADMIN_API_KEY).toBeUndefined();
+    expect(env.RATE_LIMIT_REDIS_URL).toBeUndefined();
   });
 });
 
@@ -303,6 +316,38 @@ describe("validateEnv — SHUTDOWN_TIMEOUT_MS", () => {
     setValidEnv();
     process.env["SHUTDOWN_TIMEOUT_MS"] = "0";
     expect(() => validateEnv()).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RATE_LIMIT_REDIS_* validation
+// ---------------------------------------------------------------------------
+
+describe("validateEnv — RATE_LIMIT_REDIS_URL", () => {
+  it("throws when RATE_LIMIT_REDIS_URL is not a valid URL", () => {
+    setValidEnv();
+    process.env["RATE_LIMIT_REDIS_URL"] = "localhost:6379";
+    expect(() => validateEnv()).toThrow(/RATE_LIMIT_REDIS_URL/);
+  });
+
+  it("throws when RATE_LIMIT_REDIS_URL uses a non-Redis protocol", () => {
+    setValidEnv();
+    process.env["RATE_LIMIT_REDIS_URL"] = "https://localhost:6379";
+    expect(() => validateEnv()).toThrow(/RATE_LIMIT_REDIS_URL/);
+  });
+
+  it("accepts a rediss:// URL", () => {
+    setValidEnv();
+    process.env["RATE_LIMIT_REDIS_URL"] = "rediss://cache.example.com:6379";
+    expect(() => validateEnv()).not.toThrow();
+  });
+});
+
+describe("validateEnv — RATE_LIMIT_REDIS_FAILURE_MODE", () => {
+  it("throws when RATE_LIMIT_REDIS_FAILURE_MODE is invalid", () => {
+    setValidEnv();
+    process.env["RATE_LIMIT_REDIS_FAILURE_MODE"] = "halt";
+    expect(() => validateEnv()).toThrow(/RATE_LIMIT_REDIS_FAILURE_MODE/);
   });
 });
 
