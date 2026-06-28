@@ -46,10 +46,11 @@ export class Container {
   private _transactionRepository!: TransactionRepository;
 
   // Services
-  private _creditLineService: CreditLineService;
-  private _riskEvaluationService: RiskEvaluationService;
-  private _reconciliationService: ReconciliationService;
-  private _reconciliationWorker: ReconciliationWorker;
+  private _creditLineService!: CreditLineService;
+  private _riskEvaluationService!: RiskEvaluationService;
+  private _reconciliationService!: ReconciliationService;
+  private _reconciliationWorker!: ReconciliationWorker;
+  private _sorobanClient!: SorobanRpcClient;
   private _dataRetentionService?: DataRetentionService;
   private _dataRetentionWorker?: DataRetentionWorker;
 
