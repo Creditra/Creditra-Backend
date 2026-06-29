@@ -37,6 +37,7 @@ import { defaultEventBus } from "../services/events/eventBus.js";
 import { registerAuditSubscriber } from "../services/events/auditSubscriber.js";
 import { DataRetentionService } from "../services/dataRetentionService.js";
 import { DataRetentionWorker } from "../services/dataRetentionWorker.js";
+import { DashboardSummaryService } from "../services/dashboardSummaryService.js";
 
 export class Container {
   private static instance: Container;
@@ -87,6 +88,9 @@ export class Container {
     this._reconciliationWorker = new ReconciliationWorker(
       this._reconciliationService,
       defaultJobQueue,
+    );
+    this._dashboardSummaryService = new DashboardSummaryService(
+      this._creditLineRepository,
     );
 
     // Data retention requires a real Postgres connection (pgcrypto digest(),
