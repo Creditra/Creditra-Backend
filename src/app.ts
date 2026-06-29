@@ -13,9 +13,15 @@ export function createApp() {
     res.json({ status: 'ok', service: 'creditra-backend' });
   });
 
+  // Maintenance mode guard: blocks mutations (non-GET) when enabled.
+  app.use(maintenanceModeGuard);
+
   app.use('/api/credit', creditRouter);
   app.use('/api/risk', riskRouter);
   app.use('/api/admin/api-keys', apiKeysRouter);
+
+  // Admin-only route to toggle maintenance mode.
+  app.use('/api/admin/maintenance', maintenanceRouter);
 
   return app;
 }
