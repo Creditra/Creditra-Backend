@@ -33,6 +33,7 @@ import { createSorobanClient, resolveSorobanConfig } from "../services/sorobanCl
 import { defaultJobQueue } from "../services/jobQueue.js";
 import { DataRetentionService } from "../services/dataRetentionService.js";
 import { DataRetentionWorker } from "../services/dataRetentionWorker.js";
+import { DashboardSummaryService } from "../services/dashboardSummaryService.js";
 
 export class Container {
   private static instance: Container;
@@ -50,6 +51,7 @@ export class Container {
   private _riskEvaluationService: RiskEvaluationService;
   private _reconciliationService: ReconciliationService;
   private _reconciliationWorker: ReconciliationWorker;
+  private _dashboardSummaryService: DashboardSummaryService;
   private _dataRetentionService?: DataRetentionService;
   private _dataRetentionWorker?: DataRetentionWorker;
 
@@ -76,6 +78,9 @@ export class Container {
     this._reconciliationWorker = new ReconciliationWorker(
       this._reconciliationService,
       defaultJobQueue,
+    );
+    this._dashboardSummaryService = new DashboardSummaryService(
+      this._creditLineRepository,
     );
 
     // Data retention requires a real Postgres connection (pgcrypto digest(),
@@ -142,6 +147,11 @@ export class Container {
 
   get reconciliationWorker(): ReconciliationWorker {
     return this._reconciliationWorker;
+  }
+
+  /** Cached read model for dashboard summary queries. */
+  get dashboardSummaryService(): DashboardSummaryService {
+    return this._dashboardSummaryService;
   }
 
   /** Undefined when running against in-memory repositories (no Postgres connection). */

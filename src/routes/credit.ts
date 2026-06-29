@@ -135,6 +135,8 @@ creditRouter.post('/lines', validateBody(createCreditLineSchema), async (req, re
       creditLimit: finalLimit,
       interestRateBps: interestRateBps ?? 0,
     });
+    // Keep the dashboard read model correct on mutation (not just TTL-fresh).
+    container.dashboardSummaryService.invalidate();
     return ok(res, creditLine, 201);
   } catch (error) {
     return fail(res, error instanceof Error ? error : undefined, 400);
@@ -152,6 +154,7 @@ creditRouter.put('/lines/:id', async (req, res) => {
     if (!creditLine) {
       return fail(res, 'Credit line not found', 404);
     }
+    container.dashboardSummaryService.invalidate();
     return ok(res, creditLine);
   } catch (error) {
     return fail(res, error instanceof Error ? error : undefined, 400);
@@ -164,6 +167,7 @@ creditRouter.delete('/lines/:id', async (req, res) => {
     if (!deleted) {
       return fail(res, 'Credit line not found', 404);
     }
+    container.dashboardSummaryService.invalidate();
     return res.status(204).send();
   } catch {
     return fail(res, 'Internal server error');
