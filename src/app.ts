@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { creditRouter } from './routes/credit.js';
 import { riskRouter } from './routes/risk.js';
+import { apiKeysRouter } from './routes/apiKeys.js';
 
 export function createApp() {
   const app = express();
@@ -14,6 +15,7 @@ export function createApp() {
 
   app.use('/api/credit', creditRouter);
   app.use('/api/risk', riskRouter);
+  app.use('/api/admin/api-keys', apiKeysRouter);
 
   return app;
 }
