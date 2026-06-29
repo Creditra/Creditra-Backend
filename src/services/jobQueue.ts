@@ -12,6 +12,9 @@
  * public interface is kept narrow so a Redis or SQS backend can be swapped in
  * without changing call sites.
  */
+import { createServiceLogger } from '../utils/serviceLogger.js';
+
+const log = createServiceLogger('JobQueue');
 
 export interface Job<Data = unknown> {
   /** Stable job identifier (unique within a queue instance). */
@@ -244,9 +247,10 @@ export class InMemoryJobQueue implements JobQueue {
 
         if (!handler) {
           // No handler registered — dead-letter immediately and alert operator.
-          console.error(
-            `[JobQueue] No handler for type "${job.type}". Job ${job.id} moved to dead-letter.`,
-          );
+          log.error('job-queue:dead-letter:no-handler', {
+            jobId: job.id,
+            jobType: job.type,
+          });
           this.failed.push(job);
           continue;
         }
@@ -267,10 +271,12 @@ export class InMemoryJobQueue implements JobQueue {
           } else {
             // Exceeded maxAttempts — move to dead-letter set.
             this.failed.push(job);
-            console.error(
-              `[JobQueue] Job ${job.id} (type "${job.type}") exhausted ${job.attempts} attempts. ` +
-              `Last error: ${job.lastError}`,
-            );
+            log.error('job-queue:dead-letter:max-attempts-exhausted', {
+              jobId: job.id,
+              jobType: job.type,
+              attempts: job.attempts,
+              lastError: job.lastError,
+            });
           }
         }
       }

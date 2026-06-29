@@ -9,9 +9,11 @@ import type { CreditLineRepository } from '../repositories/interfaces/CreditLine
 import type { CreditLine } from '../models/CreditLine.js';
 import type { JobQueue } from './jobQueue.js';
 import { sanitizeJsonForStellarDiagnostics, sanitizeStellarDiagnostic } from './stellarDiagnostics.js';
+import { createServiceLogger } from '../utils/serviceLogger.js';
 
 const RECONCILIATION_DB_PAGE_SIZE = 1_000;
 const RECONCILIATION_MAX_DB_RECORDS = 10_000;
+const log = createServiceLogger('ReconciliationService');
 
 export interface OnChainCreditRecord {
   /** Contract-level credit line identifier */
@@ -102,10 +104,9 @@ export class ReconciliationService {
       }
 
       if (result.errors.length > 0) {
-        console.error(
-          '[ReconciliationService] Reconciliation failed:',
-          sanitizeJsonForStellarDiagnostics(result.errors)
-        );
+        log.error('reconciliation:failed', {
+          errors: sanitizeJsonForStellarDiagnostics(result.errors),
+        });
         return result;
       }
 
@@ -150,20 +151,21 @@ export class ReconciliationService {
 
       // Log results
       if (result.mismatches.length > 0) {
-        console.error(
-          `[ReconciliationService] Found ${result.mismatches.length} mismatches:`,
-          sanitizeJsonForStellarDiagnostics(result.mismatches)
-        );
+        log.error('reconciliation:mismatches-found', {
+          mismatchCount: result.mismatches.length,
+          mismatches: sanitizeJsonForStellarDiagnostics(result.mismatches),
+        });
       } else {
-        console.log(
-          `[ReconciliationService] Reconciliation complete. ${result.totalChecked} records checked, no mismatches found.`
-        );
+        log.info('reconciliation:complete', {
+          totalChecked: result.totalChecked,
+          mismatchCount: 0,
+        });
       }
 
     } catch (error) {
       const errorMessage = sanitizeStellarDiagnostic(error);
       result.errors.push(errorMessage);
-      console.error('[ReconciliationService] Reconciliation failed:', errorMessage);
+      log.error('reconciliation:failed', { error: errorMessage });
     }
 
     return result;

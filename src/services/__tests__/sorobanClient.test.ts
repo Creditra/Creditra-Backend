@@ -1,5 +1,16 @@
 import { StrKey, TransactionBuilder, nativeToScVal, scValToNative } from '@stellar/stellar-sdk';
 import { describe, expect, it, vi } from 'vitest';
+
+const serviceLoggerMock = vi.hoisted(() => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
+vi.mock('../../utils/serviceLogger.js', () => ({
+  createServiceLogger: () => serviceLoggerMock,
+}));
+
 import {
   createSorobanClient,
   MockSorobanClient,
@@ -96,18 +107,17 @@ describe('createSorobanClient', () => {
 
 describe('MockSorobanClient', () => {
   it('returns an empty record set for local and test environments', async () => {
-    const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    serviceLoggerMock.info.mockReset();
 
-    try {
-      await expect(new MockSorobanClient({ ...TEST_CONFIG, contractId: '' }).fetchAllCreditRecords()).resolves.toEqual(
-        [],
-      );
-      expect(consoleLog).toHaveBeenCalledWith(expect.stringContaining('CREDIT_CONTRACT_ID is empty'), {
+    await expect(new MockSorobanClient({ ...TEST_CONFIG, contractId: '' }).fetchAllCreditRecords()).resolves.toEqual(
+      [],
+    );
+    expect(serviceLoggerMock.info).toHaveBeenCalledWith(
+      'soroban:mock-client:no-contract-id',
+      expect.objectContaining({
         rpcUrl: TEST_CONFIG.rpcUrl,
-      });
-    } finally {
-      consoleLog.mockRestore();
-    }
+      }),
+    );
   });
 });
 

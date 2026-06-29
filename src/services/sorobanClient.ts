@@ -11,6 +11,7 @@ import {
 import type { OnChainCreditRecord, SorobanRpcClient } from './reconciliationService.js';
 import { resolveSorobanRpcConfig, type SorobanRpcConfig } from './sorobanRpcClient.js';
 import { sanitizeStellarDiagnostic } from './stellarDiagnostics.js';
+import { createServiceLogger } from '../utils/serviceLogger.js';
 
 const DEFAULT_RPC_URL = 'https://soroban-testnet.stellar.org';
 const DEFAULT_NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
@@ -21,6 +22,7 @@ const MAX_ENUMERATED_CREDIT_RECORDS = 10_000;
 const BASE_RETRY_DELAY_MS = 1_000;
 const MAX_RETRY_POWER = 10;
 const DECIMAL_STRING_REGEX = /^-?\d+(?:\.\d+)?$/;
+const log = createServiceLogger('SorobanClient');
 // Must match the Credit contract enum discriminants for CreditLineStatus.
 const CREDIT_STATUS_BY_CONTRACT_DISCRIMINANT: Record<number, string> = {
   0: 'active',
@@ -74,7 +76,7 @@ export class MockSorobanClient implements SorobanRpcClient {
   constructor(private readonly config: SorobanClientConfig) {}
 
   async fetchAllCreditRecords(): Promise<OnChainCreditRecord[]> {
-    console.log('[MockSorobanClient] CREDIT_CONTRACT_ID is empty; returning no on-chain credit records.', {
+    log.info('soroban:mock-client:no-contract-id', {
       rpcUrl: sanitizeStellarDiagnostic(this.config.rpcUrl),
     });
 

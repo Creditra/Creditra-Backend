@@ -6,6 +6,16 @@ import { InMemoryCreditLineRepository } from '../repositories/memory/InMemoryCre
 import { InMemoryJobQueue } from '../services/jobQueue.js';
 import { StellarSorobanClient } from '../services/sorobanClient.js';
 
+const serviceLoggerMock = vi.hoisted(() => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
+vi.mock('../utils/serviceLogger.js', () => ({
+  createServiceLogger: () => serviceLoggerMock,
+}));
+
 const TEST_PUBLIC_KEY = StrKey.encodeEd25519PublicKey(Buffer.alloc(32, 1));
 const TEST_CONTRACT_ID = StrKey.encodeContract(Buffer.alloc(32, 1));
 
@@ -38,6 +48,9 @@ describe('Reconciliation Integration', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    serviceLoggerMock.info.mockReset();
+    serviceLoggerMock.warn.mockReset();
+    serviceLoggerMock.error.mockReset();
     repository = new InMemoryCreditLineRepository();
     sorobanClient = new TestSorobanClient();
     jobQueue = new InMemoryJobQueue(10, 20);
@@ -79,8 +92,13 @@ describe('Reconciliation Integration', () => {
 
     // Verify: Job failed due to critical mismatch
     expect(jobQueue.getFailedJobs()).toHaveLength(1);
-    expect(console.error).toHaveBeenCalledWith(
-      '[ReconciliationWorker] ALERT: Reconciliation found 1 mismatches (1 critical, 0 warnings)'
+    expect(serviceLoggerMock.error).toHaveBeenCalledWith(
+      'reconciliation-worker:mismatches-alert',
+      expect.objectContaining({
+        mismatchCount: 1,
+        criticalCount: 1,
+        warningCount: 0,
+      }),
     );
   });
 
@@ -109,8 +127,9 @@ describe('Reconciliation Integration', () => {
 
     // Verify: Job succeeded
     expect(jobQueue.getFailedJobs()).toHaveLength(0);
-    expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('completed successfully')
+    expect(serviceLoggerMock.info).toHaveBeenCalledWith(
+      'reconciliation-worker:job:complete',
+      expect.objectContaining({ totalChecked: 1 }),
     );
   });
 
@@ -192,8 +211,13 @@ describe('Reconciliation Integration', () => {
 
     // Verify: Job succeeded despite warning
     expect(jobQueue.getFailedJobs()).toHaveLength(0);
-    expect(console.error).toHaveBeenCalledWith(
-      '[ReconciliationWorker] ALERT: Reconciliation found 1 mismatches (0 critical, 1 warnings)'
+    expect(serviceLoggerMock.error).toHaveBeenCalledWith(
+      'reconciliation-worker:mismatches-alert',
+      expect.objectContaining({
+        mismatchCount: 1,
+        criticalCount: 0,
+        warningCount: 1,
+      }),
     );
   });
 

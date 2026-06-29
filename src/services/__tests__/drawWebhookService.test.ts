@@ -1,4 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+const serviceLoggerMock = vi.hoisted(() => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+}));
+
+vi.mock("../../utils/serviceLogger.js", () => ({
+    createServiceLogger: () => serviceLoggerMock,
+}));
+
 import { 
     initializeWebhooks, 
     sendDrawConfirmationWebhook, 
@@ -12,14 +23,12 @@ import type { HorizonEvent } from "../horizonListener.js";
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-// Mock console methods to avoid noise in tests
-const mockConsoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-const mockConsoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
-const mockConsoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
-
 describe("DrawWebhookService", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        serviceLoggerMock.info.mockReset();
+        serviceLoggerMock.warn.mockReset();
+        serviceLoggerMock.error.mockReset();
         vi.useFakeTimers();
         
         // Clear environment variables
@@ -126,8 +135,8 @@ describe("DrawWebhookService", () => {
 
             initializeWebhooks();
 
-            expect(mockConsoleLog).toHaveBeenCalledWith(
-                "[DrawWebhook] Initialized with config:",
+            expect(serviceLoggerMock.info).toHaveBeenCalledWith(
+                "webhook:initialized",
                 expect.objectContaining({
                     urls: 2,
                     maxRetries: 3,
@@ -295,7 +304,11 @@ describe("DrawWebhookService", () => {
             });
 
             expect(mockFetch).toHaveBeenCalledTimes(3);
-            expect(mockConsoleWarn).toHaveBeenCalledTimes(2);
+            expect(serviceLoggerMock.warn).toHaveBeenCalledTimes(2);
+            expect(serviceLoggerMock.warn).toHaveBeenCalledWith(
+                "webhook:delivery:retry",
+                expect.objectContaining({ attempt: 1 }),
+            );
         });
 
         it("should handle malformed event data gracefully", async () => {
@@ -310,9 +323,9 @@ describe("DrawWebhookService", () => {
             const results = await sendDrawConfirmationWebhook(event);
 
             expect(results).toEqual([]);
-            expect(mockConsoleError).toHaveBeenCalledWith(
-                "[DrawWebhook] Failed to parse event data:",
-                expect.any(Error)
+            expect(serviceLoggerMock.error).toHaveBeenCalledWith(
+                "webhook:event-parse:failed",
+                expect.objectContaining({ error: expect.any(Error) }),
             );
         });
 

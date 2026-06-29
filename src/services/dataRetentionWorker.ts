@@ -7,6 +7,9 @@
  */
 import type { JobQueue, Job } from './jobQueue.js';
 import type { DataRetentionService, DataRetentionConfig } from './dataRetentionService.js';
+import { createServiceLogger } from '../utils/serviceLogger.js';
+
+const log = createServiceLogger('DataRetentionWorker');
 
 export interface DataRetentionWorkerConfig {
   /** How often to run the retention sweep (in milliseconds). Default: 24 hours. */
@@ -28,24 +31,33 @@ export class DataRetentionWorker {
   ) {
     this.jobQueue.registerHandler('data-retention-sweep', async (job: Job) => {
       const config = job.payload as DataRetentionConfig;
-      console.log(`[DataRetentionWorker] Processing job ${job.id} (attempt ${job.attempts + 1})`);
+      log.info('data-retention:job:start', {
+        jobId: job.id,
+        attempt: job.attempts + 1,
+      });
 
       try {
         const result = await this.dataRetentionService.run(config);
 
         if (result.errors.length > 0) {
-          console.error('[DataRetentionWorker] Retention sweep completed with errors:', result.errors);
+          log.error('data-retention:job:errors', {
+            jobId: job.id,
+            errors: result.errors,
+          });
           throw new Error(`Data retention errors: ${result.errors.join(', ')}`);
         }
 
-        console.log(
-          `[DataRetentionWorker] Job ${job.id} completed. ` +
-          `Events deleted: ${result.eventsDeleted}, ` +
-          `risk evaluations deleted: ${result.riskEvaluationsDeleted}, ` +
-          `borrowers anonymized: ${result.borrowersAnonymized}.`,
-        );
+        log.info('data-retention:job:complete', {
+          jobId: job.id,
+          eventsDeleted: result.eventsDeleted,
+          riskEvaluationsDeleted: result.riskEvaluationsDeleted,
+          borrowersAnonymized: result.borrowersAnonymized,
+        });
       } catch (error) {
-        console.error(`[DataRetentionWorker] Job ${job.id} failed:`, error);
+        log.error('data-retention:job:failed', {
+          jobId: job.id,
+          error,
+        });
         throw error;
       }
     });
@@ -59,7 +71,7 @@ export class DataRetentionWorker {
   /** Start the worker with scheduled periodic sweeps. */
   start(config: DataRetentionWorkerConfig): void {
     if (this.running) {
-      console.warn('[DataRetentionWorker] Already running');
+      log.warn('data-retention-worker:already-running');
       return;
     }
 
@@ -71,27 +83,27 @@ export class DataRetentionWorker {
     this.jobQueue.start();
 
     if (runImmediately) {
-      console.log('[DataRetentionWorker] Scheduling immediate retention sweep');
+      log.info('data-retention:schedule:immediate');
       this.scheduleSweep(this.retentionConfig, 0);
     }
 
     this.intervalHandle = setInterval(() => {
-      console.log('[DataRetentionWorker] Scheduling periodic retention sweep');
+      log.info('data-retention:schedule:periodic');
       this.scheduleSweep(this.retentionConfig as DataRetentionConfig, 0);
     }, intervalMs);
 
-    console.log(
-      `[DataRetentionWorker] Started. Running every ${intervalMs}ms ` +
-      `(${Math.round(intervalMs / 3600000)} hours). ` +
-      `Operational retention: ${config.retentionConfig.operationalRetentionDays}d, ` +
-      `events retention: ${config.retentionConfig.eventsRetentionDays}d.`,
-    );
+    log.info('data-retention-worker:started', {
+      intervalMs,
+      intervalHours: Math.round(intervalMs / 3600000),
+      operationalRetentionDays: config.retentionConfig.operationalRetentionDays,
+      eventsRetentionDays: config.retentionConfig.eventsRetentionDays,
+    });
   }
 
   /** Stop the worker. */
   stop(): void {
     if (!this.running) {
-      console.warn('[DataRetentionWorker] Not running');
+      log.warn('data-retention-worker:not-running');
       return;
     }
 
@@ -101,7 +113,7 @@ export class DataRetentionWorker {
     }
 
     this.running = false;
-    console.log('[DataRetentionWorker] Stopped');
+    log.info('data-retention-worker:stopped');
   }
 
   isRunning(): boolean {
