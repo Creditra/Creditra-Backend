@@ -1,5 +1,7 @@
 import { type CreditLine, type CreateCreditLineRequest, type UpdateCreditLineRequest, CreditLineStatus } from '../models/CreditLine.js';
 import type { CreditLineRepository, CursorPaginationResult } from '../repositories/interfaces/CreditLineRepository.js';
+import type { EventBus } from './events/eventBus.js';
+import { nowIso } from './events/domainEvents.js';
 
 /**
  * Domain service for credit-line CRUD plus the `draw` / `repay` operations.
@@ -21,7 +23,23 @@ import type { CreditLineRepository, CursorPaginationResult } from '../repositori
  * the surfaces that call into this service.
  */
 export class CreditLineService {
-  constructor(private creditLineRepository: CreditLineRepository) {}
+  /**
+   * @param creditLineRepository persistence for credit lines
+   * @param eventBus optional in-process bus; when supplied, lifecycle changes
+   *   (open / draw / repay) publish domain events for decoupled subscribers
+   *   (audit, webhooks, notifications). Emission is fire-and-forget and never
+   *   blocks or fails the core operation.
+   */
+  constructor(
+    private creditLineRepository: CreditLineRepository,
+    private readonly eventBus?: EventBus,
+  ) {}
+
+  /** Publish a domain event without letting subscriber failures affect callers. */
+  private emit(event: Parameters<EventBus['publish']>[0]): void {
+    if (!this.eventBus) return;
+    void this.eventBus.publish(event);
+  }
 
   /**
    * Create a new credit line for `walletAddress` with an explicit credit limit
@@ -44,7 +62,16 @@ export class CreditLineService {
       throw new Error('Interest rate must be between 0 and 10000 basis points');
     }
 
-    return await this.creditLineRepository.create(request);
+    const created = await this.creditLineRepository.create(request);
+
+    this.emit({
+      type: 'credit.opened',
+      occurredAt: nowIso(),
+      creditLineId: created.id,
+      payload: { walletAddress: created.walletAddress, creditLimit: created.creditLimit },
+    });
+
+    return created;
   }
 
   /** Fetch a single credit line by id, or `null` if not found. */
@@ -158,9 +185,25 @@ export class CreditLineService {
       throw new Error('Credit limit exceeded');
     }
 
-    return await this.creditLineRepository.update(id, {
+    this.emit({
+      type: 'credit.draw_requested',
+      occurredAt: nowIso(),
+      creditLineId: id,
+      payload: { walletAddress: line.walletAddress, amount },
+    });
+
+    const updated = await this.creditLineRepository.update(id, {
       utilized: (utilizedNum + amountNum).toString(),
     }) as CreditLine;
+
+    this.emit({
+      type: 'credit.draw_confirmed',
+      occurredAt: nowIso(),
+      creditLineId: id,
+      payload: { walletAddress: line.walletAddress, amount, utilized: updated.utilized },
+    });
+
+    return updated;
   }
 
   /**
@@ -181,8 +224,17 @@ export class CreditLineService {
     const amountNum = parseFloat(amount);
     const utilizedNum = parseFloat(line.utilized || '0');
 
-    return await this.creditLineRepository.update(id, {
+    const updated = await this.creditLineRepository.update(id, {
       utilized: Math.max(0, utilizedNum - amountNum).toString(),
     }) as CreditLine;
+
+    this.emit({
+      type: 'credit.repay_confirmed',
+      occurredAt: nowIso(),
+      creditLineId: id,
+      payload: { walletAddress: line.walletAddress, amount, utilized: updated.utilized },
+    });
+
+    return updated;
   }
 }
