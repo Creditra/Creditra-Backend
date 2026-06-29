@@ -24,6 +24,8 @@ import { InMemoryCreditLineRepository } from "../repositories/memory/InMemoryCre
 import { InMemoryRiskEvaluationRepository } from "../repositories/memory/InMemoryRiskEvaluationRepository.js";
 import { InMemoryTransactionRepository } from "../repositories/memory/InMemoryTransactionRepository.js";
 import { PostgresCreditLineRepository } from "../repositories/postgres/PostgresCreditLineRepository.js";
+import { PostgresRiskEvaluationRepository } from "../repositories/postgres/PostgresRiskEvaluationRepository.js";
+import { PostgresTransactionRepository } from "../repositories/postgres/PostgresTransactionRepository.js";
 import { CreditLineService } from "../services/CreditLineService.js";
 import { RiskEvaluationService } from "../services/RiskEvaluationService.js";
 import { createRiskProvider } from "../services/providers/providerFactory.js";
@@ -97,9 +99,8 @@ export class Container {
       // Use PostgreSQL repositories
       this._dbClient = getConnection();
       this._creditLineRepository = new PostgresCreditLineRepository(this._dbClient);
-      // TODO: Implement PostgreSQL versions of other repositories
-      this._riskEvaluationRepository = new InMemoryRiskEvaluationRepository();
-      this._transactionRepository = new InMemoryTransactionRepository();
+      this._riskEvaluationRepository = new PostgresRiskEvaluationRepository(this._dbClient);
+      this._transactionRepository = new PostgresTransactionRepository(this._dbClient);
     } else {
       // Use in-memory repositories (for development/testing)
       this._creditLineRepository = new InMemoryCreditLineRepository();

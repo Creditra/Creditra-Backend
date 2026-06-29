@@ -30,6 +30,19 @@ Current in-memory implementations:
 - `InMemoryRiskEvaluationRepository.ts` - Memory-based risk evaluation storage
 - `InMemoryTransactionRepository.ts` - Memory-based transaction storage
 
+Postgres implementations (`src/repositories/postgres/`), selected by the
+`Container` whenever `DATABASE_URL` is set and `NODE_ENV !== 'test'`:
+- `PostgresCreditLineRepository.ts` - Credit lines joined to `borrowers`
+- `PostgresRiskEvaluationRepository.ts` - Risk evaluations (`creditLimit` <-> `suggested_limit`, `factors` <-> `inputs`, plus `expires_at`)
+- `PostgresTransactionRepository.ts` - Draws/repayments; `walletAddress` resolved via `credit_lines -> borrowers`
+
+In-memory repositories remain the default for development and tests.
+
+**Available-credit calculation.** `PostgresCreditLineRepository.calculateAvailableCredit`
+now reflects persisted draws: `credit_limit - SUM(borrows) + SUM(repays)` over
+the credit line's non-`failed`/`cancelled` transactions, clamped at zero. This
+replaces the previous behavior of always returning the full limit.
+
 ### 4. Services (`src/services/`)
 Business logic layer that uses repositories:
 - `CreditLineService.ts` - Credit line management and validation
