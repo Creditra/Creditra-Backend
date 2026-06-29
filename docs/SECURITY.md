@@ -108,6 +108,8 @@ Knobs:
 RATE_LIMIT_WINDOW_MS=60000       # window length
 RATE_LIMIT_MAX_REQUESTS=100      # generic per-route ceiling
 RATE_LIMIT_MAX_EVALUATE=10       # per-route override for /api/risk/evaluate
+RATE_LIMIT_REDIS_URL=redis://... # optional shared store for scaled replicas
+RATE_LIMIT_REDIS_FAILURE_MODE=open # open | closed, default open
 ```
 
 Key generators:
@@ -129,7 +131,9 @@ X-RateLimit-Reset: <epoch seconds>
 { "data": null, "error": "Too many requests. Please retry after N seconds.", "retryAfter": N }
 ```
 
-Limits are in-process; a horizontally scaled deployment should swap the `Map` for a Redis-backed store (the keyGenerator and option contract are untouched).
+By default limits are in-process, so each API replica has its own counters. Set `RATE_LIMIT_REDIS_URL` to use the Redis-backed store for shared per-key counters across replicas. The middleware still uses the same key generators and `RateLimitOptions`; the Redis store namespaces each route bucket and hashes the generated key before writing it to Redis so API keys are not stored in clear text as Redis keys.
+
+Redis increments use a single Lua script that performs `INCR`, sets `PEXPIRE` when the bucket is created, and returns the current count and TTL. Redis connect and increment operations are bounded so a stalled Redis dependency reaches the configured outage policy instead of hanging requests. If Redis is unavailable, the default `RATE_LIMIT_REDIS_FAILURE_MODE=open` fails open: requests continue with rate-limit headers instead of turning dependency failures into 500s. Operators that prefer availability protection over dependency tolerance can set `RATE_LIMIT_REDIS_FAILURE_MODE=closed`, which returns the normal 429 envelope while Redis is unavailable. Redis store failures are logged with a per-bucket throttle and without the Redis URL or generated request key.
 
 ---
 

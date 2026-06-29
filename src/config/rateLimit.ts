@@ -8,7 +8,11 @@
  *   RATE_LIMIT_WINDOW_MS        - Time window in ms (default: 60000)
  *   RATE_LIMIT_MAX_REQUESTS    - Max requests per window for general endpoints (default: 100)
  *   RATE_LIMIT_MAX_EVALUATE    - Max requests per window for /api/risk/evaluate (default: 10)
+ *   RATE_LIMIT_REDIS_URL       - Optional Redis URL for shared rate-limit storage
+ *   RATE_LIMIT_REDIS_FAILURE_MODE - "open" or "closed" on Redis outage (default: open)
  */
+
+import type { RedisRateLimitFailureMode } from "../middleware/rateLimit.js";
 
 export interface RateLimitConfig {
   windowMs: number;
@@ -20,11 +24,20 @@ interface RateLimitConfigs {
   evaluate: RateLimitConfig;
 }
 
+export interface RateLimitStoreConfig {
+  redisUrl?: string;
+  redisFailureMode: RedisRateLimitFailureMode;
+}
+
 function parseIntOrDefault(value: string | undefined, defaultValue: number): number {
   if (value === undefined) return defaultValue;
   const parsed = Number.parseInt(value, 10);
   if (Number.isNaN(parsed) || parsed <= 0) return defaultValue;
   return parsed;
+}
+
+function parseFailureMode(value: string | undefined): RedisRateLimitFailureMode {
+  return value === "closed" ? "closed" : "open";
 }
 
 export function loadRateLimitConfig(): RateLimitConfigs {
@@ -44,5 +57,12 @@ export function loadRateLimitConfig(): RateLimitConfigs {
   return {
     default: { windowMs, maxRequests },
     evaluate: { windowMs, maxRequests: maxEvaluate },
+  };
+}
+
+export function loadRateLimitStoreConfig(): RateLimitStoreConfig {
+  return {
+    redisUrl: process.env.RATE_LIMIT_REDIS_URL,
+    redisFailureMode: parseFailureMode(process.env.RATE_LIMIT_REDIS_FAILURE_MODE),
   };
 }
