@@ -18,6 +18,7 @@
  */
 import { Router, type Request, type Response } from 'express';
 import { getWebhookConfig, testWebhookConnectivity } from '../services/drawWebhookService.js';
+import { getWebhookDeliveryStateStore } from '../services/webhookDeliveryState.js';
 import { redactLogArgs } from '../utils/logRedact.js';
 
 export const webhookRouter = Router();
@@ -86,10 +87,18 @@ webhookRouter.get('/health', (_req: Request, res: Response) => {
         });
     }
 
+    const counts = getWebhookDeliveryStateStore().counts();
+
     return res.status(200).json({
         status: 'active',
         urls: config.urls.length,
         maxRetries: config.maxRetries,
-        timeoutMs: config.timeoutMs
+        timeoutMs: config.timeoutMs,
+        delivery: {
+            total: counts.total,
+            delivered: counts.delivered,
+            failed: counts.failed,
+            deadLetter: counts.deadLetter
+        }
     });
 });
