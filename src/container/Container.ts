@@ -33,6 +33,8 @@ import { ReconciliationService, type SorobanRpcClient } from "../services/reconc
 import { ReconciliationWorker } from "../services/reconciliationWorker.js";
 import { createSorobanClient, resolveSorobanConfig } from "../services/sorobanClient.js";
 import { defaultJobQueue } from "../services/jobQueue.js";
+import { defaultEventBus } from "../services/events/eventBus.js";
+import { registerAuditSubscriber } from "../services/events/auditSubscriber.js";
 import { DataRetentionService } from "../services/dataRetentionService.js";
 import { DataRetentionWorker } from "../services/dataRetentionWorker.js";
 
@@ -56,9 +58,15 @@ export class Container {
   private _dataRetentionService?: DataRetentionService;
   private _dataRetentionWorker?: DataRetentionWorker;
 
+  // In-process domain event bus (credit lifecycle).
+  private readonly _eventBus = defaultEventBus;
+
   private constructor() {
     // Initialize repositories based on environment
     this.initializeRepositories();
+
+    // Wire the in-process domain event bus and its default subscribers once.
+    registerAuditSubscriber(this._eventBus);
 
     // Initialize services
     this._sorobanClient = createSorobanClient(resolveSorobanConfig());
@@ -66,7 +74,7 @@ export class Container {
   }
 
   private rebuildServices(): void {
-    this._creditLineService = new CreditLineService(this._creditLineRepository);
+    this._creditLineService = new CreditLineService(this._creditLineRepository, this._eventBus);
     this._riskEvaluationService = new RiskEvaluationService(
       this._riskEvaluationRepository,
       createRiskProvider(),
@@ -144,6 +152,11 @@ export class Container {
 
   get reconciliationWorker(): ReconciliationWorker {
     return this._reconciliationWorker;
+  }
+
+  /** Process-wide in-process domain event bus for credit lifecycle events. */
+  get eventBus() {
+    return this._eventBus;
   }
 
   /** Undefined when running against in-memory repositories (no Postgres connection). */
