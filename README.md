@@ -162,7 +162,7 @@ Full machine-readable spec: [`src/openapi.yaml`](./src/openapi.yaml). Human-read
 - **`ReconciliationService` / `ReconciliationWorker`** — periodic diff of DB credit lines vs on-chain state. Severity levels: `critical` (identity, limit, status) and `warning` (available credit, rate). Runs every hour by default (`RECONCILIATION_INTERVAL_MS`).
 - **`HorizonListener`** — Stellar Horizon poller with cursor persistence, exponential backoff + jitter, gap recovery, and SHA-256 idempotency cache (10k entries, LRU). Metrics exposed via `getMetrics()`.
 - **`SorobanRpcClient`** — read/submit wrapper with AbortController timeouts, retry budget, and Stellar key sanitization in error messages.
-- **`drawWebhookService`** — multi-URL HMAC-SHA256 webhook fan-out with retry/backoff and connectivity probe.
+- **`drawWebhookService`** — multi-URL HMAC-SHA256 webhook fan-out with delivery settings and connectivity probe.
 - **`jobQueue`** — in-process at-least-once queue with visibility timeout, attempt tracking, and dead-letter list.
 
 Implementation files: [`src/services/`](./src/services/), entry composition in [`src/container/Container.ts`](./src/container/Container.ts).
@@ -254,6 +254,7 @@ Creditra-Backend/
 | [`docs/API.md`](./docs/API.md) | Endpoint inventory, request/response shapes, error envelope, pagination |
 | [`docs/SIGNALS_INGEST.md`](./docs/SIGNALS_INGEST.md) | Behavioral signal pipeline → on-chain underwriting |
 | [`docs/SECURITY.md`](./docs/SECURITY.md) | Auth model, RBAC, validation, rate limiting, HMAC, secrets |
+| [`docs/webhook-subscribers.md`](./docs/webhook-subscribers.md) | Subscriber onboarding for outbound draw webhooks, HMAC verification, delivery settings, and idempotency |
 | [`docs/INDEXER.md`](./docs/INDEXER.md) | Horizon listener cursor model, reorg/gap handling, reconciliation |
 | [`docs/OBSERVABILITY.md`](./docs/OBSERVABILITY.md) | Logs, metrics, health probes, tracing strategy |
 | [`docs/TESTING.md`](./docs/TESTING.md) | Test pyramid, file counts, integration vs unit |

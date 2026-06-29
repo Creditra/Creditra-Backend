@@ -10,7 +10,7 @@ This document is the backend's threat model and the catalogue of in-tree mitigat
 |---|---|---|
 | Risk evaluations | Forgery / replay of risk inputs | Server-derived only — never trust client-supplied factors. `RiskEvaluationService` ignores anything but `walletAddress` + `forceRefresh`. |
 | Credit-line state transitions | Unauthorised suspend/close | `X-Admin-Api-Key` gate with constant-time comparison ([`adminAuth.ts`](../src/middleware/adminAuth.ts)) + 503 fail-closed when key unset |
-| Outbound webhooks | Spoofed delivery / replay | HMAC-SHA256 signature, monotonic `X-Webhook-Timestamp`, `drawId` for dedup |
+| Outbound webhooks | Spoofed delivery / replay | HMAC-SHA256 signature, `X-Webhook-Timestamp` freshness checks, `drawId` for dedup |
 | API keys | Timing leaks during comparison | `crypto.timingSafeEqual` in [`auth.ts`](../src/middleware/auth.ts) |
 | Logs | PII / secret exfiltration | `redactLogArgs`, Stellar public/secret/muxed account masking, email masking, and `sanitizeWallet` truncation |
 | DB | Drift from on-chain truth | `ReconciliationWorker` runs every `RECONCILIATION_INTERVAL_MS` |
@@ -155,7 +155,7 @@ The backend ships **outbound** webhooks (no inbound webhook surface today). Each
 
 ```http
 X-Webhook-Signature: sha256=<hex HMAC over raw body>
-X-Webhook-Timestamp: <ms epoch>
+X-Webhook-Timestamp: <payload ISO timestamp>
 User-Agent: Creditra-Webhook/1.0
 ```
 
@@ -163,9 +163,9 @@ Producer:
 
 - Secret loaded from `WEBHOOK_SECRET` — refuses to start (`getWebhookConfig()` returns `null`) when URLs are configured without a secret.
 - HMAC computed over the **raw JSON body** prior to send; subscribers should validate against the body bytes they received, not a re-serialized form.
-- Retries up to `WEBHOOK_MAX_RETRIES + 1` with `WEBHOOK_INITIAL_BACKOFF_MS × multiplier^attempt`.
+- Delivery settings expose `WEBHOOK_MAX_RETRIES`, `WEBHOOK_INITIAL_BACKOFF_MS`, and `WEBHOOK_BACKOFF_MULTIPLIER`.
 
-Subscriber expectation (documented in [`docs/API.md`](./API.md) §Webhooks):
+Subscriber expectation (documented in [`webhook-subscribers.md`](./webhook-subscribers.md)):
 
 1. Recompute `HMAC-SHA256(body, secret)` and compare in constant time.
 2. Reject deliveries older than your tolerance window (`X-Webhook-Timestamp`).
