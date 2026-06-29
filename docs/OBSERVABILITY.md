@@ -198,12 +198,75 @@ node dist/index.js | npx pino-pretty
 
 ---
 
-## 7. References
+## 7. Metrics Export Endpoint (`/api/metrics`)
+
+### 7.1 Overview
+
+`GET /api/metrics` returns a JSON payload containing rolling service signals for use with uptime and SLO dashboards (Grafana, Datadog, etc.).
+
+### 7.2 Authentication
+
+The endpoint requires a bearer token:
+
+```
+Authorization: Bearer <METRICS_TOKEN>
+```
+
+Set the `METRICS_TOKEN` environment variable to a strong random secret (e.g. `openssl rand -hex 32`). If the variable is unset the endpoint returns HTTP 503 to prevent accidental data exposure. Restrict network-level access to internal monitoring hosts.
+
+### 7.3 Response shape
+
+```json
+{
+  "data": {
+    "uptimeSeconds": 3600,
+    "windowSeconds": 60,
+    "totalRequests": 482,
+    "errorCount": 1,
+    "errorRate": 0.00207,
+    "latencyMs": { "p50": 45, "p95": 210, "p99": 480 },
+    "sloTargets": {
+      "availabilityTarget": 0.999,
+      "p95LatencyTargetMs": 300,
+      "errorRateTarget": 0.001
+    }
+  },
+  "error": null
+}
+```
+
+All latency and error-rate values are computed over a rolling 60-second window of completed requests.
+
+### 7.4 Suggested SLOs and alert thresholds
+
+| Signal         | SLO target        | Alert threshold (burn rate) |
+|----------------|-------------------|-----------------------------|
+| Availability   | 99.9 % monthly    | < 99.5 % over any 5 min     |
+| p95 latency    | ≤ 300 ms          | > 500 ms sustained 5 min    |
+| Error rate     | < 0.1 %           | > 1 % over any 1 min        |
+
+### 7.5 Grafana dashboard (quick start)
+
+1. Add a **JSON datasource** pointed at `GET /api/metrics` with a custom header `Authorization: Bearer <token>`.
+2. Create panels for `data.errorRate`, `data.latencyMs.p95`, and `data.uptimeSeconds`.
+3. Import the pre-built dashboard from `docs/grafana-dashboard.json` (if present) or build from the fields above.
+
+### 7.6 Example curl
+
+```bash
+curl -s -H "Authorization: Bearer $METRICS_TOKEN" \
+  https://api.creditra.internal/api/metrics | jq .
+```
+
+---
+
+## 8. References
 
 - [`src/utils/logger.ts`](../src/utils/logger.ts)
 - [`src/utils/logRedact.ts`](../src/utils/logRedact.ts)
 - [`src/middleware/requestLogger.ts`](../src/middleware/requestLogger.ts)
 - [`src/routes/health.ts`](../src/routes/health.ts)
+- [`src/routes/metrics.ts`](../src/routes/metrics.ts) (`/api/metrics`)
 - [`src/services/horizonListener.ts`](../src/services/horizonListener.ts) (`getMetrics()`)
 - [`src/routes/reconciliation.ts`](../src/routes/reconciliation.ts) (`/status`)
 - [`src/routes/webhook.ts`](../src/routes/webhook.ts) (`/health`, `/test`)
