@@ -76,6 +76,7 @@ A request enters through the Express router, is authenticated (`X-API-Key` or `X
 
 - Node.js **>= 20**
 - npm
+- Bash for `npm run dev:bootstrap` (Git Bash or WSL on Windows)
 - (Optional) Docker 24+ and Docker Compose v2 for the containerised dev loop
 - (Optional) k6 for load testing
 
@@ -87,6 +88,19 @@ cd Creditra-Backend
 npm install
 cp .env.example .env   # then fill in DATABASE_URL, API_KEYS, etc.
 ```
+
+### Local bootstrap
+
+For a reproducible local setup with Docker Compose Postgres, migrations, schema
+validation, and deterministic seed data:
+
+```bash
+npm run dev:bootstrap
+```
+
+The script creates `.env` from `.env.example` only when `.env` is missing, leaves
+existing local configuration unchanged, and uses placeholder development values
+only. Review `.env` before connecting to shared services.
 
 ### Run
 
