@@ -1,9 +1,10 @@
 -- Migration 005: Database indexes for hot queries
 -- Covers credit lines by borrower (wallet address) and transaction history by borrower.
 
--- Index: look up all credit lines for a given borrower wallet address
-CREATE INDEX IF NOT EXISTS idx_credit_lines_wallet_address
-  ON credit_lines (wallet_address);
+-- Index: support the credit_lines -> borrowers join used for wallet lookups.
+-- borrower.wallet_address is already covered by borrowers_wallet_address_key.
+CREATE INDEX IF NOT EXISTS idx_credit_lines_borrower_created
+  ON credit_lines (borrower_id, created_at DESC);
 
 -- Index: transaction history by credit line (already FK, but explicit index for range scans)
 CREATE INDEX IF NOT EXISTS idx_transactions_credit_line_id
@@ -27,8 +28,8 @@ CREATE INDEX IF NOT EXISTS idx_credit_lines_status
 
 -- Partial index: only ACTIVE credit lines (most frequent filter in dashboard queries)
 CREATE INDEX IF NOT EXISTS idx_credit_lines_active
-  ON credit_lines (wallet_address, created_at DESC)
-  WHERE status = 'ACTIVE';
+  ON credit_lines (borrower_id, created_at DESC)
+  WHERE status = 'active';
 
 INSERT INTO schema_migrations (version) VALUES ('005_db_indexes_hot_queries')
   ON CONFLICT (version) DO NOTHING;
