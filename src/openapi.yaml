@@ -104,6 +104,23 @@ components:
           example: 3
       additionalProperties: false
 
+    CreditLineAmountRequest:
+      type: object
+      required: [walletAddress, amount]
+      properties:
+        walletAddress:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Stellar wallet address submitting the action
+          example: "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOUJ3LNLRK"
+        amount:
+          type: string
+          pattern: "^\\d+(\\.\\d+)?$"
+          description: Action amount as a decimal string
+          example: "250.00"
+      additionalProperties: false
+
     CreditLine:
       type: object
       properties:
@@ -189,6 +206,28 @@ components:
         message:
           type: string
           example: "Credit line suspended."
+
+    CreditLineTransactionSubmitResponse:
+      type: object
+      required: [id, walletAddress, amount, txHash, status]
+      properties:
+        id:
+          type: string
+          description: Credit line identifier
+        walletAddress:
+          type: string
+          description: Stellar wallet address that submitted the request
+        amount:
+          type: string
+          description: Submitted amount as a decimal string
+        txHash:
+          type: string
+          nullable: true
+          description: Submitted transaction hash, or null when queued locally
+        status:
+          type: string
+          enum: [submitted, pending]
+          description: Whether the Soroban transaction was submitted or left pending
 
     # ── Transaction Schemas ──────────────────────────────────────────────────
 
@@ -901,6 +940,102 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/credit/lines/{id}/draw:
+    post:
+      tags: [Credit]
+      operationId: drawCreditLine
+      summary: Submit a draw request for a credit line
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Credit line identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreditLineAmountRequest"
+            example:
+              walletAddress: "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOUJ3LNLRK"
+              amount: "250.00"
+      responses:
+        "200":
+          description: Draw request accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditLineTransactionSubmitResponse"
+        "400":
+          description: Invalid draw request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Credit line not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/credit/lines/{id}/repay:
+    post:
+      tags: [Credit]
+      operationId: repayCreditLine
+      summary: Submit a repayment request for a credit line
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Credit line identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreditLineAmountRequest"
+            example:
+              walletAddress: "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOUJ3LNLRK"
+              amount: "100.00"
+      responses:
+        "200":
+          description: Repayment request accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditLineTransactionSubmitResponse"
+        "400":
+          description: Invalid repayment request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Credit line not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/credit/lines/{id}/suspend:
     post:
       tags: [Credit]
@@ -1109,6 +1244,34 @@ paths:
               example:
                 data: null
                 error: Content-Type must be application/json
+
+  /api/risk/admin/recalibrate:
+    post:
+      tags: [Risk]
+      operationId: recalibrateRiskModel
+      summary: Trigger risk model recalibration
+      description: Admin-gated endpoint that triggers risk model recalibration.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Risk model recalibration triggered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRecalibrateResponse"
+        "401":
+          description: API key missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/webhooks/config:
     get:
