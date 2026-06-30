@@ -234,7 +234,7 @@ Before requesting review, confirm:
 - [ ] `npm test` passes locally
 - [ ] `npm run lint` passes
 - [ ] `npm run typecheck` passes
-- [ ] `npm run validate:spec` passes (if OpenAPI changed)
+- [ ] `npm run validate:openapi` passes (if OpenAPI changed or routes changed)
 - [ ] New code covered by tests; coverage ≥ 95 % on touched modules
 - [ ] No new secrets, credentials, or wallet pubkeys in code, tests, fixtures, or logs
 - [ ] All Zod schemas updated alongside any new route inputs
