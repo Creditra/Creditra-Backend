@@ -23,9 +23,8 @@ async function invokeRoute(args: InvokeArgs): Promise<{ status: number; body: un
     throw new Error(`Route not found: ${args.method.toUpperCase()} ${args.path}`);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handlers: Array<(req: Request, res: Response, next: NextFunction) => unknown> =
-    layer.route.stack.map((s: any) => s.handle); // eslint-disable-line @typescript-eslint/no-explicit-any
+    layer.route!.stack.map((s: any) => s.handle); // eslint-disable-line @typescript-eslint/no-explicit-any
 
   let statusCode = 200;
   let responseBody: unknown = null;

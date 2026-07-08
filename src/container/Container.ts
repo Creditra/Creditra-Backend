@@ -173,7 +173,11 @@ export class Container {
     return this._dataRetentionWorker;
   }
 
-  // Method to replace repositories (useful for testing or switching to DB implementations)
+  get dashboardSummaryService(): DashboardSummaryService {
+    return this._dashboardSummaryService;
+  }
+
+  // Method to replace repositories
   public setRepositories(repositories: {
     creditLineRepository?: CreditLineRepository;
     riskEvaluationRepository?: RiskEvaluationRepository;
