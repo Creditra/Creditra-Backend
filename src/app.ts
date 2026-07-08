@@ -3,6 +3,9 @@ import cors from 'cors';
 import { creditRouter } from './routes/credit.js';
 import { riskRouter } from './routes/risk.js';
 import { apiKeysRouter } from './routes/apiKeys.js';
+import { recordRequest, metricsRouter } from './routes/metrics.js';
+import { maintenanceModeGuard } from './middleware/maintenanceMode.js';
+import { maintenanceRouter } from './routes/maintenance.js';
 
 export function createApp() {
   const app = express();
