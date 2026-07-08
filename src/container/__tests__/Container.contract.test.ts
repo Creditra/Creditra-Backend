@@ -64,7 +64,7 @@ describe('Container DI contract', () => {
     });
 
     it.each(REPOSITORY_RESOLVERS)('resolves repository %s', (name) => {
-      const repo = container[name] as Record<string, unknown>;
+      const repo = container[name] as unknown as Record<string, unknown>;
       expect(repo, `${String(name)} must resolve`).toBeDefined();
       // A repository is a contract object: it must expose callable methods.
       expect(typeof repo).toBe('object');
