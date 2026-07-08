@@ -58,6 +58,7 @@ export class Container {
   private _sorobanClient!: SorobanRpcClient;
   private _dataRetentionService?: DataRetentionService;
   private _dataRetentionWorker?: DataRetentionWorker;
+  private _dashboardSummaryService!: DashboardSummaryService;
 
   // In-process domain event bus (credit lifecycle).
   private readonly _eventBus = defaultEventBus;
@@ -168,7 +169,11 @@ export class Container {
     return this._dataRetentionWorker;
   }
 
-  // Method to replace repositories (useful for testing or switching to DB implementations)
+  get dashboardSummaryService(): DashboardSummaryService {
+    return this._dashboardSummaryService;
+  }
+
+  // Method to replace repositories
   public setRepositories(repositories: {
     creditLineRepository?: CreditLineRepository;
     riskEvaluationRepository?: RiskEvaluationRepository;
