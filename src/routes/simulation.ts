@@ -31,7 +31,7 @@ simulationRouter.post(
 
       const { amount } = req.body as DrawBody;
       const drawAmount = Number(amount);
-      const availableCredit = Number(line.creditLimit) - Number(line.balance ?? 0);
+      const availableCredit = Number(line.creditLimit) - Number(line.utilized ?? 0);
       const valid = drawAmount > 0 && drawAmount <= availableCredit;
       const interestBps: number = (line as unknown as Record<string, unknown>)['interestRateBps'] as number ?? 0;
       const estimatedFee = Math.ceil(drawAmount * interestBps / INTEREST_RATE_DIVISOR);
@@ -46,13 +46,13 @@ simulationRouter.post(
         preview: {
           requestedAmount: drawAmount,
           estimatedFee,
-          newBalance: valid ? Number(line.balance ?? 0) + drawAmount : null,
+          newBalance: valid ? Number(line.utilized ?? 0) + drawAmount : null,
           remainingCredit: valid ? availableCredit - drawAmount : availableCredit,
         },
       });
     } catch (err) {
       if (err instanceof CreditLineNotFoundError) return fail(res, err.message, 404);
-      next(err);
+      return next(err);
     }
   },
 );
@@ -67,7 +67,7 @@ simulationRouter.post(
 
       const { amount } = req.body as RepayBody;
       const repayAmount = Number(amount);
-      const currentBalance = Number(line.balance ?? 0);
+      const currentBalance = Number(line.utilized ?? 0);
       const effectiveRepay = Math.min(repayAmount, currentBalance);
       const valid = repayAmount > 0;
 
@@ -84,7 +84,7 @@ simulationRouter.post(
       });
     } catch (err) {
       if (err instanceof CreditLineNotFoundError) return fail(res, err.message, 404);
-      next(err);
+      return next(err);
     }
   },
 );
