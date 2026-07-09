@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 import { metricsRouter, recordRequest } from '../metrics.js';
 
@@ -45,16 +45,6 @@ async function invokeRoute(args: InvokeArgs): Promise<{ status: number; body: un
       return this;
     },
   } as unknown as Response;
-
-  const runHandlers = async (index: number): Promise<void> => {
-    if (index >= handlers.length) return;
-    await new Promise<void>((resolve) => {
-      handlers[index](req, res, () => {
-        resolve();
-        runHandlers(index + 1);
-      });
-    });
-  };
 
   // Execute the first handler (auth guard); if it calls next, proceed to the route handler.
   await new Promise<void>((resolve) => {
