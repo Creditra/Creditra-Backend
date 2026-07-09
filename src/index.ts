@@ -12,6 +12,7 @@ import { healthRouter } from "./routes/health.js";
 import { webhookRouter } from "./routes/webhook.js";
 import { reconciliationRouter } from "./routes/reconciliation.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { createIdempotencyMiddleware } from "./middleware/idempotency.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import {
   InMemoryRateLimitStore,
@@ -23,7 +24,12 @@ import { loadCorsPolicy, isAllowedCorsOrigin } from "./config/cors.js";
 import { loadRateLimitConfig, loadRateLimitStoreConfig } from "./config/rateLimit.js";
 import { validateEnv } from "./config/env.js";
 import { Container } from "./container/Container.js";
+import { getConnection } from "./db/client.js";
 import { initializeWebhooks } from "./services/drawWebhookService.js";
+import {
+  InMemoryIdempotencyStore,
+  PostgresIdempotencyStore,
+} from "./services/idempotencyStore.js";
 import { logger } from "./utils/logger.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -111,6 +117,10 @@ const evaluateRateLimit = createRateLimitMiddleware({
   ...appRateLimitConfig.evaluate,
   keyGenerator: createIpKeyGenerator(),
 }, evaluateRateLimitStore);
+const idempotencyStore =
+  process.env.DATABASE_URL && process.env.NODE_ENV !== "test"
+    ? new PostgresIdempotencyStore(getConnection())
+    : new InMemoryIdempotencyStore();
 
 app.use(cors({
   origin(origin, callback) {
@@ -139,6 +149,7 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '100kb' }));
 
 app.use(requestLogger);
+app.use(createIdempotencyMiddleware(idempotencyStore));
 
 app.use("/health", healthRouter);
 
