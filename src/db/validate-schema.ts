@@ -28,6 +28,8 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
   risk_evaluations: ['id', 'borrower_id', 'risk_score', 'suggested_limit', 'interest_rate_bps', 'evaluated_at'],
   transactions: ['id', 'credit_line_id', 'type', 'amount', 'currency', 'created_at'],
   events: ['id', 'event_type', 'created_at'],
+  outbound_webhook_subscriptions: ['id', 'url', 'event_types', 'active', 'secret_ref', 'created_at'],
+  outbound_webhook_deliveries: ['id', 'subscription_id', 'event_type', 'event_id', 'status', 'attempts', 'created_at'],
 };
 
 /**
@@ -40,6 +42,8 @@ const REQUIRED_INDEXES: Record<string, string[]> = {
   risk_evaluations: ['risk_evaluations_borrower_id_idx'],
   transactions: ['transactions_credit_line_id_idx'],
   events: ['events_idempotency_key_key'],
+  outbound_webhook_subscriptions: ['outbound_webhook_subscriptions_url_key'],
+  outbound_webhook_deliveries: ['outbound_webhook_deliveries_status_idx'],
 };
 
 /**

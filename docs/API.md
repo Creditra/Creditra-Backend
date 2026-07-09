@@ -253,6 +253,22 @@ Reachability probe for every configured URL. Returns `{ total, reachable, unreac
 
 #### `GET /api/webhooks/health`
 
+#### `GET /api/webhooks/subscriptions` *(API-key auth)*
+
+Returns active outbound webhook subscriber metadata without secret material.
+
+#### `GET /api/webhooks/deliveries` *(API-key auth)*
+
+Returns recent durable delivery rows. Optional query parameters:
+
+- `status`: `queued`, `delivered`, `failed`, or `dead_letter`
+- `limit`: 1-200
+
+#### `POST /api/webhooks/deliveries/:id/replay` *(API-key auth)*
+
+Requeues a stored delivery for asynchronous retry and returns `202` with the
+new job id.
+
 `active | disabled` — disabled when no URLs are configured.
 
 #### Outbound payload contract (subscriber side)

@@ -20,8 +20,14 @@ import { Router, type Request, type Response } from 'express';
 import { getWebhookConfig, testWebhookConnectivity } from '../services/drawWebhookService.js';
 import { getWebhookDeliveryStateStore } from '../services/webhookDeliveryState.js';
 import { redactLogArgs } from '../utils/logRedact.js';
+import { Container } from '../container/Container.js';
+import { createApiKeyMiddleware } from '../middleware/auth.js';
+import { loadApiKeys } from '../config/apiKeys.js';
+import type { OutboundWebhookStatus } from '../services/outboundWebhookStore.js';
 
 export const webhookRouter = Router();
+const container = Container.getInstance();
+const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
 
 /**
  * Get current webhook configuration
@@ -101,4 +107,57 @@ webhookRouter.get('/health', (_req: Request, res: Response) => {
             deadLetter: counts.deadLetter
         }
     });
+});
+
+/**
+ * List active outbound webhook subscriptions. Admin/API-key gated because
+ * subscriber URLs are operational integration metadata.
+ */
+webhookRouter.get('/subscriptions', requireApiKey, async (_req: Request, res: Response) => {
+    const subscriptions = await container.outboundWebhookDispatcher.listSubscriptions();
+    res.status(200).json({
+        data: subscriptions.map((subscription) => ({
+            id: subscription.id,
+            url: subscription.url,
+            eventTypes: subscription.eventTypes,
+            active: subscription.active,
+            secretRef: subscription.secretRef,
+            createdAt: subscription.createdAt,
+            updatedAt: subscription.updatedAt
+        })),
+        error: null
+    });
+});
+
+/**
+ * Inspect recent outbound delivery rows. Admin/API-key gated; payloads are
+ * included so operators can debug event fan-out without reading server logs.
+ */
+webhookRouter.get('/deliveries', requireApiKey, async (req: Request, res: Response) => {
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+    const allowedStatuses = new Set(['queued', 'delivered', 'failed', 'dead_letter']);
+    const deliveries = await container.outboundWebhookDispatcher.listDeliveries({
+        status: status && allowedStatuses.has(status)
+            ? (status as OutboundWebhookStatus)
+            : undefined,
+        limit: Number.isFinite(limit) ? limit : undefined
+    });
+    res.status(200).json({ data: deliveries, error: null });
+});
+
+/**
+ * Replay a failed/dead-letter delivery by queueing it again. The original row
+ * is preserved and moved back to queued so history remains inspectable.
+ */
+webhookRouter.post('/deliveries/:id/replay', requireApiKey, async (req: Request, res: Response) => {
+    try {
+        const jobId = await container.outboundWebhookDispatcher.replayDelivery(req.params.id);
+        res.status(202).json({ data: { jobId }, error: null });
+    } catch (error) {
+        res.status(404).json({
+            data: null,
+            error: error instanceof Error ? error.message : 'Delivery not found'
+        });
+    }
 });
