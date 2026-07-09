@@ -115,6 +115,7 @@ npm run test:coverage     # v8 coverage, lcov + text
 npm run test:watch        # vitest in watch mode
 npm run lint              # eslint src/
 npm run typecheck         # tsc --noEmit
+npm run security:secrets  # Gitleaks secret scan
 ```
 
 ### Load
@@ -200,6 +201,7 @@ See [`docs/OBSERVABILITY.md`](./docs/OBSERVABILITY.md).
 - Per-route token-bucket rate limit emitting `X-RateLimit-*` headers ([`src/middleware/rateLimit.ts`](./src/middleware/rateLimit.ts)).
 - HMAC-SHA256 webhook signatures (`X-Webhook-Signature: sha256=…`).
 - Outbound HTTP guarded by [`src/utils/fetchWithTimeout.ts`](./src/utils/fetchWithTimeout.ts).
+- Committed secret guardrails run through [`.gitleaks.toml`](./.gitleaks.toml), [`npm run security:secrets`](./scripts/security/scan-secrets.mjs), and the [`Secret Scanning`](./.github/workflows/secret-scanning.yml) workflow.
 
 Full model: [`docs/SECURITY.md`](./docs/SECURITY.md) and [`SECURITY.md`](./SECURITY.md).
 
@@ -269,6 +271,7 @@ Creditra-Backend/
 | [`docs/load-testing.md`](./docs/load-testing.md) | k6 scripts and thresholds |
 | [`docs/security-checklist-backend.md`](./docs/security-checklist-backend.md) | Pre-deploy security checklist |
 | [`docs/security-pentest-checklist.md`](./docs/security-pentest-checklist.md) | Pentest prep checklist |
+| [`docs/secret-scanning.md`](./docs/secret-scanning.md) | Gitleaks CI/local guardrails and remediation steps |
 | [`docs/REPOSITORY_ARCHITECTURE.md`](./docs/REPOSITORY_ARCHITECTURE.md) | Repository / DIP layout |
 | [`docs/troubleshooting.md`](./docs/troubleshooting.md) | Common failure modes |
 
