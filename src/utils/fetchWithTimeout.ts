@@ -18,6 +18,23 @@ export interface FetchTimeoutConfig {
 export interface FetchWithTimeoutOptions extends RequestInit {
   /** Custom timeout configuration (overrides defaults) */
   timeouts?: Partial<FetchTimeoutConfig>;
+  /** Retry policy. Defaults to safe-method retries; set false to disable. */
+  retry?: Partial<FetchRetryConfig> | false;
+}
+
+export interface FetchRetryConfig {
+  /** Number of retry attempts after the initial request */
+  maxRetries: number;
+  /** Initial retry delay in milliseconds */
+  retryDelayMs: number;
+  /** Maximum retry delay in milliseconds */
+  maxRetryDelayMs: number;
+  /** Random jitter added to each delay in milliseconds */
+  retryJitterMs: number;
+  /** HTTP statuses that are considered transient */
+  retryStatuses: number[];
+  /** HTTP methods that may be retried automatically */
+  retryMethods: string[];
 }
 
 /**
@@ -65,6 +82,17 @@ export function getDefaultTimeouts(): FetchTimeoutConfig {
   return {
     connectTimeoutMs: parseInt(process.env['HTTP_CONNECT_TIMEOUT_MS'] ?? '5000', 10),
     readTimeoutMs: parseInt(process.env['HTTP_READ_TIMEOUT_MS'] ?? '10000', 10),
+  };
+}
+
+export function getDefaultRetryConfig(): FetchRetryConfig {
+  return {
+    maxRetries: parseInt(process.env['HTTP_MAX_RETRIES'] ?? '2', 10),
+    retryDelayMs: parseInt(process.env['HTTP_RETRY_DELAY_MS'] ?? '250', 10),
+    maxRetryDelayMs: parseInt(process.env['HTTP_MAX_RETRY_DELAY_MS'] ?? '2000', 10),
+    retryJitterMs: parseInt(process.env['HTTP_RETRY_JITTER_MS'] ?? '100', 10),
+    retryStatuses: [408, 429, 500, 502, 503, 504],
+    retryMethods: ['GET', 'HEAD', 'OPTIONS'],
   };
 }
 
@@ -116,6 +144,49 @@ export async function fetchWithTimeout(
   url: string,
   options: FetchWithTimeoutOptions = {}
 ): Promise<Response> {
+  const retry = resolveRetryConfig(options.retry);
+  const method = (options.method ?? 'GET').toUpperCase();
+  const canRetryMethod = retry.retryMethods.includes(method);
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= retry.maxRetries; attempt++) {
+    try {
+      const response = await fetchOnceWithTimeout(url, options);
+
+      if (
+        attempt < retry.maxRetries &&
+        canRetryMethod &&
+        retry.retryStatuses.includes(response.status)
+      ) {
+        await waitBeforeRetry(attempt, retry, response);
+        continue;
+      }
+
+      return response;
+    } catch (error) {
+      lastError = error;
+
+      if (
+        attempt >= retry.maxRetries ||
+        !canRetryMethod ||
+        isCallerAbort(options.signal ?? undefined, error)
+      ) {
+        throw error;
+      }
+
+      await waitBeforeRetry(attempt, retry);
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new HttpRequestError('HTTP request failed with unknown error', url);
+}
+
+async function fetchOnceWithTimeout(
+  url: string,
+  options: FetchWithTimeoutOptions = {}
+): Promise<Response> {
   const defaults = getDefaultTimeouts();
   const timeouts: FetchTimeoutConfig = {
     connectTimeoutMs: options.timeouts?.connectTimeoutMs ?? defaults.connectTimeoutMs,
@@ -162,6 +233,74 @@ export async function fetchWithTimeout(
     // Unknown error type
     throw new HttpRequestError('HTTP request failed with unknown error', url);
   }
+}
+
+function resolveRetryConfig(
+  overrides: FetchWithTimeoutOptions['retry'],
+): FetchRetryConfig {
+  if (overrides === false) {
+    return {
+      ...getDefaultRetryConfig(),
+      maxRetries: 0,
+    };
+  }
+
+  const defaults = getDefaultRetryConfig();
+  return {
+    ...defaults,
+    ...overrides,
+    retryStatuses: overrides?.retryStatuses ?? defaults.retryStatuses,
+    retryMethods: (overrides?.retryMethods ?? defaults.retryMethods).map((method) => method.toUpperCase()),
+  };
+}
+
+async function waitBeforeRetry(
+  attempt: number,
+  retry: FetchRetryConfig,
+  response?: Response,
+): Promise<void> {
+  const retryAfterMs = parseRetryAfterMs(response);
+  const backoffMs = Math.min(
+    retry.maxRetryDelayMs,
+    retry.retryDelayMs * 2 ** attempt,
+  );
+  const jitterMs = retry.retryJitterMs > 0
+    ? Math.floor(Math.random() * retry.retryJitterMs)
+    : 0;
+  const delayMs = retryAfterMs ?? backoffMs + jitterMs;
+
+  if (delayMs <= 0) {
+    return;
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+function parseRetryAfterMs(response?: Response): number | undefined {
+  const header = response?.headers.get('retry-after');
+  if (!header) {
+    return undefined;
+  }
+
+  const seconds = Number(header);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return seconds * 1000;
+  }
+
+  const dateMs = Date.parse(header);
+  if (Number.isFinite(dateMs)) {
+    return Math.max(0, dateMs - Date.now());
+  }
+
+  return undefined;
+}
+
+function isCallerAbort(signal: AbortSignal | undefined, error: unknown): boolean {
+  return Boolean(
+    signal?.aborted &&
+    error instanceof Error &&
+    error.name === 'AbortError',
+  );
 }
 
 /**

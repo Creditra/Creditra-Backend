@@ -7,6 +7,7 @@ This document describes the HTTP timeout configuration for outbound requests to 
 All outbound HTTP requests use configurable connect and read timeouts to prevent hanging connections and ensure predictable failure modes. The timeout utilities provide:
 
 - Separate connect and read timeout configuration
+- Standard retry policy for safe outbound methods
 - Structured error types for timeout vs. other failures
 - Environment-based configuration with sensible defaults
 - Consistent error handling across all HTTP clients
@@ -19,6 +20,10 @@ All outbound HTTP requests use configurable connect and read timeouts to prevent
 |----------|---------|-------------|
 | `HTTP_CONNECT_TIMEOUT_MS` | `5000` | Connection timeout in milliseconds (time to establish TCP connection) |
 | `HTTP_READ_TIMEOUT_MS` | `10000` | Read timeout in milliseconds (time to receive complete response after connection) |
+| `HTTP_MAX_RETRIES` | `2` | Retry attempts after the first request |
+| `HTTP_RETRY_DELAY_MS` | `250` | Initial retry delay in milliseconds |
+| `HTTP_MAX_RETRY_DELAY_MS` | `2000` | Maximum retry delay in milliseconds |
+| `HTTP_RETRY_JITTER_MS` | `100` | Random jitter added to retry delays |
 
 ### Setting Timeouts
 
@@ -32,6 +37,8 @@ HTTP_READ_TIMEOUT_MS=8000
 ```bash
 export HTTP_CONNECT_TIMEOUT_MS=5000
 export HTTP_READ_TIMEOUT_MS=15000
+export HTTP_MAX_RETRIES=2
+export HTTP_RETRY_DELAY_MS=250
 ```
 
 **Docker Compose:**
@@ -97,6 +104,31 @@ const response = await fetchWithTimeout('https://slow-api.example.com/data', {
   },
 });
 ```
+
+### Retry Policy
+
+`fetchWithTimeout` retries transient failures for safe methods only:
+
+- Methods retried by default: `GET`, `HEAD`, `OPTIONS`
+- Retryable statuses: `408`, `429`, `500`, `502`, `503`, `504`
+- Retryable failures: network errors and timeout errors
+- Delay: exponential backoff with jitter, honoring `Retry-After` when present
+
+POST, PUT, PATCH, and DELETE are not retried automatically. A caller must opt in
+by setting `retry.retryMethods` when the request is known to be idempotent:
+
+```typescript
+await fetchWithTimeout('https://api.example.com/retry-safe-post', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+  retry: {
+    maxRetries: 2,
+    retryMethods: ['POST'],
+  },
+});
+```
+
+Disable retries entirely for a request with `retry: false`.
 
 ## Error Handling
 

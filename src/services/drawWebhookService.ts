@@ -18,7 +18,10 @@
 import { createHmac } from "node:crypto";
 import type { HorizonEvent } from "./horizonListener.js";
 import { getWebhookDeliveryStateStore } from "./webhookDeliveryState.js";
-import { redactLogArgs } from "../utils/logRedact.js";
+import { fetchWithTimeout } from "../utils/fetchWithTimeout.js";
+import { createServiceLogger } from "../utils/serviceLogger.js";
+
+const log = createServiceLogger("DrawWebhookService");
 
 // ---------------------------------------------------------------------------
 // Types
@@ -129,19 +132,9 @@ async function deliverWebhook(
     timeoutMs: number
 ): Promise<{ success: boolean; status?: number; error?: string }> {
     const payloadString = JSON.stringify(payload);
-    
-    const controller = new AbortController();
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     try {
-        const timeout = new Promise<never>((_resolve, reject) => {
-            timeoutId = setTimeout(() => {
-                controller.abort();
-                reject(new Error("Request timeout"));
-            }, timeoutMs);
-        });
-
-        const response = await Promise.race([fetch(url, {
+        const response = await fetchWithTimeout(url, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -150,12 +143,12 @@ async function deliverWebhook(
                 "User-Agent": "Creditra-Webhook/1.0"
             },
             body: payloadString,
-            signal: controller.signal
-        }), timeout]);
-
-        if (timeoutId !== undefined) {
-            clearTimeout(timeoutId);
-        }
+            timeouts: {
+                connectTimeoutMs: timeoutMs,
+                readTimeoutMs: 0,
+            },
+            retry: false,
+        });
 
         if (response.ok) {
             return { success: true, status: response.status };
@@ -167,12 +160,8 @@ async function deliverWebhook(
             };
         }
     } catch (error) {
-        if (timeoutId !== undefined) {
-            clearTimeout(timeoutId);
-        }
-        
         if (error instanceof Error) {
-            throw error.name === "AbortError" ? new Error("Request timeout") : error;
+            throw error;
         }
         
         throw new Error("Unknown error occurred");
@@ -341,10 +330,12 @@ export async function sendDrawConfirmationWebhook(
                 attempts,
                 lastError
             });
-            console.warn(...redactLogArgs([
-                "[DrawWebhook] Delivery permanently failed, moved to dead-letter:",
-                { drawId: payload.data.drawId, url, attempts, lastError }
-            ]));
+            log.warn("webhook:delivery:dead-letter", {
+                drawId: payload.data.drawId,
+                url,
+                attempts,
+                lastError,
+            });
 
             return { url, success: false, attempt: attempts, error: lastError };
         }
