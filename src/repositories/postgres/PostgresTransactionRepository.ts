@@ -2,7 +2,7 @@ import {
   type Transaction,
   type CreateTransactionRequest,
   TransactionStatus,
-  TransactionType,
+  type TransactionType,
 } from '../../models/Transaction.js';
 import type { TransactionRepository } from '../interfaces/TransactionRepository.js';
 import type { DbClient } from '../../db/client.js';
