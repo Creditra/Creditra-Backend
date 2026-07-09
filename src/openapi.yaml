@@ -31,6 +31,8 @@ tags:
     description: On-chain risk evaluation
   - name: Webhooks
     description: Draw confirmation webhook management
+  - name: Inbound Webhooks
+    description: Signed partner webhook ingestion
   - name: Reconciliation
     description: Admin control plane for DB-vs-chain reconciliation
 
@@ -400,6 +402,32 @@ components:
           type: integer
         timeoutMs:
           type: integer
+
+    InboundWebhookRequest:
+      type: object
+      required: [event]
+      properties:
+        event:
+          type: string
+          example: partner.updated
+      additionalProperties: true
+
+    InboundWebhookAcceptedResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          required: [accepted, event]
+          properties:
+            accepted:
+              type: boolean
+              example: true
+            event:
+              type: string
+              example: partner.updated
+        error:
+          type: string
+          nullable: true
 
     AdminRecalibrateResponse:
       type: object
@@ -1131,6 +1159,60 @@ paths:
                 backoffMultiplier: 2.0
                 timeoutMs: 10000
                 configured: true
+
+  /api/inbound-webhooks/events:
+    post:
+      tags: [Inbound Webhooks]
+      operationId: receiveInboundWebhookEvent
+      summary: Receive a signed inbound webhook event
+      description: |
+        Requires `X-Signature`, `X-Timestamp`, and `X-Nonce`.
+        `X-Signature` is `sha256=<hex>` over `X-Timestamp + "." + X-Nonce + "." + raw_body`.
+        Stale timestamps and repeated nonces are rejected to prevent replay.
+      security: []
+      parameters:
+        - name: X-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: "^sha256=[a-fA-F0-9]{64}$"
+        - name: X-Timestamp
+          in: header
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: X-Nonce
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InboundWebhookRequest"
+      responses:
+        "202":
+          description: Event accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundWebhookAcceptedResponse"
+        "401":
+          description: Missing, invalid, stale, or replayed signature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Inbound webhook signing secret is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/webhooks/test:
     post:

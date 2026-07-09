@@ -10,9 +10,11 @@ import { creditRouter } from "./routes/credit.js";
 import { riskRouter } from "./routes/risk.js";
 import { healthRouter } from "./routes/health.js";
 import { webhookRouter } from "./routes/webhook.js";
+import { inboundWebhookRouter } from "./routes/inboundWebhooks.js";
 import { reconciliationRouter } from "./routes/reconciliation.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/requestLogger.js";
+import { captureRawBody } from "./middleware/rawBody.js";
 import {
   InMemoryRateLimitStore,
   RedisRateLimitStore,
@@ -136,7 +138,7 @@ app.use((req, res, next) => {
 
 // 100 kb hard cap; body-parser emits a 413 that errorHandler converts to a
 // structured response.
-app.use(express.json({ limit: '100kb' }));
+app.use(express.json({ limit: '100kb', verify: captureRawBody }));
 
 app.use(requestLogger);
 
@@ -153,6 +155,7 @@ app.use("/api/risk/evaluate", evaluateRateLimit);
 app.use("/api/risk/wallet", defaultRateLimit);
 app.use("/api/risk", riskRouter);
 app.use("/api/webhooks", webhookRouter);
+app.use("/api/inbound-webhooks", inboundWebhookRouter);
 app.use("/api/reconciliation", reconciliationRouter);
 
 // Global error handler — must be registered after routes
