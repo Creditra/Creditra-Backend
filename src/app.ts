@@ -1,8 +1,12 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 import { creditRouter } from './routes/credit.js';
 import { riskRouter } from './routes/risk.js';
 import { apiKeysRouter } from './routes/apiKeys.js';
+import { adminAuditRouter } from './routes/adminAudit.js';
+import { maintenanceRouter } from './routes/maintenance.js';
+import { metricsRouter, recordRequest } from './routes/metrics.js';
+import { maintenanceModeGuard } from './middleware/maintenanceMode.js';
 
 export function createApp() {
   const app = express();
@@ -28,6 +32,7 @@ export function createApp() {
   app.use('/api/credit', creditRouter);
   app.use('/api/risk', riskRouter);
   app.use('/api/admin/api-keys', apiKeysRouter);
+  app.use('/api/admin/audit-logs', adminAuditRouter);
 
   // Admin-only route to toggle maintenance mode.
   app.use('/api/admin/maintenance', maintenanceRouter);

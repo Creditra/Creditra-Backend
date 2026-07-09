@@ -32,6 +32,8 @@ import {
 import type { DrawBody, RepayBody } from '../schemas/index.js';
 import { Container } from '../container/Container.js';
 import { adminAuth } from '../middleware/adminAuth.js';
+import { defaultAdminAuditLog } from '../services/adminAuditLog.js';
+import { adminActorFromRequest } from '../utils/adminActor.js';
 import { ok, fail } from '../utils/response.js';
 import {
   CreditLineNotFoundError,
@@ -40,6 +42,7 @@ import {
   TransactionType,
   suspendCreditLine,
   closeCreditLine,
+  getCreditLine,
   getTransactions,
   submitDrawRequest,
   submitRepayRequest,
@@ -246,7 +249,16 @@ creditRouter.post(
   adminAuth,
   (req: Request, res: Response): void => {
     try {
+      const before = getCreditLine(req.params.id);
+      const beforeSnapshot = before ? { ...before, events: [...before.events] } : undefined;
       const line = suspendCreditLine(req.params.id);
+      defaultAdminAuditLog.record({
+        actor: adminActorFromRequest(req),
+        action: 'credit_line.suspended',
+        target: { type: 'credit_line', id: req.params.id },
+        before: beforeSnapshot,
+        after: line,
+      });
       res.status(200).json({ data: line, message: 'Credit line suspended.', error: null });
     } catch (err) {
       handleServiceError(err, res);
@@ -259,7 +271,16 @@ creditRouter.post(
   adminAuth,
   (req: Request, res: Response): void => {
     try {
+      const before = getCreditLine(req.params.id);
+      const beforeSnapshot = before ? { ...before, events: [...before.events] } : undefined;
       const line = closeCreditLine(req.params.id);
+      defaultAdminAuditLog.record({
+        actor: adminActorFromRequest(req),
+        action: 'credit_line.closed',
+        target: { type: 'credit_line', id: req.params.id },
+        before: beforeSnapshot,
+        after: line,
+      });
       res.status(200).json({ data: line, message: 'Credit line closed.', error: null });
     } catch (err) {
       handleServiceError(err, res);
