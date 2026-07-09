@@ -23,7 +23,7 @@
  *
  * See `docs/OBSERVABILITY.md` for Grafana dashboard JSON and Alertmanager rules.
  */
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import { ok, fail } from '../utils/response.js';
 
 export const metricsRouter = Router();
