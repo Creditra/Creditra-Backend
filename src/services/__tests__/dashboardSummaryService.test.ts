@@ -80,7 +80,7 @@ describe('DashboardSummaryService caching', () => {
   });
 
   it('recomputes immediately after invalidate()', async () => {
-    let now = 0;
+    const now = 0;
     const { repo, findAll } = repoOf([line({})]);
     const service = new DashboardSummaryService(repo, 30_000, () => now);
 
