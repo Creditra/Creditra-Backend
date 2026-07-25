@@ -9,8 +9,8 @@
  */
 
 import { Router, type Request, type Response } from 'express';
-import { validateBody } from '../middleware/validate.js';
-import { drawSchema, repaySchema } from '../schemas/index.js';
+import { validateBody, validateParams } from '../middleware/validate.js';
+import { drawSchema, repaySchema, idParamSchema } from '../schemas/index.js';
 import type { DrawBody, RepayBody } from '../schemas/index.js';
 import { ok, fail } from '../utils/response.js';
 import { Container } from '../container/Container.js';
@@ -23,6 +23,7 @@ const INTEREST_RATE_DIVISOR = 10_000; // bps denominator
 
 simulationRouter.post(
   '/lines/:id/draw/simulate',
+  validateParams(idParamSchema),
   validateBody(drawSchema),
   async (req: Request, res: Response, next) => {
     try {
@@ -33,16 +34,21 @@ simulationRouter.post(
       const drawAmount = Number(amount);
       const availableCredit = Number(line.creditLimit) - Number(line.balance ?? 0);
       const valid = drawAmount > 0 && drawAmount <= availableCredit;
-      const interestBps: number = (line as unknown as Record<string, unknown>)['interestRateBps'] as number ?? 0;
-      const estimatedFee = Math.ceil(drawAmount * interestBps / INTEREST_RATE_DIVISOR);
+      const interestBps: number =
+        ((line as unknown as Record<string, unknown>)['interestRateBps'] as number) ?? 0;
+      const estimatedFee = Math.ceil((drawAmount * interestBps) / INTEREST_RATE_DIVISOR);
 
       return ok(res, {
         simulation: 'draw',
         valid,
-        issues: valid ? [] : [
-          drawAmount <= 0 ? 'amount must be positive' : null,
-          drawAmount > availableCredit ? `amount ${drawAmount} exceeds available credit ${availableCredit}` : null,
-        ].filter(Boolean),
+        issues: valid
+          ? []
+          : [
+              drawAmount <= 0 ? 'amount must be positive' : null,
+              drawAmount > availableCredit
+                ? `amount ${drawAmount} exceeds available credit ${availableCredit}`
+                : null,
+            ].filter(Boolean),
         preview: {
           requestedAmount: drawAmount,
           estimatedFee,
@@ -59,6 +65,7 @@ simulationRouter.post(
 
 simulationRouter.post(
   '/lines/:id/repay/simulate',
+  validateParams(idParamSchema),
   validateBody(repaySchema),
   async (req: Request, res: Response, next) => {
     try {

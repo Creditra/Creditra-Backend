@@ -67,24 +67,27 @@ describe('Credit Routes', () => {
       const response = await request(app)
         .get('/api/credit/lines?offset=-1')
         .expect(400);
-      expect(response.body.error).toBe('Offset cannot be negative');
+      expect(response.body.error).toBe('Validation failed');
       expect(response.body.data).toBeNull();
+      expect(response.body.details.some((d: { field: string }) => d.field === 'offset')).toBe(true);
     });
 
     it('should return 400 for zero limit', async () => {
       const response = await request(app)
         .get('/api/credit/lines?limit=0')
         .expect(400);
-      expect(response.body.error).toBe('Limit must be greater than 0');
+      expect(response.body.error).toBe('Validation failed');
       expect(response.body.data).toBeNull();
+      expect(response.body.details.some((d: { field: string }) => d.field === 'limit')).toBe(true);
     });
 
     it('should return 400 for oversized limit', async () => {
       const response = await request(app)
         .get('/api/credit/lines?limit=101')
         .expect(400);
-      expect(response.body.error).toBe('Limit cannot exceed 100');
+      expect(response.body.error).toBe('Validation failed');
       expect(response.body.data).toBeNull();
+      expect(response.body.details.some((d: { field: string }) => d.field === 'limit')).toBe(true);
     });
 
     it('should handle server errors gracefully', async () => {
@@ -176,7 +179,8 @@ describe('Credit Routes', () => {
         .get('/api/credit/lines?cursor&limit=0')
         .expect(400);
 
-      expect(response.body.error).toBe('Limit must be greater than 0');
+      expect(response.body.error).toBe('Validation failed');
+      expect(response.body.details.some((d: { field: string }) => d.field === 'limit')).toBe(true);
     });
 
     it('should handle cursor with oversized limit error', async () => {
@@ -184,7 +188,8 @@ describe('Credit Routes', () => {
         .get('/api/credit/lines?cursor&limit=101')
         .expect(400);
 
-      expect(response.body.error).toBe('Limit cannot exceed 100');
+      expect(response.body.error).toBe('Validation failed');
+      expect(response.body.details.some((d: { field: string }) => d.field === 'limit')).toBe(true);
     });
 
     it('should return empty result with cursor when no items exist', async () => {
@@ -395,8 +400,13 @@ describe('Credit Routes', () => {
         })
         .expect(400);
 
-      expect(response.body.error).toBe('Credit limit must be greater than 0');
+      expect(response.body.error).toBe('Validation failed');
       expect(response.body.data).toBeNull();
+      expect(
+        response.body.details.some((d: { message: string }) =>
+          d.message.includes('greater than 0'),
+        ),
+      ).toBe(true);
     });
 
     it('should handle service errors with generic message', async () => {
@@ -517,8 +527,9 @@ describe('Credit Routes', () => {
     });
 
     it('should return empty array when no credit lines found for wallet', async () => {
+      const emptyWallet = 'G' + 'B'.repeat(55);
       const response = await request(app)
-        .get('/api/credit/wallet/GBAHQCUPC7G2B4D2F2I2K2M2O2Q2W2Y2A2C2E2G2I2K2M2O2Q2S5/lines')
+        .get(`/api/credit/wallet/${emptyWallet}/lines`)
         .expect(200);
 
       expect(response.body.data.creditLines).toEqual([]);
@@ -538,8 +549,9 @@ describe('Credit Routes', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._creditLineService = mockService;
 
+      const validWallet = 'G' + 'C'.repeat(55);
       const response = await request(app)
-        .get('/api/credit/wallet/GBAHQCUPC7G2B4D2F2I2K2M2O2Q2W2Y2A2C2E2G2I2K2M2O2Q2S6/lines')
+        .get(`/api/credit/wallet/${validWallet}/lines`)
         .expect(500);
 
       expect(response.body.error).toBe('Internal server error');
@@ -548,6 +560,18 @@ describe('Credit Routes', () => {
       // Restore original service
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any)._creditLineService = originalService;
+    });
+
+    it('should reject invalid wallet path params with validation envelope', async () => {
+      const response = await request(app)
+        .get('/api/credit/wallet/not-a-stellar-address/lines')
+        .expect(400);
+
+      expect(response.body.error).toBe('Validation failed');
+      expect(response.body.data).toBeNull();
+      expect(response.body.details.some((d: { field: string }) => d.field === 'walletAddress')).toBe(
+        true,
+      );
     });
   });
 });

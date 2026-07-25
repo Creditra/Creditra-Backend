@@ -21,15 +21,38 @@
  *
  * Successful responses use the shared envelope helpers `ok()` / `fail()`
  * from `src/utils/response.ts` so every body looks like `{ data, error }`.
+ *
+ * Request inputs are validated by Zod middleware (`validateBody|Query|Params`).
+ * Response shapes are checked when `ENABLE_RESPONSE_VALIDATION=true`.
  */
 import { Router, type Request, type Response } from 'express';
-import { validateBody } from '../middleware/validate.js';
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+  validateResponse,
+} from '../middleware/validate.js';
 import {
   createCreditLineSchema,
+  creditLinesQuerySchema,
+  updateCreditLineSchema,
   drawSchema,
   repaySchema,
+  transactionHistoryQuerySchema,
+  idParamSchema,
+  walletAddressParamSchema,
+  envelopedCreditLineSchema,
+  envelopedCreditLinesListSchema,
+  creditLinesCursorDataSchema,
+  envelopedWalletCreditLinesSchema,
+  envelopedTransactionHistorySchema,
+  drawRepayResultSchema,
+  type CreditLinesQuery,
+  type DrawBody,
+  type RepayBody,
+  type TransactionHistoryQuery,
+  type UpdateCreditLineBody,
 } from '../schemas/index.js';
-import type { DrawBody, RepayBody } from '../schemas/index.js';
 import { Container } from '../container/Container.js';
 import { adminAuth } from '../middleware/adminAuth.js';
 import { ok, fail } from '../utils/response.js';
@@ -48,18 +71,8 @@ import {
 export const creditRouter = Router();
 const container = Container.getInstance();
 
-const VALID_TRANSACTION_TYPES = Object.values(TransactionType);
-
 /**
  * Maps a thrown service-layer error to an HTTP status + envelope.
- *
- * - {@link CreditLineNotFoundError} → 404
- * - {@link InvalidTransitionError}  → 409
- * - anything else                   → 500 with the error message
- *
- * Keeping this in one place means every credit-line endpoint produces a
- * consistent error envelope without each handler reimplementing the
- * mapping.
  */
 function handleServiceError(err: unknown, res: Response): void {
   if (err instanceof CreditLineNotFoundError) {
@@ -75,164 +88,192 @@ function handleServiceError(err: unknown, res: Response): void {
     return;
   }
   const message = err instanceof Error ? err.message : 'Internal server error';
-  res.status(500).json({ error: message });
+  res.status(500).json({ data: null, error: message });
 }
 
-function parseIntegerQuery(value: unknown, defaultValue: number): number {
-  if (value === undefined || value === '') {
-    return defaultValue;
-  }
-  return Number.parseInt(String(value), 10);
-}
+creditRouter.get(
+  '/lines',
+  validateQuery(creditLinesQuerySchema),
+  // Response schema depends on pagination mode; cursor mode is unenveloped.
+  async (req, res) => {
+    const query = req.query as unknown as CreditLinesQuery;
+    const limit = query.limit ?? 100;
 
-creditRouter.get('/lines', async (req, res) => {
-  const limit = parseIntegerQuery(req.query.limit, 100);
-
-  try {
-    if ('cursor' in req.query) {
-      const cursorValue = req.query.cursor;
-      const cursor = typeof cursorValue === 'string' && cursorValue.length > 0
-        ? cursorValue
-        : undefined;
-      const result = await container.creditLineService.getAllCreditLinesWithCursor(cursor, limit);
-
-      return res.json({
-        creditLines: result.items,
-        pagination: {
+    try {
+      // Presence of `cursor` (including empty string) selects cursor pagination.
+      if (query.cursor !== undefined) {
+        const cursor =
+          typeof query.cursor === 'string' && query.cursor.length > 0
+            ? query.cursor
+            : undefined;
+        const result = await container.creditLineService.getAllCreditLinesWithCursor(
+          cursor,
           limit,
-          nextCursor: result.nextCursor,
-          hasMore: result.hasMore,
-        },
+        );
+
+        const body = {
+          creditLines: result.items,
+          pagination: {
+            limit,
+            nextCursor: result.nextCursor,
+            hasMore: result.hasMore,
+          },
+        };
+
+        // Optional response contract check (cursor mode is not enveloped).
+        if (process.env.ENABLE_RESPONSE_VALIDATION === 'true') {
+          const parsed = creditLinesCursorDataSchema.safeParse(body);
+          if (!parsed.success) {
+            return res.status(500).json({ data: null, error: 'Response contract violation' });
+          }
+        }
+
+        return res.json(body);
+      }
+
+      const offset = query.offset ?? 0;
+      const creditLines = await container.creditLineService.getAllCreditLines(offset, limit);
+      const total = await container.creditLineService.getCreditLineCount();
+
+      // Envelope success path — validate when enabled via middleware-equivalent check.
+      const payload = {
+        creditLines,
+        pagination: { total, offset, limit },
+      };
+
+      if (process.env.ENABLE_RESPONSE_VALIDATION === 'true') {
+        const parsed = envelopedCreditLinesListSchema.safeParse({ data: payload, error: null });
+        if (!parsed.success) {
+          return res.status(500).json({ data: null, error: 'Response contract violation' });
+        }
+      }
+
+      return ok(res, payload);
+    } catch (error) {
+      return fail(res, error instanceof Error ? error : undefined, 400);
+    }
+  },
+);
+
+creditRouter.get(
+  '/lines/:id',
+  validateParams(idParamSchema),
+  validateResponse(envelopedCreditLineSchema),
+  async (req, res) => {
+    try {
+      const line = await container.creditLineService.getCreditLine(req.params.id);
+      if (!line) {
+        return fail(res, 'Credit line not found', 404);
+      }
+      return ok(res, line);
+    } catch {
+      return fail(res, 'Internal server error');
+    }
+  },
+);
+
+creditRouter.post(
+  '/lines',
+  validateBody(createCreditLineSchema),
+  validateResponse(envelopedCreditLineSchema),
+  async (req, res) => {
+    try {
+      const { walletAddress, creditLimit, requestedLimit, interestRateBps } = req.body ?? {};
+      const finalLimit = creditLimit ?? requestedLimit;
+      const creditLine = await container.creditLineService.createCreditLine({
+        walletAddress,
+        creditLimit: finalLimit,
+        interestRateBps: interestRateBps ?? 0,
       });
+      // Keep the dashboard read model correct on mutation (not just TTL-fresh).
+      container.dashboardSummaryService.invalidate();
+      return ok(res, creditLine, 201);
+    } catch (error) {
+      return fail(res, error instanceof Error ? error : undefined, 400);
     }
+  },
+);
 
-    const offset = parseIntegerQuery(req.query.offset, 0);
-    const creditLines = await container.creditLineService.getAllCreditLines(offset, limit);
-    const total = await container.creditLineService.getCreditLineCount();
-
-    return ok(res, {
-      creditLines,
-      pagination: { total, offset, limit },
-    });
-  } catch (error) {
-    return fail(res, error instanceof Error ? error : undefined, 400);
-  }
-});
-
-creditRouter.get('/lines/:id', async (req, res) => {
-  try {
-    const line = await container.creditLineService.getCreditLine(req.params.id);
-    if (!line) {
-      return fail(res, 'Credit line not found', 404);
+creditRouter.put(
+  '/lines/:id',
+  validateParams(idParamSchema),
+  validateBody(updateCreditLineSchema),
+  validateResponse(envelopedCreditLineSchema),
+  async (req, res) => {
+    try {
+      const body = req.body as UpdateCreditLineBody;
+      const creditLine = await container.creditLineService.updateCreditLine(req.params.id, {
+        creditLimit: body.creditLimit,
+        interestRateBps: body.interestRateBps,
+        status: body.status as never,
+        expectedVersion: body.expectedVersion,
+      });
+      if (!creditLine) {
+        return fail(res, 'Credit line not found', 404);
+      }
+      container.dashboardSummaryService.invalidate();
+      return ok(res, creditLine);
+    } catch (error) {
+      // Optimistic-locking conflicts surface as 409; other validation as 400.
+      if (error instanceof VersionConflictError) {
+        return handleServiceError(error, res);
+      }
+      return fail(res, error instanceof Error ? error : undefined, 400);
     }
-    return ok(res, line);
-  } catch {
-    return fail(res, 'Internal server error');
-  }
-});
+  },
+);
 
-creditRouter.post('/lines', validateBody(createCreditLineSchema), async (req, res) => {
-  try {
-    const { walletAddress, creditLimit, requestedLimit, interestRateBps } = req.body ?? {};
-    const finalLimit = creditLimit ?? requestedLimit;
-    const creditLine = await container.creditLineService.createCreditLine({
-      walletAddress,
-      creditLimit: finalLimit,
-      interestRateBps: interestRateBps ?? 0,
-    });
-    // Keep the dashboard read model correct on mutation (not just TTL-fresh).
-    container.dashboardSummaryService.invalidate();
-    return ok(res, creditLine, 201);
-  } catch (error) {
-    return fail(res, error instanceof Error ? error : undefined, 400);
-  }
-});
-
-creditRouter.put('/lines/:id', async (req, res) => {
-  try {
-    const { creditLimit, interestRateBps, status, expectedVersion } = req.body;
-    const creditLine = await container.creditLineService.updateCreditLine(req.params.id, {
-      creditLimit,
-      interestRateBps,
-      status,
-      expectedVersion,
-    });
-    if (!creditLine) {
-      return fail(res, 'Credit line not found', 404);
+creditRouter.delete(
+  '/lines/:id',
+  validateParams(idParamSchema),
+  async (req, res) => {
+    try {
+      const deleted = await container.creditLineService.deleteCreditLine(req.params.id);
+      if (!deleted) {
+        return fail(res, 'Credit line not found', 404);
+      }
+      container.dashboardSummaryService.invalidate();
+      return res.status(204).send();
+    } catch {
+      return fail(res, 'Internal server error');
     }
-    container.dashboardSummaryService.invalidate();
-    return ok(res, creditLine);
-  } catch (error) {
-    // Optimistic-locking conflicts surface as 409; other validation as 400.
-    if (error instanceof VersionConflictError) {
-      return handleServiceError(error, res);
-    }
-    return fail(res, error instanceof Error ? error : undefined, 400);
-  }
-});
-
-creditRouter.delete('/lines/:id', async (req, res) => {
-  try {
-    const deleted = await container.creditLineService.deleteCreditLine(req.params.id);
-    if (!deleted) {
-      return fail(res, 'Credit line not found', 404);
-    }
-    container.dashboardSummaryService.invalidate();
-    return res.status(204).send();
-  } catch {
-    return fail(res, 'Internal server error');
-  }
-});
+  },
+);
 
 creditRouter.get(
   '/wallet/:walletAddress/lines',
+  validateParams(walletAddressParamSchema),
+  validateResponse(envelopedWalletCreditLinesSchema),
   async (req, res) => {
-  try {
-    const lines = await container.creditLineService.getCreditLinesByWallet(
-      req.params.walletAddress,
-    );
-    ok(res, { creditLines: lines });
-  } catch {
-    fail(res, 'Internal server error');
-  }
-});
+    try {
+      const lines = await container.creditLineService.getCreditLinesByWallet(
+        req.params.walletAddress,
+      );
+      ok(res, { creditLines: lines });
+    } catch {
+      fail(res, 'Internal server error');
+    }
+  },
+);
 
 creditRouter.get(
   '/lines/:id/transactions',
+  validateParams(idParamSchema),
+  validateQuery(transactionHistoryQuerySchema),
+  validateResponse(envelopedTransactionHistorySchema),
   async (req: Request, res: Response): Promise<void> => {
     const id = req.params.id;
-    const { type, from, to, page: pageParam, limit: limitParam } = req.query;
-
-    if (type !== undefined && !VALID_TRANSACTION_TYPES.includes(type as TransactionType)) {
-      fail(res, `Invalid type filter. Must be one of: ${VALID_TRANSACTION_TYPES.join(', ')}.`, 400);
-      return;
-    }
-    if (from !== undefined && isNaN(new Date(from as string).getTime())) {
-      fail(res, "Invalid 'from' date. Must be a valid ISO 8601 date.", 400);
-      return;
-    }
-    if (to !== undefined && isNaN(new Date(to as string).getTime())) {
-      fail(res, "Invalid 'to' date. Must be a valid ISO 8601 date.", 400);
-      return;
-    }
-
-    const page = pageParam !== undefined ? parseInt(pageParam as string, 10) : 1;
-    const limit = limitParam !== undefined ? parseInt(limitParam as string, 10) : 20;
-
-    if (isNaN(page) || page < 1) {
-      fail(res, "Invalid 'page'. Must be a positive integer.", 400);
-      return;
-    }
-    if (isNaN(limit) || limit < 1 || limit > 100) {
-      fail(res, "Invalid 'limit'. Must be between 1 and 100.", 400);
-      return;
-    }
+    const { type, from, to, page, limit } = req.query as unknown as TransactionHistoryQuery;
 
     try {
       const result = getTransactions(
         id,
-        { type: type as TransactionType | undefined, from: from as string | undefined, to: to as string | undefined },
-        { page, limit },
+        {
+          type: type as TransactionType | undefined,
+          from: from as string | undefined,
+          to: to as string | undefined,
+        },
+        { page: page ?? 1, limit: limit ?? 20 },
       );
       ok(res, result);
     } catch (err) {
@@ -244,6 +285,7 @@ creditRouter.get(
 creditRouter.post(
   '/lines/:id/suspend',
   adminAuth,
+  validateParams(idParamSchema),
   (req: Request, res: Response): void => {
     try {
       const line = suspendCreditLine(req.params.id);
@@ -257,6 +299,7 @@ creditRouter.post(
 creditRouter.post(
   '/lines/:id/close',
   adminAuth,
+  validateParams(idParamSchema),
   (req: Request, res: Response): void => {
     try {
       const line = closeCreditLine(req.params.id);
@@ -267,22 +310,34 @@ creditRouter.post(
   },
 );
 
-creditRouter.post('/lines/:id/draw', validateBody(drawSchema), async (req, res, next) => {
-  try {
-    const result = await submitDrawRequest(req.params.id, req.body as DrawBody);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
+creditRouter.post(
+  '/lines/:id/draw',
+  validateParams(idParamSchema),
+  validateBody(drawSchema),
+  validateResponse(drawRepayResultSchema),
+  async (req, res, next) => {
+    try {
+      const result = await submitDrawRequest(req.params.id, req.body as DrawBody);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
-creditRouter.post('/lines/:id/repay', validateBody(repaySchema), async (req, res, next) => {
-  try {
-    const result = await submitRepayRequest(req.params.id, req.body as RepayBody);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
+creditRouter.post(
+  '/lines/:id/repay',
+  validateParams(idParamSchema),
+  validateBody(repaySchema),
+  validateResponse(drawRepayResultSchema),
+  async (req, res, next) => {
+    try {
+      const result = await submitRepayRequest(req.params.id, req.body as RepayBody);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 export default creditRouter;

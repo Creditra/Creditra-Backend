@@ -1,10 +1,13 @@
 import { Router } from 'express';
 import { adminAuth } from '../middleware/adminAuth.js';
 import {
-    isMaintenanceModeEnabled,
-    setMaintenanceMode,
-    getAuditLog,
+  isMaintenanceModeEnabled,
+  setMaintenanceMode,
+  getAuditLog,
 } from '../middleware/maintenanceMode.js';
+import { validateBody } from '../middleware/validate.js';
+import { maintenanceToggleSchema } from '../schemas/index.js';
+import type { MaintenanceToggleBody } from '../schemas/index.js';
 
 export const maintenanceRouter = Router();
 
@@ -14,10 +17,10 @@ export const maintenanceRouter = Router();
  * Requires admin authentication.
  */
 maintenanceRouter.get('/', adminAuth, (_req, res) => {
-    res.json({
-        maintenanceMode: isMaintenanceModeEnabled(),
-        auditLog: getAuditLog(),
-    });
+  res.json({
+    maintenanceMode: isMaintenanceModeEnabled(),
+    auditLog: getAuditLog(),
+  });
 });
 
 /**
@@ -26,23 +29,23 @@ maintenanceRouter.get('/', adminAuth, (_req, res) => {
  * Toggles maintenance mode on or off.
  * Requires admin authentication.
  */
-maintenanceRouter.post('/', adminAuth, (req, res) => {
-    const { enabled } = req.body as { enabled?: unknown };
-
-    if (typeof enabled !== 'boolean') {
-        res.status(400).json({ error: 'Bad Request', message: '"enabled" must be a boolean.' });
-        return;
-    }
+maintenanceRouter.post(
+  '/',
+  adminAuth,
+  validateBody(maintenanceToggleSchema),
+  (req, res) => {
+    const { enabled } = req.body as MaintenanceToggleBody;
 
     const actor =
-        (Array.isArray(req.headers['x-admin-api-key'])
-            ? req.headers['x-admin-api-key'][0]
-            : req.headers['x-admin-api-key']) ?? 'unknown';
+      (Array.isArray(req.headers['x-admin-api-key'])
+        ? req.headers['x-admin-api-key'][0]
+        : req.headers['x-admin-api-key']) ?? 'unknown';
 
     setMaintenanceMode(enabled, actor);
 
     res.json({
-        maintenanceMode: isMaintenanceModeEnabled(),
-        message: `Maintenance mode ${enabled ? 'enabled' : 'disabled'}.`,
+      maintenanceMode: isMaintenanceModeEnabled(),
+      message: `Maintenance mode ${enabled ? 'enabled' : 'disabled'}.`,
     });
-});
+  },
+);

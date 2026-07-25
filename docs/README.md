@@ -29,7 +29,8 @@ This directory holds the long-form documentation for the Creditra backend. The t
 |---|---|
 | [`data-model.md`](./data-model.md) | Per-table column reference. |
 | [`REPOSITORY_ARCHITECTURE.md`](./REPOSITORY_ARCHITECTURE.md) | Repository / DIP layout. |
-| [`schema-validation.md`](./schema-validation.md) | Boot-time schema validator. |
+| [`schema-validation.md`](./schema-validation.md) | Boot-time **database** schema validator. |
+| [`json-schema-validation.md`](./json-schema-validation.md) | Strict Zod request/response JSON validation for the HTTP API. |
 | [`cursor-pagination.md`](./cursor-pagination.md) | Cursor pagination contract. |
 | [`error-envelope.md`](./error-envelope.md) | `{ data, error }` envelope reference. |
 | [`http-timeouts.md`](./http-timeouts.md) | Outbound HTTP timeout policy. |

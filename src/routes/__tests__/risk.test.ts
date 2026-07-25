@@ -262,14 +262,26 @@ describe('Risk Routes', () => {
     });
 
     it('returns 404 for missing latest evaluation', async () => {
+      const missingWallet = 'G' + 'D'.repeat(55);
+      const response = await invokeRoute({
+        method: 'get',
+        path: '/wallet/:walletAddress/latest',
+        params: { walletAddress: missingWallet },
+      });
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({ data: null, error: 'No risk evaluation found for wallet' });
+    });
+
+    it('returns 400 for invalid wallet path param on latest', async () => {
       const response = await invokeRoute({
         method: 'get',
         path: '/wallet/:walletAddress/latest',
         params: { walletAddress: 'missing' },
       });
 
-      expect(response.status).toBe(404);
-      expect(response.body).toEqual({ data: null, error: 'No risk evaluation found for wallet' });
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Validation failed');
     });
 
     it('returns 500 when latest evaluation fetch throws', async () => {

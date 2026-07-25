@@ -37,17 +37,19 @@ Every error response (`4xx`, `5xx`) has this shape:
 }
 ```
 
-Validation errors additionally include `details`:
+Validation errors additionally include `details` (Zod request schemas — see [`json-schema-validation.md`](./json-schema-validation.md)):
 
 ```json
 {
   "data": null,
   "error": "Validation failed",
   "details": [
-    { "field": "walletAddress", "message": "Invalid Stellar address" }
+    { "field": "walletAddress", "message": "walletAddress must be a valid Stellar address" }
   ]
 }
 ```
+
+Every public route validates body, query, and path params via `validateBody` / `validateQuery` / `validateParams`. Response contracts are asserted in integration tests with `assertMatchesSchema`; set `ENABLE_RESPONSE_VALIDATION=true` to enforce them at runtime.
 
 Rate-limit responses additionally include `retryAfter` and the `Retry-After` HTTP header. See [`docs/error-envelope.md`](./error-envelope.md) for the helper API.
 

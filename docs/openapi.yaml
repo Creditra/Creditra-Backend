@@ -14,9 +14,12 @@ info:
     API keys are configured via the `API_KEYS` environment variable (comma-separated).
 
     ## Keeping the spec in sync
+    - **Zod schemas** in `src/schemas/` are the runtime source of truth for request
+      and response validation. This OpenAPI document should mirror those schemas.
     - Every new route **must** have a corresponding entry here before merging.
     - Run `npm run validate:spec` in CI to catch YAML/structural errors early.
     - Use path-level `operationId` values as the source of truth for client generation.
+    - See `docs/json-schema-validation.md` for request/response validation policy.
 
 servers:
   - url: http://localhost:3000
@@ -31,6 +34,8 @@ tags:
     description: On-chain risk evaluation
   - name: Webhooks
     description: Draw confirmation webhook management
+  - name: Reconciliation
+    description: Admin control plane for DB-vs-chain reconciliation
 
 security:
   - ApiKeyAuth: []
@@ -78,6 +83,9 @@ components:
 
     UpdateCreditLineRequest:
       type: object
+      description: |
+        Partial update body (updateCreditLineSchema). At least one of the
+        updatable fields must be present. Unknown keys are rejected.
       properties:
         creditLimit:
           type: string
@@ -92,6 +100,14 @@ components:
           type: string
           enum: [active, suspended, closed]
           description: Credit line status
+        expectedVersion:
+          type: integer
+          minimum: 1
+          description: >
+            Optimistic-locking guard. When provided, the update only succeeds
+            if it equals the stored `version`; otherwise the server returns
+            `409 Conflict`. Omit for unconditional (last-write-wins) updates.
+          example: 3
       additionalProperties: false
 
     CreditLine:
@@ -125,6 +141,14 @@ components:
           type: string
           enum: [active, suspended, closed]
           description: Current credit line status
+        version:
+          type: integer
+          minimum: 1
+          description: >
+            Optimistic-locking version, incremented on each update. Pass the
+            value you read back as `expectedVersion` on a subsequent update to
+            guard against lost writes.
+          example: 1
         createdAt:
           type: string
           format: date-time
@@ -390,17 +414,86 @@ components:
           type: string
           example: "Risk model recalibration triggered"
 
+    ReconciliationTriggerResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          required: [jobId, message]
+          properties:
+            jobId:
+              type: string
+              description: Identifier for the scheduled reconciliation job
+            message:
+              type: string
+              example: Reconciliation job scheduled
+        error:
+          type: string
+          nullable: true
+
+    ReconciliationStatusResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          required: [workerRunning, queueSize, failedJobs]
+          properties:
+            workerRunning:
+              type: boolean
+            queueSize:
+              type: integer
+              minimum: 0
+            failedJobs:
+              type: integer
+              minimum: 0
+        error:
+          type: string
+          nullable: true
+
     # ── Error Schemas ─────────────────────────────────────────────────────────
 
     ErrorResponse:
       type: object
-      required: [error]
+      required: [data, error]
       properties:
+        data:
+          nullable: true
+          description: Always null on error
         error:
           type: string
         id:
           type: string
           description: Present on 404 responses that reference a specific resource
+
+    ValidationErrorResponse:
+      type: object
+      required: [data, error, details]
+      description: |
+        Returned for Zod request-schema failures (body, query, or path params).
+        Stable shape — never includes stack traces or internal exception text.
+      properties:
+        data:
+          nullable: true
+          example: null
+        error:
+          type: string
+          enum: [Validation failed]
+          example: Validation failed
+        details:
+          type: array
+          items:
+            type: object
+            required: [field, message]
+            additionalProperties: false
+            properties:
+              field:
+                type: string
+                description: Dotted path to the invalid field, or "(root)"
+                example: walletAddress
+              message:
+                type: string
+                example: walletAddress must be a valid Stellar address
+      additionalProperties: false
 
     RateLimitErrorResponse:
       type: object
@@ -428,21 +521,91 @@ paths:
                 status: ok
                 service: creditra-backend
 
+  # ── Reconciliation Routes ───────────────────────────────────────────────────
+
+  /api/reconciliation/trigger:
+    post:
+      tags: [Reconciliation]
+      operationId: triggerReconciliation
+      summary: Schedule a reconciliation job
+      description: Admin-gated endpoint that schedules a DB-vs-chain reconciliation job and returns immediately.
+      responses:
+        "202":
+          description: Reconciliation job scheduled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconciliationTriggerResponse"
+              example:
+                data:
+                  jobId: "reconciliation-1710000000000"
+                  message: Reconciliation job scheduled
+                error: null
+        "401":
+          description: Missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to schedule reconciliation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/reconciliation/status:
+    get:
+      tags: [Reconciliation]
+      operationId: getReconciliationStatus
+      summary: Get reconciliation worker and queue status
+      description: Admin-gated endpoint for dashboards and alerts to inspect worker and queue health.
+      responses:
+        "200":
+          description: Reconciliation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconciliationStatusResponse"
+              example:
+                data:
+                  workerRunning: true
+                  queueSize: 0
+                  failedJobs: 0
+                error: null
+        "401":
+          description: Missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to get reconciliation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ── Credit Lines Routes ─────────────────────────────────────────────────────
 
   /api/credit/lines:
     get:
-      summary: Get Credit Lines
-      description: |
-        Returns all available credit lines with pagination support.
-        
-        Supports two pagination modes:
-        - **Offset-based** (legacy): Use `offset` and `limit` parameters
-        - **Cursor-based** (recommended): Use `cursor` and `limit` parameters
-        
-        Cursor pagination provides stable results for large datasets and is recommended
-        for production use. The response includes a `nextCursor` field that can be used
-        to fetch the next page of results.
+      tags: [Credit]
+      operationId: listCreditLines
+      summary: List all credit lines
+      security: []
       parameters:
         - name: offset
           in: query
@@ -451,9 +614,7 @@ paths:
             type: integer
             minimum: 0
             default: 0
-          description: |
-            Pagination offset (offset-based pagination only).
-            Cannot be used together with `cursor` parameter.
+          description: Pagination offset (offset mode; ignored when `cursor` is present)
         - name: limit
           in: query
           required: false
@@ -462,19 +623,21 @@ paths:
             minimum: 1
             maximum: 100
             default: 100
-          description: Number of credit lines per page (works with both pagination modes)
+          description: Number of credit lines per page (validated by creditLinesQuerySchema)
         - name: cursor
           in: query
           required: false
           schema:
             type: string
           description: |
-            Cursor for pagination (cursor-based pagination).
-            Use the `nextCursor` value from a previous response to fetch the next page.
-            When provided, `offset` parameter is ignored.
+            When present (including empty string), switches to cursor pagination.
+            Pass `nextCursor` from the previous page for subsequent pages.
       responses:
         "200":
-          description: Array of credit lines (may be empty)
+          description: |
+            Offset mode returns `{ data: { creditLines, pagination }, error: null }`.
+            Cursor mode returns an unenveloped `{ creditLines, pagination }` body
+            (see docs/cursor-pagination.md).
           headers:
             X-RateLimit-Limit:
               description: Maximum requests allowed per window
@@ -494,15 +657,21 @@ paths:
           content:
             application/json:
               schema:
-                oneOf:
-                  - $ref: '#/components/schemas/CreditLinesOffsetResponse'
-                  - $ref: '#/components/schemas/CreditLinesCursorResponse'
-        '400':
-          description: Bad Request (Invalid pagination parameters)
+                $ref: "#/components/schemas/CreditLinesResponse"
+              example:
+                data:
+                  creditLines: []
+                  pagination:
+                    total: 0
+                    offset: 0
+                    limit: 100
+                error: null
+        "400":
+          description: Invalid query parameter (Zod validation)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/ValidationErrorResponse"
         "429":
           description: Rate limit exceeded
           headers:
@@ -634,6 +803,7 @@ paths:
               creditLimit: "1500.00"
               interestRateBps: 640
               status: active
+              expectedVersion: 3
       responses:
         "200":
           description: Credit line updated successfully
@@ -649,6 +819,16 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Credit line not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            Optimistic-locking conflict. The supplied `expectedVersion` did not
+            match the stored `version`, meaning a concurrent update won the
+            race. Re-read the credit line to get the current `version` and
+            retry the update with it.
           content:
             application/json:
               schema:
@@ -963,221 +1143,204 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: Validation failed
-        "429":
-          description: Rate limit exceeded
+        "413":
+          description: Request body exceeds the 100 kb limit
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RateLimitErrorResponse"
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                data: null
+                error: Request body too large. Maximum size is 100kb.
+        "415":
+          description: Content-Type is not application/json
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                data: null
+                error: Content-Type must be application/json
 
-  /api/reconciliation/trigger:
-    post:
-      summary: Trigger Credit Reconciliation
-      description: |
-        Manually trigger a reconciliation job that compares on-chain Credit contract 
-        records with database credit lines and flags any drift.
-        
-        Requires admin authentication via X-API-Key header.
-      security:
-        - ApiKeyAuth: []
-      responses:
-        '202':
-          description: Reconciliation job scheduled
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      jobId:
-                        type: string
-                        description: Unique identifier for the scheduled job
-                      message:
-                        type: string
-                        example: 'Reconciliation job scheduled'
-                  error:
-                    type: "null"
-        '401':
-          description: Unauthorized (Missing or invalid API key)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FailureResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FailureResponse'
-
-  /api/reconciliation/status:
+  /api/webhooks/config:
     get:
-      summary: Get Reconciliation Status
-      description: |
-        Returns the current status of the reconciliation worker including:
-        - Whether the worker is running
-        - Number of jobs in the queue
-        - Number of failed jobs
-        
-        Requires admin authentication via X-API-Key header.
-      security:
-        - ApiKeyAuth: []
+      tags: [Webhooks]
+      operationId: getWebhookConfig
+      summary: Get webhook configuration
+      description: Returns the current webhook configuration (excluding sensitive data)
+      security: []
       responses:
-        '200':
-          description: Reconciliation status
+        "200":
+          description: Webhook configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookConfigResponse"
+              example:
+                urls: ["https://example.com/webhook"]
+                maxRetries: 3
+                initialBackoffMs: 1000
+                backoffMultiplier: 2.0
+                timeoutMs: 10000
+                configured: true
+
+  /api/webhooks/test:
+    post:
+      tags: [Webhooks]
+      operationId: testWebhooks
+      summary: Test webhook connectivity
+      description: Sends a test payload to all configured webhook endpoints
+      security: []
+      responses:
+        "200":
+          description: Test results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookTestResponse"
+              example:
+                total: 2
+                reachable: 1
+                unreachable: 1
+                results:
+                  - url: "https://example.com/webhook"
+                    reachable: true
+                  - url: "https://test.com/hook"
+                    reachable: false
+                    error: "Connection refused"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/webhooks/health:
+    get:
+      tags: [Webhooks]
+      operationId: getWebhookHealth
+      summary: Webhook service health check
+      description: Returns the health status of the webhook service
+      security: []
+      responses:
+        "200":
+          description: Webhook service health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookHealthResponse"
+              example:
+                status: active
+                urls: 2
+                maxRetries: 3
+                timeoutMs: 10000
+
+  /api/risk/evaluations/{id}:
+    get:
+      tags: [Risk]
+      operationId: getRiskEvaluationById
+      summary: Fetch a stored risk evaluation by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Risk evaluation identifier
+      responses:
+        "200":
+          description: Risk evaluation found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskEvaluation"
+        "404":
+          description: Risk evaluation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Risk evaluation not found
+                id: "abc123"
+
+  /api/risk/wallet/{walletAddress}/latest:
+    get:
+      tags: [Risk]
+      operationId: getLatestRiskEvaluation
+      summary: Get the latest risk evaluation for a wallet
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^G[A-Z2-7]{55}$'
+          description: Stellar public key
+      responses:
+        "200":
+          description: Risk evaluation found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskEvaluateResponse"
+        "400":
+          description: Invalid wallet address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No risk evaluation found for wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/risk/wallet/{walletAddress}/history:
+    get:
+      tags: [Risk]
+      operationId: getRiskEvaluationHistory
+      summary: Get risk evaluation history for a wallet
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^G[A-Z2-7]{55}$'
+          description: Stellar public key
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: Pagination offset
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Pagination limit
+      responses:
+        "200":
+          description: Array of risk evaluations
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  data:
-                    type: object
-                    properties:
-                      workerRunning:
-                        type: boolean
-                        description: Whether the reconciliation worker is active
-                      queueSize:
-                        type: integer
-                        description: Number of pending jobs in the queue
-                      failedJobs:
-                        type: integer
-                        description: Number of jobs that have failed
-                  error:
-                    type: "null"
-        '401':
-          description: Unauthorized (Missing or invalid API key)
+                  evaluations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RiskEvaluation"
+        "400":
+          description: Invalid parameters
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FailureResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FailureResponse'
-
-components:
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: API key for admin endpoints
-
-  schemas:
-    SuccessResponse:
-      type: object
-      properties:
-        data:
-          description: The payload of the successful response. Varies by endpoint.
-          type: object
-        error:
-          description: Error message. Always null for successful responses.
-          type: "null"
-      required:
-        - data
-        - error
-
-    FailureResponse:
-      type: object
-      properties:
-        data:
-          description: Data payload. Always null for failed responses.
-          type: "null"
-        error:
-          description: The error message detailing what went wrong.
-          type: string
-      required:
-        - data
-        - error
-
-    CreditLine:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Unique identifier for the credit line
-        walletAddress:
-          type: string
-          description: Stellar wallet address
-        creditLimit:
-          type: string
-          description: Maximum credit limit (decimal string)
-        availableCredit:
-          type: string
-          description: Currently available credit (decimal string)
-        interestRateBps:
-          type: integer
-          description: Interest rate in basis points (e.g., 500 = 5%)
-        status:
-          type: string
-          enum: [active, suspended, closed, pending]
-          description: Current status of the credit line
-        createdAt:
-          type: string
-          format: date-time
-          description: Creation timestamp
-        updatedAt:
-          type: string
-          format: date-time
-          description: Last update timestamp
-
-    CreditLinesOffsetResponse:
-      type: object
-      description: Response format for offset-based pagination
-      properties:
-        creditLines:
-          type: array
-          items:
-            $ref: '#/components/schemas/CreditLine'
-        pagination:
-          type: object
-          properties:
-            total:
-              type: integer
-              description: Total number of credit lines
-            offset:
-              type: integer
-              description: Current offset
-            limit:
-              type: integer
-              description: Number of items per page
-          required:
-            - total
-            - offset
-            - limit
-      required:
-        - creditLines
-        - pagination
-
-    CreditLinesCursorResponse:
-      type: object
-      description: Response format for cursor-based pagination
-      properties:
-        creditLines:
-          type: array
-          items:
-            $ref: '#/components/schemas/CreditLine'
-        pagination:
-          type: object
-          properties:
-            limit:
-              type: integer
-              description: Number of items per page
-            nextCursor:
-              type: string
-              nullable: true
-              description: Cursor for the next page (null if no more pages)
-            hasMore:
-              type: boolean
-              description: Whether more results are available
-          required:
-            - limit
-            - nextCursor
-            - hasMore
-      required:
-        - creditLines
-        - pagination
+                $ref: "#/components/schemas/ErrorResponse"
