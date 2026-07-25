@@ -16,6 +16,7 @@ import { requestLogger } from "./middleware/requestLogger.js";
 import {
   InMemoryRateLimitStore,
   RedisRateLimitStore,
+  createAdminBypassChecker,
   createIpKeyGenerator,
   createRateLimitMiddleware,
 } from "./middleware/rateLimit.js";
@@ -103,13 +104,18 @@ const appRateLimitConfig =
     : rateLimitConfig;
 const defaultRateLimitStore = createRateLimitStore("default");
 const evaluateRateLimitStore = createRateLimitStore("evaluate");
+// Admin/service traffic presenting a valid X-Admin-Api-Key is not charged
+// against per-route token buckets (see docs/SECURITY.md §5).
+const adminRateLimitBypass = createAdminBypassChecker();
 const defaultRateLimit = createRateLimitMiddleware({
   ...appRateLimitConfig.default,
   keyGenerator: createIpKeyGenerator(),
+  skip: adminRateLimitBypass,
 }, defaultRateLimitStore);
 const evaluateRateLimit = createRateLimitMiddleware({
   ...appRateLimitConfig.evaluate,
   keyGenerator: createIpKeyGenerator(),
+  skip: adminRateLimitBypass,
 }, evaluateRateLimitStore);
 
 app.use(cors({

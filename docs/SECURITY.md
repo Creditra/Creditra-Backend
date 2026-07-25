@@ -100,40 +100,92 @@ Validator chain order:
 
 ## 5. Rate Limiting Strategy
 
-Implementation: [`src/middleware/rateLimit.ts`](../src/middleware/rateLimit.ts) — fixed-window token bucket per key.
+Implementation: [`src/middleware/rateLimit.ts`](../src/middleware/rateLimit.ts) — **token bucket** per key with continuous refill.
 
-Knobs:
+### Algorithm
+
+Each key owns a bucket of `maxRequests` tokens. Tokens refill continuously at
+`maxRequests / windowMs` tokens per millisecond. Every request costs one token.
+When the bucket is empty the middleware returns `429`.
+
+Per-route defaults (wired in [`src/index.ts`](../src/index.ts)):
+
+| Route group | Capacity env | Default |
+|---|---|---|
+| `/api/credit/*`, `/api/risk/wallet/*` | `RATE_LIMIT_MAX_REQUESTS` | 100 / 60s |
+| `POST /api/risk/evaluate` | `RATE_LIMIT_MAX_EVALUATE` | 10 / 60s |
+
+### Knobs
 
 ```env
-RATE_LIMIT_WINDOW_MS=60000       # window length
-RATE_LIMIT_MAX_REQUESTS=100      # generic per-route ceiling
-RATE_LIMIT_MAX_EVALUATE=10       # per-route override for /api/risk/evaluate
-RATE_LIMIT_REDIS_URL=redis://... # optional shared store for scaled replicas
+RATE_LIMIT_WINDOW_MS=60000         # refill window (capacity fully refills over this period)
+RATE_LIMIT_MAX_REQUESTS=100        # generic per-route bucket capacity
+RATE_LIMIT_MAX_EVALUATE=10         # per-route override for /api/risk/evaluate
+RATE_LIMIT_REDIS_URL=redis://...   # optional shared store for scaled replicas
 RATE_LIMIT_REDIS_FAILURE_MODE=open # open | closed, default open
+ADMIN_API_KEY=...                  # enables admin/service rate-limit bypass
 ```
 
-Key generators:
+### Key generators (proxy-safe)
 
-- `createIpKeyGenerator()` — uses `X-Forwarded-For` first hop, falls back to `req.ip`.
+- `createIpKeyGenerator()` — prefers Express `req.ip` when `trust proxy` is set
+  (so only the configured reverse-proxy hop count is trusted); otherwise uses the
+  first `X-Forwarded-For` hop, then `req.ip`, then `"unknown"`.
 - `createApiKeyKeyGenerator()` — keys by API key when supplied, otherwise IP.
 
-Headers on every response:
+Production deployments behind a load balancer **should** set
+`app.set('trust proxy', 1)` (or an equivalent hop count) so client IPs come from
+the edge proxy rather than a client-spoofable header.
+
+### Admin / service bypass
+
+`createAdminBypassChecker()` skips the token charge when the request presents a
+valid `X-Admin-Api-Key` matching `ADMIN_API_KEY` (timing-safe compare). Bypass is
+**fail-closed**: if `ADMIN_API_KEY` is unset, no request is exempt.
+
+Bypassed responses still emit rate-limit headers and set:
 
 ```
-X-RateLimit-Limit: <limit>
-X-RateLimit-Remaining: <remaining>
-X-RateLimit-Reset: <epoch seconds>
+X-RateLimit-Bypass: admin
 ```
 
-429 also returns `Retry-After: <seconds>` and the envelope:
+This is intended for trusted operators and internal service accounts, not end users.
+
+### Headers on every limited response
+
+```
+X-RateLimit-Limit: <capacity>
+X-RateLimit-Remaining: <whole tokens left>
+X-RateLimit-Reset: <epoch seconds when bucket is next full>
+X-RateLimit-Bypass: admin          # only when bypass applied
+Retry-After: <seconds>             # only on 429
+```
+
+429 body envelope:
 
 ```json
 { "data": null, "error": "Too many requests. Please retry after N seconds.", "retryAfter": N }
 ```
 
-By default limits are in-process, so each API replica has its own counters. Set `RATE_LIMIT_REDIS_URL` to use the Redis-backed store for shared per-key counters across replicas. The middleware still uses the same key generators and `RateLimitOptions`; the Redis store namespaces each route bucket and hashes the generated key before writing it to Redis so API keys are not stored in clear text as Redis keys.
+### Storage
 
-Redis increments use a single Lua script that performs `INCR`, sets `PEXPIRE` when the bucket is created, and returns the current count and TTL. Redis connect and increment operations are bounded so a stalled Redis dependency reaches the configured outage policy instead of hanging requests. If Redis is unavailable, the default `RATE_LIMIT_REDIS_FAILURE_MODE=open` fails open: requests continue with rate-limit headers instead of turning dependency failures into 500s. Operators that prefer availability protection over dependency tolerance can set `RATE_LIMIT_REDIS_FAILURE_MODE=closed`, which returns the normal 429 envelope while Redis is unavailable. Redis store failures are logged with a per-bucket throttle and without the Redis URL or generated request key.
+By default limits are in-process (`InMemoryRateLimitStore`), so each API replica
+has its own counters. Set `RATE_LIMIT_REDIS_URL` to use the Redis-backed store for
+shared per-key counters across replicas. The middleware still uses the same key
+generators and `RateLimitOptions`; the Redis store namespaces each route bucket
+and hashes the generated key before writing it to Redis so API keys are not
+stored in clear text as Redis keys.
+
+Redis consume uses a single Lua script that refills the bucket, deducts a token
+when available, and returns `{ allowed, remaining, resetAt }`. Connect and
+consume operations are bounded so a stalled Redis dependency reaches the
+configured outage policy instead of hanging requests. If Redis is unavailable,
+the default `RATE_LIMIT_REDIS_FAILURE_MODE=open` fails open: requests continue
+with rate-limit headers instead of turning dependency failures into 500s.
+Operators that prefer availability protection over dependency tolerance can set
+`RATE_LIMIT_REDIS_FAILURE_MODE=closed`, which returns the normal 429 envelope
+while Redis is unavailable. Redis store failures are logged with a per-bucket
+throttle and without the Redis URL or generated request key.
 
 ---
 

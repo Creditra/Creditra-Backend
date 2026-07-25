@@ -1,15 +1,20 @@
 /**
- * Rate Limiting Configuration
+ * Rate Limiting Configuration (token bucket)
  *
- * Configurable limits loaded from environment variables.
- * Throws at startup if invalid values are provided.
+ * Configurable per-route defaults loaded from environment variables.
+ * Invalid numeric values fall back to the documented defaults.
  *
  * Env vars:
- *   RATE_LIMIT_WINDOW_MS        - Time window in ms (default: 60000)
- *   RATE_LIMIT_MAX_REQUESTS    - Max requests per window for general endpoints (default: 100)
- *   RATE_LIMIT_MAX_EVALUATE    - Max requests per window for /api/risk/evaluate (default: 10)
- *   RATE_LIMIT_REDIS_URL       - Optional Redis URL for shared rate-limit storage
+ *   RATE_LIMIT_WINDOW_MS          - Refill window in ms (default: 60000).
+ *                                   Capacity fully refills over this period.
+ *   RATE_LIMIT_MAX_REQUESTS       - Bucket capacity for general routes (default: 100)
+ *   RATE_LIMIT_MAX_EVALUATE       - Bucket capacity for /api/risk/evaluate (default: 10)
+ *   RATE_LIMIT_REDIS_URL          - Optional Redis URL for shared rate-limit storage
  *   RATE_LIMIT_REDIS_FAILURE_MODE - "open" or "closed" on Redis outage (default: open)
+ *
+ * Admin / service bypass is controlled by ADMIN_API_KEY + X-Admin-Api-Key
+ * (see createAdminBypassChecker in middleware/rateLimit.ts); it is not an
+ * env knob on the rate-limit config itself.
  */
 
 import type { RedisRateLimitFailureMode } from "../middleware/rateLimit.js";

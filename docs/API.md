@@ -308,16 +308,17 @@ Implemented in [`src/routes/reconciliation.ts`](../src/routes/reconciliation.ts)
 
 ---
 
-## 5. Rate-limit headers (every response)
+## 5. Rate-limit headers (token bucket)
 
 ```
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 87
-X-RateLimit-Reset: 1718243400      # epoch seconds
-Retry-After: 12                    # only on 429
+X-RateLimit-Reset: 1718243400      # epoch seconds when the bucket is next full
+X-RateLimit-Bypass: admin          # only when X-Admin-Api-Key bypass applied
+Retry-After: 12                    # only on 429 — seconds until ≥1 token
 ```
 
-Defaults: `RATE_LIMIT_WINDOW_MS=60000`, `RATE_LIMIT_MAX_REQUESTS=100`, `RATE_LIMIT_MAX_EVALUATE=10` (the risk endpoint is more expensive).
+Defaults: `RATE_LIMIT_WINDOW_MS=60000`, `RATE_LIMIT_MAX_REQUESTS=100`, `RATE_LIMIT_MAX_EVALUATE=10` (the risk evaluate endpoint is more expensive). Tokens refill continuously over the window (token bucket). Present a valid `X-Admin-Api-Key` matching `ADMIN_API_KEY` to bypass charging (service/admin traffic).
 
 ---
 

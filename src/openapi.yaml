@@ -12,6 +12,32 @@ info:
     ## Authentication
     Protected endpoints require a valid API key passed via the `X-API-Key` header.
     API keys are configured via the `API_KEYS` environment variable (comma-separated).
+    Admin-only operations additionally accept `X-Admin-Api-Key` (env `ADMIN_API_KEY`).
+
+    ## Rate limiting
+    Public and authenticated API routes are protected by a **token-bucket** limiter
+    with per-route defaults:
+
+    | Route group | Env knobs | Default capacity / window |
+    |---|---|---|
+    | General (`/api/credit/*`, `/api/risk/wallet/*`, …) | `RATE_LIMIT_MAX_REQUESTS`, `RATE_LIMIT_WINDOW_MS` | 100 / 60s |
+    | Risk evaluate (`POST /api/risk/evaluate`) | `RATE_LIMIT_MAX_EVALUATE`, `RATE_LIMIT_WINDOW_MS` | 10 / 60s |
+
+    Every limited response includes:
+
+    - `X-RateLimit-Limit` — bucket capacity
+    - `X-RateLimit-Remaining` — whole tokens remaining after the request
+    - `X-RateLimit-Reset` — Unix epoch seconds when the bucket is next full
+    - `Retry-After` — only on `429`; seconds until at least one token is available
+
+    ### Admin / service bypass
+    Requests that present a valid `X-Admin-Api-Key` matching `ADMIN_API_KEY` are
+    **not charged** against the bucket. The response still includes rate-limit
+    headers and sets `X-RateLimit-Bypass: admin`. When `ADMIN_API_KEY` is unset
+    the bypass path is disabled (fail closed).
+
+    Optional shared store: set `RATE_LIMIT_REDIS_URL` for multi-replica counters
+    (`RATE_LIMIT_REDIS_FAILURE_MODE=open|closed`, default `open`).
 
     ## Keeping the spec in sync
     - Every new route **must** have a corresponding entry here before merging.
@@ -46,6 +72,42 @@ components:
       description: |
         API key for authenticated endpoints. Required for admin operations.
         Keys are configured via the `API_KEYS` environment variable.
+    AdminApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Admin-Api-Key
+      description: |
+        Admin / service key. When it matches `ADMIN_API_KEY`, rate limiting is
+        bypassed for the request (`X-RateLimit-Bypass: admin`). Also required
+        for admin-only routes such as recalibration.
+
+  headers:
+    X-RateLimit-Limit:
+      description: Token-bucket capacity for this route group
+      schema:
+        type: integer
+        example: 100
+    X-RateLimit-Remaining:
+      description: Whole tokens remaining after this request
+      schema:
+        type: integer
+        example: 87
+    X-RateLimit-Reset:
+      description: Unix epoch seconds when the bucket is next full
+      schema:
+        type: integer
+        example: 1718243400
+    X-RateLimit-Bypass:
+      description: Present when the admin/service bypass applied (`admin`)
+      schema:
+        type: string
+        enum: [admin]
+        example: admin
+    Retry-After:
+      description: Seconds until at least one token is available (429 only)
+      schema:
+        type: integer
+        example: 12
 
   schemas:
     HealthResponse:
@@ -458,11 +520,18 @@ components:
 
     RateLimitErrorResponse:
       type: object
-      required: [error]
+      required: [data, error, retryAfter]
       properties:
+        data:
+          nullable: true
+          example: null
         error:
           type: string
-          example: "Too many requests"
+          example: "Too many requests. Please retry after 12 seconds."
+        retryAfter:
+          type: integer
+          description: Seconds until at least one token is available
+          example: 12
 
 paths:
   /health:
@@ -590,20 +659,13 @@ paths:
           description: Array of credit lines (may be empty)
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests allowed per window
-              schema:
-                type: integer
-                example: 100
+              $ref: "#/components/headers/X-RateLimit-Limit"
             X-RateLimit-Remaining:
-              description: Requests remaining in current window
-              schema:
-                type: integer
-                example: 95
+              $ref: "#/components/headers/X-RateLimit-Remaining"
             X-RateLimit-Reset:
-              description: Unix timestamp when the rate limit window resets
-              schema:
-                type: integer
-                example: 1700000060
+              $ref: "#/components/headers/X-RateLimit-Reset"
+            X-RateLimit-Bypass:
+              $ref: "#/components/headers/X-RateLimit-Bypass"
           content:
             application/json:
               schema:
@@ -621,22 +683,16 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "429":
-          description: Rate limit exceeded
+          description: Token bucket empty — rate limit exceeded
           headers:
             Retry-After:
-              description: Seconds to wait before retrying
-              schema:
-                type: integer
-                example: 47
+              $ref: "#/components/headers/Retry-After"
             X-RateLimit-Limit:
-              schema:
-                type: integer
+              $ref: "#/components/headers/X-RateLimit-Limit"
             X-RateLimit-Remaining:
-              schema:
-                type: integer
+              $ref: "#/components/headers/X-RateLimit-Remaining"
             X-RateLimit-Reset:
-              schema:
-                type: integer
+              $ref: "#/components/headers/X-RateLimit-Reset"
           content:
             application/json:
               schema:
@@ -688,14 +744,13 @@ paths:
           description: Credit line found
           headers:
             X-RateLimit-Limit:
-              schema:
-                type: integer
+              $ref: "#/components/headers/X-RateLimit-Limit"
             X-RateLimit-Remaining:
-              schema:
-                type: integer
+              $ref: "#/components/headers/X-RateLimit-Remaining"
             X-RateLimit-Reset:
-              schema:
-                type: integer
+              $ref: "#/components/headers/X-RateLimit-Reset"
+            X-RateLimit-Bypass:
+              $ref: "#/components/headers/X-RateLimit-Bypass"
           content:
             application/json:
               schema:
@@ -710,20 +765,16 @@ paths:
                 error: Credit line not found
                 id: "abc123"
         "429":
-          description: Rate limit exceeded
+          description: Token bucket empty — rate limit exceeded
           headers:
             Retry-After:
-              schema:
-                type: integer
+              $ref: "#/components/headers/Retry-After"
             X-RateLimit-Limit:
-              schema:
-                type: integer
+              $ref: "#/components/headers/X-RateLimit-Limit"
             X-RateLimit-Remaining:
-              schema:
-                type: integer
+              $ref: "#/components/headers/X-RateLimit-Remaining"
             X-RateLimit-Reset:
-              schema:
-                type: integer
+              $ref: "#/components/headers/X-RateLimit-Reset"
           content:
             application/json:
               schema:
@@ -1059,18 +1110,13 @@ paths:
           description: Risk evaluation result
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests allowed per window
-              schema:
-                type: integer
-                example: 10
+              $ref: "#/components/headers/X-RateLimit-Limit"
             X-RateLimit-Remaining:
-              description: Requests remaining in current window
-              schema:
-                type: integer
+              $ref: "#/components/headers/X-RateLimit-Remaining"
             X-RateLimit-Reset:
-              description: Unix timestamp when the rate limit window resets
-              schema:
-                type: integer
+              $ref: "#/components/headers/X-RateLimit-Reset"
+            X-RateLimit-Bypass:
+              $ref: "#/components/headers/X-RateLimit-Bypass"
           content:
             application/json:
               schema:
