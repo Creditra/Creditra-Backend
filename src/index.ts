@@ -11,7 +11,9 @@ import { riskRouter } from "./routes/risk.js";
 import { healthRouter } from "./routes/health.js";
 import { webhookRouter } from "./routes/webhook.js";
 import { reconciliationRouter } from "./routes/reconciliation.js";
+import { supportRouter } from "./routes/support.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+
 import { requestLogger } from "./middleware/requestLogger.js";
 import {
   InMemoryRateLimitStore,
@@ -154,6 +156,8 @@ app.use("/api/risk/wallet", defaultRateLimit);
 app.use("/api/risk", riskRouter);
 app.use("/api/webhooks", webhookRouter);
 app.use("/api/reconciliation", reconciliationRouter);
+// Support tools: admin-only, read-only borrower troubleshooting (issue #226).
+app.use("/api/support", defaultRateLimit, supportRouter);
 
 // Global error handler — must be registered after routes
 app.use(errorHandler);

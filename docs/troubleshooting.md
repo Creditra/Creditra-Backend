@@ -40,3 +40,24 @@ failures. Search the symptom first, then walk the fix list top-to-bottom.
 
 1. Identify the process holding the port: `lsof -i :3000`.
 2. Stop it, or run with `PORT=3001 npm run dev`.
+
+## Support tools: looking up a borrower without touching the DB
+
+When an incident needs credit-line state, recent draws/repays, or reconciliation
+worker health, use the **read-only support tools** instead of ad-hoc SQL:
+
+1. Ensure `ADMIN_API_KEY` is set on the server (endpoints return `503` if unset).
+2. Call with the admin header:
+
+```bash
+curl -sS -H "X-Admin-Api-Key: $ADMIN_API_KEY" \
+  "http://localhost:3000/api/support/borrowers/<G-WALLET>?limit=20"
+```
+
+3. Other safe endpoints:
+   - `GET /api/support/credit-lines/:id`
+   - `GET /api/support/credit-lines/:id/transactions`
+   - `GET /api/support/reconciliation/status` (never schedules jobs)
+
+4. Response wallets are truncated (`GDRXE2...NLRK`). Use the full address only
+   in the path/query for lookup. See `docs/API.md` § Support tools.
