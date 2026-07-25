@@ -11,7 +11,7 @@ describe('CreditLineService', () => {
     mockRepository = {
       create: vi.fn(),
       findById: vi.fn(),
-      findByWalletAddress: vi.fn(),
+      findByWalletAddress: vi.fn().mockResolvedValue([]),
       findAll: vi.fn(),
       findAllWithCursor: vi.fn(),
       update: vi.fn(),
@@ -43,6 +43,7 @@ describe('CreditLineService', () => {
         updatedAt: new Date()
       };
 
+      vi.mocked(mockRepository.findByWalletAddress).mockResolvedValue([]);
       vi.mocked(mockRepository.create).mockResolvedValue(expectedCreditLine);
 
       const result = await service.createCreditLine(request);
@@ -79,6 +80,72 @@ describe('CreditLineService', () => {
       };
 
       await expect(service.createCreditLine(request)).rejects.toThrow('Interest rate must be between 0 and 10000 basis points');
+    });
+
+    it('should throw ConflictError when an open credit line already exists', async () => {
+      const request = {
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
+        creditLimit: '1000.00',
+        interestRateBps: 500
+      };
+
+      vi.mocked(mockRepository.findByWalletAddress).mockResolvedValue([
+        {
+          id: 'cl-existing',
+          walletAddress: request.walletAddress,
+          creditLimit: '500.00',
+          availableCredit: '500.00',
+          utilized: '0',
+          interestRateBps: 400,
+          status: CreditLineStatus.ACTIVE,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+
+      await expect(service.createCreditLine(request)).rejects.toMatchObject({
+        name: 'ConflictError',
+        code: 'duplicate_resource',
+        resource: 'credit_line',
+      });
+      expect(mockRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('allows create when existing lines are closed', async () => {
+      const request = {
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1',
+        creditLimit: '1000.00',
+        interestRateBps: 500
+      };
+
+      vi.mocked(mockRepository.findByWalletAddress).mockResolvedValue([
+        {
+          id: 'cl-closed',
+          walletAddress: request.walletAddress,
+          creditLimit: '500.00',
+          availableCredit: '0',
+          utilized: '0',
+          interestRateBps: 400,
+          status: CreditLineStatus.CLOSED,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+      vi.mocked(mockRepository.create).mockResolvedValue({
+        id: 'cl-new',
+        walletAddress: request.walletAddress,
+        creditLimit: request.creditLimit,
+        availableCredit: request.creditLimit,
+        utilized: '0',
+        interestRateBps: request.interestRateBps,
+        status: CreditLineStatus.ACTIVE,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await service.createCreditLine(request);
+      expect(result.id).toBe('cl-new');
+      expect(mockRepository.create).toHaveBeenCalled();
     });
   });
 

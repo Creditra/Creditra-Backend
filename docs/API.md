@@ -63,7 +63,7 @@ Rate-limit responses additionally include `retryAfter` and the `Retry-After` HTT
 | 401 | Auth header missing |
 | 403 | Auth header present but invalid |
 | 404 | Resource not found |
-| 409 | Invalid state transition (e.g. close-of-closed) |
+| 409 | Conflict: invalid state transition, optimistic-lock version mismatch, or duplicate resource (problem+json; see [`error-envelope.md`](./error-envelope.md)) |
 | 413 | Body > 100 kB |
 | 415 | Mutating request lacked `application/json` |
 | 429 | Rate limit exhausted |
@@ -155,7 +155,7 @@ List all credit lines (in-memory store list).
   ```
 - **Validation:** wallet must satisfy `^G[A-Z2-7]{55}$`. Either `creditLimit` or `requestedLimit` is required.
 - **Response 201:** newly created `CreditLine`.
-- **Errors:** `400` on validation, `400` on domain error message.
+- **Errors:** `400` on validation / domain error message; `409` problem+json (`duplicate_resource`) when an open credit line already exists for the wallet.
 
 #### `PUT /api/credit/lines/:id`
 

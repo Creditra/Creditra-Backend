@@ -15,6 +15,8 @@ export class InMemoryCreditLineRepository implements CreditLineRepository {
   }
 
   async create(request: CreateCreditLineRequest): Promise<CreditLine> {
+    // Duplicate open detection lives in CreditLineService so repository
+    // contract tests can still seed multiple rows per wallet when needed.
     const id = randomUUID();
     const now = new Date();
     

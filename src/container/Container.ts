@@ -58,6 +58,7 @@ export class Container {
   private _sorobanClient!: SorobanRpcClient;
   private _dataRetentionService?: DataRetentionService;
   private _dataRetentionWorker?: DataRetentionWorker;
+  private _dashboardSummaryService!: DashboardSummaryService;
 
   // In-process domain event bus (credit lifecycle).
   private readonly _eventBus = defaultEventBus;
@@ -156,6 +157,10 @@ export class Container {
 
   get reconciliationWorker(): ReconciliationWorker {
     return this._reconciliationWorker;
+  }
+
+  get dashboardSummaryService(): DashboardSummaryService {
+    return this._dashboardSummaryService;
   }
 
   /** Process-wide in-process domain event bus for credit lifecycle events. */

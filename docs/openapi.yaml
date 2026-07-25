@@ -31,6 +31,8 @@ tags:
     description: On-chain risk evaluation
   - name: Webhooks
     description: Draw confirmation webhook management
+  - name: Reconciliation
+    description: Admin control plane for DB-vs-chain reconciliation
 
 security:
   - ApiKeyAuth: []
@@ -92,6 +94,14 @@ components:
           type: string
           enum: [active, suspended, closed]
           description: Credit line status
+        expectedVersion:
+          type: integer
+          minimum: 1
+          description: >
+            Optimistic-locking guard. When provided, the update only succeeds
+            if it equals the stored `version`; otherwise the server returns
+            `409 Conflict`. Omit for unconditional (last-write-wins) updates.
+          example: 3
       additionalProperties: false
 
     CreditLine:
@@ -125,6 +135,14 @@ components:
           type: string
           enum: [active, suspended, closed]
           description: Current credit line status
+        version:
+          type: integer
+          minimum: 1
+          description: >
+            Optimistic-locking version, incremented on each update. Pass the
+            value you read back as `expectedVersion` on a subsequent update to
+            guard against lost writes.
+          example: 1
         createdAt:
           type: string
           format: date-time
@@ -390,6 +408,42 @@ components:
           type: string
           example: "Risk model recalibration triggered"
 
+    ReconciliationTriggerResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          required: [jobId, message]
+          properties:
+            jobId:
+              type: string
+              description: Identifier for the scheduled reconciliation job
+            message:
+              type: string
+              example: Reconciliation job scheduled
+        error:
+          type: string
+          nullable: true
+
+    ReconciliationStatusResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          required: [workerRunning, queueSize, failedJobs]
+          properties:
+            workerRunning:
+              type: boolean
+            queueSize:
+              type: integer
+              minimum: 0
+            failedJobs:
+              type: integer
+              minimum: 0
+        error:
+          type: string
+          nullable: true
+
     # ── Error Schemas ─────────────────────────────────────────────────────────
 
     ErrorResponse:
@@ -410,6 +464,87 @@ components:
           type: string
           example: "Too many requests"
 
+    # RFC 7807 problem+json for HTTP 409 conflicts (duplicate resources,
+    # version mismatches, invalid state transitions). Content-Type is
+    # application/problem+json. Sensitive identifiers (wallets, secrets) are
+    # never included in detail/details.
+    ConflictProblem:
+      type: object
+      required: [type, title, status, detail, code, data, error]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: Problem type URI (stable per `code`)
+          example: "https://docs.creditra.dev/problems/duplicate_resource"
+        title:
+          type: string
+          example: Conflict
+        status:
+          type: integer
+          enum: [409]
+          example: 409
+        detail:
+          type: string
+          description: Human-readable explanation (no sensitive identifiers)
+          example: "An open credit line already exists for this wallet. Close it before opening another."
+        code:
+          type: string
+          description: Stable machine-readable code for client branching
+          enum:
+            - duplicate_resource
+            - version_conflict
+            - invalid_state_transition
+            - unique_constraint_violation
+          example: duplicate_resource
+        resource:
+          type: string
+          description: Optional resource kind involved in the conflict
+          enum:
+            - credit_line
+            - risk_evaluation
+            - webhook_subscription
+            - borrower
+            - event
+          example: credit_line
+        details:
+          type: object
+          additionalProperties: true
+          description: >
+            Actionable, non-sensitive context only (field names, status enums).
+            Never contains wallet addresses, API keys, or secrets.
+          example:
+            field: walletAddress
+            existingStatus: active
+        data:
+          nullable: true
+          description: Always null on error (legacy envelope compatibility)
+        error:
+          type: string
+          description: Same text as `detail` (legacy envelope compatibility)
+
+    WebhookSubscriptionRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Absolute http(s) subscriber URL
+          example: "https://example.com/hooks/creditra"
+      additionalProperties: false
+
+    WebhookSubscription:
+      type: object
+      required: [url, createdAt]
+      properties:
+        url:
+          type: string
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+
 paths:
   /health:
     get:
@@ -428,21 +563,91 @@ paths:
                 status: ok
                 service: creditra-backend
 
+  # ── Reconciliation Routes ───────────────────────────────────────────────────
+
+  /api/reconciliation/trigger:
+    post:
+      tags: [Reconciliation]
+      operationId: triggerReconciliation
+      summary: Schedule a reconciliation job
+      description: Admin-gated endpoint that schedules a DB-vs-chain reconciliation job and returns immediately.
+      responses:
+        "202":
+          description: Reconciliation job scheduled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconciliationTriggerResponse"
+              example:
+                data:
+                  jobId: "reconciliation-1710000000000"
+                  message: Reconciliation job scheduled
+                error: null
+        "401":
+          description: Missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to schedule reconciliation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/reconciliation/status:
+    get:
+      tags: [Reconciliation]
+      operationId: getReconciliationStatus
+      summary: Get reconciliation worker and queue status
+      description: Admin-gated endpoint for dashboards and alerts to inspect worker and queue health.
+      responses:
+        "200":
+          description: Reconciliation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconciliationStatusResponse"
+              example:
+                data:
+                  workerRunning: true
+                  queueSize: 0
+                  failedJobs: 0
+                error: null
+        "401":
+          description: Missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to get reconciliation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ── Credit Lines Routes ─────────────────────────────────────────────────────
 
   /api/credit/lines:
     get:
-      summary: Get Credit Lines
-      description: |
-        Returns all available credit lines with pagination support.
-        
-        Supports two pagination modes:
-        - **Offset-based** (legacy): Use `offset` and `limit` parameters
-        - **Cursor-based** (recommended): Use `cursor` and `limit` parameters
-        
-        Cursor pagination provides stable results for large datasets and is recommended
-        for production use. The response includes a `nextCursor` field that can be used
-        to fetch the next page of results.
+      tags: [Credit]
+      operationId: listCreditLines
+      summary: List all credit lines
+      security: []
       parameters:
         - name: offset
           in: query
@@ -451,9 +656,7 @@ paths:
             type: integer
             minimum: 0
             default: 0
-          description: |
-            Pagination offset (offset-based pagination only).
-            Cannot be used together with `cursor` parameter.
+          description: Pagination offset
         - name: limit
           in: query
           required: false
@@ -462,16 +665,7 @@ paths:
             minimum: 1
             maximum: 100
             default: 100
-          description: Number of credit lines per page (works with both pagination modes)
-        - name: cursor
-          in: query
-          required: false
-          schema:
-            type: string
-          description: |
-            Cursor for pagination (cursor-based pagination).
-            Use the `nextCursor` value from a previous response to fetch the next page.
-            When provided, `offset` parameter is ignored.
+          description: Number of credit lines per page
       responses:
         "200":
           description: Array of credit lines (may be empty)
@@ -494,11 +688,15 @@ paths:
           content:
             application/json:
               schema:
-                oneOf:
-                  - $ref: '#/components/schemas/CreditLinesOffsetResponse'
-                  - $ref: '#/components/schemas/CreditLinesCursorResponse'
-        '400':
-          description: Bad Request (Invalid pagination parameters)
+                $ref: "#/components/schemas/CreditLinesResponse"
+              example:
+                creditLines: []
+                pagination:
+                  total: 0
+                  offset: 0
+                  limit: 100
+        "400":
+          description: Invalid query parameter
           content:
             application/json:
               schema:
@@ -552,6 +750,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            Duplicate open credit line for this wallet. Close the existing open
+            line before opening another. Response is RFC 7807 problem+json with
+            stable `code` `duplicate_resource` (or `unique_constraint_violation`).
+            Sensitive identifiers are never included in `detail`/`details`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ConflictProblem"
+              example:
+                type: "https://docs.creditra.dev/problems/duplicate_resource"
+                title: Conflict
+                status: 409
+                detail: "An open credit line already exists for this wallet. Close it before opening another."
+                code: duplicate_resource
+                resource: credit_line
+                details:
+                  field: walletAddress
+                  existingStatus: active
+                data: null
+                error: "An open credit line already exists for this wallet. Close it before opening another."
 
   /api/credit/lines/{id}:
     get:
@@ -634,6 +854,7 @@ paths:
               creditLimit: "1500.00"
               interestRateBps: 640
               status: active
+              expectedVersion: 3
       responses:
         "200":
           description: Credit line updated successfully
@@ -653,6 +874,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            Optimistic-locking conflict. The supplied `expectedVersion` did not
+            match the stored `version`, meaning a concurrent update won the
+            race. Re-read the credit line to get the current `version` and
+            retry the update with it. Body is RFC 7807 problem+json with
+            `code: version_conflict`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ConflictProblem"
+              example:
+                type: "https://docs.creditra.dev/problems/version_conflict"
+                title: Conflict
+                status: 409
+                detail: "Credit line was modified concurrently (expected version 1, found 2). Re-read and retry."
+                code: version_conflict
+                resource: credit_line
+                details:
+                  expectedVersion: 1
+                  actualVersion: 2
+                data: null
+                error: "Credit line was modified concurrently (expected version 1, found 2). Re-read and retry."
 
     delete:
       tags: [Credit]
@@ -819,6 +1063,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            Invalid state transition (e.g. suspend of already suspended/closed).
+            RFC 7807 problem+json with `code: invalid_state_transition`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ConflictProblem"
 
   /api/credit/lines/{id}/close:
     post:
@@ -866,6 +1118,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            Invalid state transition (e.g. close of already closed).
+            RFC 7807 problem+json with `code: invalid_state_transition`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ConflictProblem"
 
   /api/credit/wallet/{walletAddress}/lines:
     get:
@@ -963,70 +1223,92 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: Validation failed
-        "429":
-          description: Rate limit exceeded
+        "413":
+          description: Request body exceeds the 100 kb limit
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RateLimitErrorResponse"
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                data: null
+                error: Request body too large. Maximum size is 100kb.
+        "415":
+          description: Content-Type is not application/json
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                data: null
+                error: Content-Type must be application/json
+        "409":
+          description: >
+            Unique-constraint race while persisting an evaluation.
+            RFC 7807 problem+json (`unique_constraint_violation` / `duplicate_resource`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ConflictProblem"
 
-  /api/reconciliation/trigger:
+  /api/risk/evaluations:
     post:
-      summary: Trigger Credit Reconciliation
+      tags: [Risk]
+      operationId: createRiskEvaluation
+      summary: Create a risk evaluation (conflicts if unexpired exists)
       description: |
-        Manually trigger a reconciliation job that compares on-chain Credit contract 
-        records with database credit lines and flags any drift.
-        
-        Requires admin authentication via X-API-Key header.
-      security:
-        - ApiKeyAuth: []
+        Explicit create path. Returns 409 when a valid (unexpired) evaluation
+        already exists for the wallet unless `forceRefresh` is true.
+        Sensitive identifiers are never included in conflict details.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RiskEvaluateRequest"
       responses:
-        '202':
-          description: Reconciliation job scheduled
+        "201":
+          description: New risk evaluation created
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      jobId:
-                        type: string
-                        description: Unique identifier for the scheduled job
-                      message:
-                        type: string
-                        example: 'Reconciliation job scheduled'
-                  error:
-                    type: "null"
-        '401':
-          description: Unauthorized (Missing or invalid API key)
+                $ref: "#/components/schemas/RiskEvaluateApiResponse"
+        "400":
+          description: Validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FailureResponse'
-        '500':
-          description: Internal Server Error
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            Unexpired risk evaluation already exists for this wallet.
+            Use forceRefresh to replace. problem+json `code: duplicate_resource`.
           content:
-            application/json:
+            application/problem+json:
               schema:
-                $ref: '#/components/schemas/FailureResponse'
+                $ref: "#/components/schemas/ConflictProblem"
+              example:
+                type: "https://docs.creditra.dev/problems/duplicate_resource"
+                title: Conflict
+                status: 409
+                detail: "A valid risk evaluation already exists for this wallet. Pass forceRefresh to replace it."
+                code: duplicate_resource
+                resource: risk_evaluation
+                details:
+                  field: walletAddress
+                  reason: unexpired_evaluation
+                data: null
+                error: "A valid risk evaluation already exists for this wallet. Pass forceRefresh to replace it."
 
-  /api/reconciliation/status:
+  /api/webhooks/subscriptions:
     get:
-      summary: Get Reconciliation Status
-      description: |
-        Returns the current status of the reconciliation worker including:
-        - Whether the worker is running
-        - Number of jobs in the queue
-        - Number of failed jobs
-        
-        Requires admin authentication via X-API-Key header.
-      security:
-        - ApiKeyAuth: []
+      tags: [Webhooks]
+      operationId: listWebhookSubscriptions
+      summary: List runtime webhook subscriptions
+      security: []
       responses:
-        '200':
-          description: Reconciliation status
+        "200":
+          description: Runtime subscriptions (env URLs are on GET /config)
           content:
             application/json:
               schema:
@@ -1035,149 +1317,245 @@ paths:
                   data:
                     type: object
                     properties:
-                      workerRunning:
-                        type: boolean
-                        description: Whether the reconciliation worker is active
-                      queueSize:
-                        type: integer
-                        description: Number of pending jobs in the queue
-                      failedJobs:
-                        type: integer
-                        description: Number of jobs that have failed
+                      subscriptions:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/WebhookSubscription"
                   error:
-                    type: "null"
-        '401':
-          description: Unauthorized (Missing or invalid API key)
+                    nullable: true
+    post:
+      tags: [Webhooks]
+      operationId: registerWebhookSubscription
+      summary: Register a runtime webhook subscription
+      description: |
+        Adds a subscriber URL at runtime. Duplicate URLs (including those from
+        `WEBHOOK_URLS`) return 409 problem+json. Full URL values that may carry
+        secrets are not echoed in conflict details.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookSubscriptionRequest"
+      responses:
+        "201":
+          description: Subscription registered
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FailureResponse'
-        '500':
-          description: Internal Server Error
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/WebhookSubscription"
+                  error:
+                    nullable: true
+        "400":
+          description: Invalid URL
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FailureResponse'
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            Subscription URL already registered. problem+json
+            `code: duplicate_resource`, `resource: webhook_subscription`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ConflictProblem"
+              example:
+                type: "https://docs.creditra.dev/problems/duplicate_resource"
+                title: Conflict
+                status: 409
+                detail: "A webhook subscription for this endpoint already exists."
+                code: duplicate_resource
+                resource: webhook_subscription
+                details:
+                  field: url
+                  reason: duplicate_url
+                data: null
+                error: "A webhook subscription for this endpoint already exists."
 
-components:
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: API key for admin endpoints
+  /api/webhooks/config:
+    get:
+      tags: [Webhooks]
+      operationId: getWebhookConfig
+      summary: Get webhook configuration
+      description: Returns the current webhook configuration (excluding sensitive data)
+      security: []
+      responses:
+        "200":
+          description: Webhook configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookConfigResponse"
+              example:
+                urls: ["https://example.com/webhook"]
+                maxRetries: 3
+                initialBackoffMs: 1000
+                backoffMultiplier: 2.0
+                timeoutMs: 10000
+                configured: true
 
-  schemas:
-    SuccessResponse:
-      type: object
-      properties:
-        data:
-          description: The payload of the successful response. Varies by endpoint.
-          type: object
-        error:
-          description: Error message. Always null for successful responses.
-          type: "null"
-      required:
-        - data
-        - error
+  /api/webhooks/test:
+    post:
+      tags: [Webhooks]
+      operationId: testWebhooks
+      summary: Test webhook connectivity
+      description: Sends a test payload to all configured webhook endpoints
+      security: []
+      responses:
+        "200":
+          description: Test results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookTestResponse"
+              example:
+                total: 2
+                reachable: 1
+                unreachable: 1
+                results:
+                  - url: "https://example.com/webhook"
+                    reachable: true
+                  - url: "https://test.com/hook"
+                    reachable: false
+                    error: "Connection refused"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
-    FailureResponse:
-      type: object
-      properties:
-        data:
-          description: Data payload. Always null for failed responses.
-          type: "null"
-        error:
-          description: The error message detailing what went wrong.
-          type: string
-      required:
-        - data
-        - error
+  /api/webhooks/health:
+    get:
+      tags: [Webhooks]
+      operationId: getWebhookHealth
+      summary: Webhook service health check
+      description: Returns the health status of the webhook service
+      security: []
+      responses:
+        "200":
+          description: Webhook service health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookHealthResponse"
+              example:
+                status: active
+                urls: 2
+                maxRetries: 3
+                timeoutMs: 10000
 
-    CreditLine:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Unique identifier for the credit line
-        walletAddress:
-          type: string
-          description: Stellar wallet address
-        creditLimit:
-          type: string
-          description: Maximum credit limit (decimal string)
-        availableCredit:
-          type: string
-          description: Currently available credit (decimal string)
-        interestRateBps:
-          type: integer
-          description: Interest rate in basis points (e.g., 500 = 5%)
-        status:
-          type: string
-          enum: [active, suspended, closed, pending]
-          description: Current status of the credit line
-        createdAt:
-          type: string
-          format: date-time
-          description: Creation timestamp
-        updatedAt:
-          type: string
-          format: date-time
-          description: Last update timestamp
+  /api/risk/evaluations/{id}:
+    get:
+      tags: [Risk]
+      operationId: getRiskEvaluationById
+      summary: Fetch a stored risk evaluation by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Risk evaluation identifier
+      responses:
+        "200":
+          description: Risk evaluation found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskEvaluation"
+        "404":
+          description: Risk evaluation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Risk evaluation not found
+                id: "abc123"
 
-    CreditLinesOffsetResponse:
-      type: object
-      description: Response format for offset-based pagination
-      properties:
-        creditLines:
-          type: array
-          items:
-            $ref: '#/components/schemas/CreditLine'
-        pagination:
-          type: object
-          properties:
-            total:
-              type: integer
-              description: Total number of credit lines
-            offset:
-              type: integer
-              description: Current offset
-            limit:
-              type: integer
-              description: Number of items per page
-          required:
-            - total
-            - offset
-            - limit
-      required:
-        - creditLines
-        - pagination
+  /api/risk/wallet/{walletAddress}/latest:
+    get:
+      tags: [Risk]
+      operationId: getLatestRiskEvaluation
+      summary: Get the latest risk evaluation for a wallet
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^G[A-Z2-7]{55}$'
+          description: Stellar public key
+      responses:
+        "200":
+          description: Risk evaluation found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskEvaluateResponse"
+        "400":
+          description: Invalid wallet address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No risk evaluation found for wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
-    CreditLinesCursorResponse:
-      type: object
-      description: Response format for cursor-based pagination
-      properties:
-        creditLines:
-          type: array
-          items:
-            $ref: '#/components/schemas/CreditLine'
-        pagination:
-          type: object
-          properties:
-            limit:
-              type: integer
-              description: Number of items per page
-            nextCursor:
-              type: string
-              nullable: true
-              description: Cursor for the next page (null if no more pages)
-            hasMore:
-              type: boolean
-              description: Whether more results are available
-          required:
-            - limit
-            - nextCursor
-            - hasMore
-      required:
-        - creditLines
-        - pagination
+  /api/risk/wallet/{walletAddress}/history:
+    get:
+      tags: [Risk]
+      operationId: getRiskEvaluationHistory
+      summary: Get risk evaluation history for a wallet
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^G[A-Z2-7]{55}$'
+          description: Stellar public key
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: Pagination offset
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Pagination limit
+      responses:
+        "200":
+          description: Array of risk evaluations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  evaluations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RiskEvaluation"
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"

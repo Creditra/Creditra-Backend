@@ -1,6 +1,7 @@
 import type { RiskEvaluation, RiskFactor } from '../../models/RiskEvaluation.js';
 import type { RiskEvaluationRepository } from '../interfaces/RiskEvaluationRepository.js';
 import type { DbClient } from '../../db/client.js';
+import { conflictFromUniqueViolation } from '../../errors/uniqueViolation.js';
 
 interface RiskEvaluationRow {
   id: string;
@@ -47,9 +48,15 @@ export class PostgresRiskEvaluationRepository implements RiskEvaluationRepositor
       evaluation.expiresAt,
     ];
 
-    const result = await this.client.query(query, values);
-    const row = result.rows[0] as Omit<RiskEvaluationRow, 'wallet_address'>;
-    return this.toModel({ ...row, wallet_address: evaluation.walletAddress });
+    try {
+      const result = await this.client.query(query, values);
+      const row = result.rows[0] as Omit<RiskEvaluationRow, 'wallet_address'>;
+      return this.toModel({ ...row, wallet_address: evaluation.walletAddress });
+    } catch (err) {
+      const conflict = conflictFromUniqueViolation(err);
+      if (conflict) throw conflict;
+      throw err;
+    }
   }
 
   async findLatestByWalletAddress(walletAddress: string): Promise<RiskEvaluation | null> {
@@ -111,11 +118,27 @@ export class PostgresRiskEvaluationRepository implements RiskEvaluationRepositor
     if (found.rows.length > 0) {
       return (found.rows[0] as { id: string }).id;
     }
-    const created = await this.client.query(
-      'INSERT INTO borrowers (wallet_address) VALUES ($1) RETURNING id',
-      [walletAddress]
-    );
-    return (created.rows[0] as { id: string }).id;
+    try {
+      const created = await this.client.query(
+        'INSERT INTO borrowers (wallet_address) VALUES ($1) RETURNING id',
+        [walletAddress]
+      );
+      return (created.rows[0] as { id: string }).id;
+    } catch (err) {
+      // Concurrent insert on unique wallet_address — re-select the winner.
+      if (conflictFromUniqueViolation(err)) {
+        const retry = await this.client.query(
+          'SELECT id FROM borrowers WHERE wallet_address = $1',
+          [walletAddress],
+        );
+        if (retry.rows.length > 0) {
+          return (retry.rows[0] as { id: string }).id;
+        }
+      }
+      const conflict = conflictFromUniqueViolation(err);
+      if (conflict) throw conflict;
+      throw err;
+    }
   }
 
   private toModel(row: RiskEvaluationRow): RiskEvaluation {

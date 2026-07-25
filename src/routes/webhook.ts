@@ -17,9 +17,16 @@
  * `WEBHOOK_SECRET`, delivered as `X-Webhook-Signature: sha256=…`.
  */
 import { Router, type Request, type Response } from 'express';
-import { getWebhookConfig, testWebhookConnectivity } from '../services/drawWebhookService.js';
+import {
+    getWebhookConfig,
+    testWebhookConnectivity,
+    registerWebhookSubscription,
+    listRuntimeWebhookSubscriptions,
+} from '../services/drawWebhookService.js';
 import { getWebhookDeliveryStateStore } from '../services/webhookDeliveryState.js';
 import { redactLogArgs } from '../utils/logRedact.js';
+import { ConflictError, isConflictError, sendConflict } from '../errors/index.js';
+import { ok, fail } from '../utils/response.js';
 
 export const webhookRouter = Router();
 
@@ -101,4 +108,28 @@ webhookRouter.get('/health', (_req: Request, res: Response) => {
             deadLetter: counts.deadLetter
         }
     });
+});
+
+/**
+ * Register a runtime webhook subscription.
+ * Duplicate URLs return 409 problem+json (`duplicate_resource`).
+ */
+webhookRouter.post('/subscriptions', (req: Request, res: Response) => {
+    try {
+        const url = typeof req.body?.url === 'string' ? req.body.url : '';
+        const subscription = registerWebhookSubscription(url);
+        return ok(res, subscription, 201);
+    } catch (error) {
+        if (error instanceof ConflictError || isConflictError(error)) {
+            return sendConflict(res, error as ConflictError);
+        }
+        return fail(res, error instanceof Error ? error.message : 'Invalid subscription', 400);
+    }
+});
+
+/**
+ * List runtime webhook subscriptions (env-configured URLs are on GET /config).
+ */
+webhookRouter.get('/subscriptions', (_req: Request, res: Response) => {
+    return ok(res, { subscriptions: listRuntimeWebhookSubscriptions() });
 });

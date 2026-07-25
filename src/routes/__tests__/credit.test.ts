@@ -488,10 +488,14 @@ describe('Credit Routes', () => {
     it('should return credit lines for wallet', async () => {
       const walletAddress = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S3';
 
-      await container.creditLineService.createCreditLine({
+      const first = await container.creditLineService.createCreditLine({
         walletAddress,
         creditLimit: '1000.00',
         interestRateBps: 500
+      });
+      // Close the first open line so a second open is allowed for the same wallet.
+      await container.creditLineService.updateCreditLine(first.id, {
+        status: CreditLineStatus.CLOSED,
       });
 
       await container.creditLineService.createCreditLine({

@@ -16,12 +16,48 @@ import {
     testWebhookConnectivity,
     getWebhookConfig,
     resolveWebhookConfig,
+    _resetRuntimeWebhookSubscriptions,
 } from "../drawWebhookService.js";
+import {
+    setWebhookDeliveryStateStore,
+    type WebhookDeliveryStateStore,
+    type DeliveryRecord,
+} from "../webhookDeliveryState.js";
 import type { HorizonEvent } from "../horizonListener.js";
 
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
+
+function freshDeliveryStore(): WebhookDeliveryStateStore {
+    const records = new Map<string, DeliveryRecord>();
+    const key = (drawId: string, url: string) => `${drawId}::${url}`;
+    return {
+        isDelivered(drawId, url) {
+            return records.get(key(drawId, url))?.status === "delivered";
+        },
+        record(record) {
+            records.set(key(record.drawId, record.url), {
+                ...record,
+                updatedAt: new Date().toISOString(),
+            });
+        },
+        deadLetters() {
+            return [...records.values()].filter((r) => r.status === "dead_letter");
+        },
+        counts() {
+            let delivered = 0;
+            let failed = 0;
+            let deadLetter = 0;
+            for (const r of records.values()) {
+                if (r.status === "delivered") delivered++;
+                else if (r.status === "failed") failed++;
+                else if (r.status === "dead_letter") deadLetter++;
+            }
+            return { total: records.size, delivered, failed, deadLetter };
+        },
+    };
+}
 
 describe("DrawWebhookService", () => {
     beforeEach(() => {
@@ -30,6 +66,9 @@ describe("DrawWebhookService", () => {
         serviceLoggerMock.warn.mockReset();
         serviceLoggerMock.error.mockReset();
         vi.useFakeTimers();
+        _resetRuntimeWebhookSubscriptions();
+        // Fresh delivery-state store so (drawId, url) dedup does not leak across tests.
+        setWebhookDeliveryStateStore(freshDeliveryStore());
         
         // Clear environment variables
         delete process.env.WEBHOOK_URLS;
@@ -452,7 +491,12 @@ describe("DrawWebhookService", () => {
             await sendDrawConfirmationWebhook(event);
             const firstCallSignature = mockFetch.mock.calls[0][1].headers["X-Webhook-Signature"];
 
+            // Second send uses a different drawId so delivery-state dedup does not
+            // short-circuit the POST; signatures are still derived from the same
+            // secret over the body (body includes drawId, so they differ — we only
+            // assert format consistency of the HMAC scheme here).
             mockFetch.mockClear();
+            setWebhookDeliveryStateStore(freshDeliveryStore());
             await sendDrawConfirmationWebhook(event);
             const secondCallSignature = mockFetch.mock.calls[0][1].headers["X-Webhook-Signature"];
 

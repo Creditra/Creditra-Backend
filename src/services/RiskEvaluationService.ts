@@ -6,6 +6,8 @@ import type {
 import type { RiskEvaluationRepository } from "../repositories/interfaces/RiskEvaluationRepository.js";
 import type { IRiskProvider } from "./providers/IRiskProvider.js";
 import { createRiskProvider } from "./providers/providerFactory.js";
+import { ConflictError, duplicateResource } from "../errors/ConflictError.js";
+import { conflictFromUniqueViolation } from "../errors/uniqueViolation.js";
 
 /**
  * Orchestrates risk evaluations: cache check → provider call → persist.
@@ -37,10 +39,15 @@ export class RiskEvaluationService {
    * Otherwise calls the configured provider, persists the result, and
    * returns the summary.
    *
+   * When `createOnly` is true (see {@link createRiskEvaluation}), a valid
+   * cached evaluation is treated as a duplicate and surfaces as 409 instead
+   * of returning the cache.
+   *
    * @throws if `walletAddress` is empty.
+   * @throws {ConflictError} on unique-constraint races or createOnly conflicts.
    */
   async evaluateRisk(
-    request: RiskEvaluationRequest,
+    request: RiskEvaluationRequest & { createOnly?: boolean },
   ): Promise<RiskEvaluationResult> {
     if (!request.walletAddress) {
       throw new Error("Wallet address is required");
@@ -57,6 +64,15 @@ export class RiskEvaluationService {
             request.walletAddress,
           );
         if (cached) {
+          if (request.createOnly) {
+            // Explicit create path: refuse silent re-use of an unexpired eval.
+            // Do not echo wallet address in the message (sensitive identifier).
+            throw duplicateResource(
+              "risk_evaluation",
+              "A valid risk evaluation already exists for this wallet. Pass forceRefresh to replace it.",
+              { field: "walletAddress", reason: "unexpired_evaluation" },
+            );
+          }
           return {
             walletAddress: cached.walletAddress,
             riskScore: cached.riskScore,
@@ -71,8 +87,15 @@ export class RiskEvaluationService {
     // Perform new risk evaluation (placeholder implementation)
     const evaluation = await this.performRiskEvaluation(request.walletAddress);
 
-    // Save the evaluation
-    await this.riskEvaluationRepository.save(evaluation);
+    // Save the evaluation — map unique constraint races to ConflictError.
+    try {
+      await this.riskEvaluationRepository.save(evaluation);
+    } catch (err) {
+      if (err instanceof ConflictError) throw err;
+      const conflict = conflictFromUniqueViolation(err);
+      if (conflict) throw conflict;
+      throw err;
+    }
 
     return {
       walletAddress: evaluation.walletAddress,
@@ -81,6 +104,16 @@ export class RiskEvaluationService {
       interestRateBps: evaluation.interestRateBps,
       message: "New risk evaluation completed",
     };
+  }
+
+  /**
+   * Create a new risk evaluation, conflicting when an unexpired evaluation
+   * already exists (unless `forceRefresh` is set).
+   */
+  async createRiskEvaluation(
+    request: RiskEvaluationRequest,
+  ): Promise<RiskEvaluationResult> {
+    return this.evaluateRisk({ ...request, createOnly: true });
   }
 
   /** Fetch a single evaluation by id; `null` if not found. */
