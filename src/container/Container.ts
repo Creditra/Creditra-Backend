@@ -58,6 +58,7 @@ export class Container {
   private _sorobanClient!: SorobanRpcClient;
   private _dataRetentionService?: DataRetentionService;
   private _dataRetentionWorker?: DataRetentionWorker;
+  private _dashboardSummaryService!: DashboardSummaryService;
 
   // In-process domain event bus (credit lifecycle).
   private readonly _eventBus = defaultEventBus;
@@ -166,6 +167,11 @@ export class Container {
   /** Undefined when running against in-memory repositories (no Postgres connection). */
   get dataRetentionWorker(): DataRetentionWorker | undefined {
     return this._dataRetentionWorker;
+  }
+
+  /** Cached dashboard aggregate read model. */
+  get dashboardSummaryService(): DashboardSummaryService {
+    return this._dashboardSummaryService;
   }
 
   // Method to replace repositories (useful for testing or switching to DB implementations)
