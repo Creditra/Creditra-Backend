@@ -56,6 +56,7 @@ export class Container {
   private _reconciliationService!: ReconciliationService;
   private _reconciliationWorker!: ReconciliationWorker;
   private _sorobanClient!: SorobanRpcClient;
+  private _dashboardSummaryService!: DashboardSummaryService;
   private _dataRetentionService?: DataRetentionService;
   private _dataRetentionWorker?: DataRetentionWorker;
 
@@ -156,6 +157,11 @@ export class Container {
 
   get reconciliationWorker(): ReconciliationWorker {
     return this._reconciliationWorker;
+  }
+
+  /** Cached dashboard aggregate read model (TTL + explicit invalidation). */
+  get dashboardSummaryService(): DashboardSummaryService {
+    return this._dashboardSummaryService;
   }
 
   /** Process-wide in-process domain event bus for credit lifecycle events. */

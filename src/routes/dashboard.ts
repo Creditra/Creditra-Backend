@@ -10,7 +10,8 @@
  */
 import { Router, type Request, type Response } from 'express';
 import { Container } from '../container/Container.js';
-import { ok, fail } from '../utils/response.js';
+import { fail } from '../utils/response.js';
+import { okWithEtag } from '../utils/etag.js';
 
 export const dashboardRouter = Router();
 
@@ -19,11 +20,14 @@ const container = Container.getInstance();
 /**
  * GET /api/dashboard/summary
  * Returns the cached dashboard summary read model.
+ * Supports conditional GET via ETag / If-None-Match (see docs/etag-caching.md).
  */
-dashboardRouter.get('/summary', async (_req: Request, res: Response) => {
+dashboardRouter.get('/summary', async (req: Request, res: Response) => {
   try {
     const summary = await container.dashboardSummaryService.getSummary();
-    ok(res, summary);
+    // generatedAt is part of the payload, so TTL refresh changes the ETag even
+    // when aggregates are unchanged — clients always revalidate against fresh data.
+    okWithEtag(req, res, summary);
   } catch (error) {
     fail(res, error instanceof Error ? error : 'Failed to load dashboard summary', 500);
   }
