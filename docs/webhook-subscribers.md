@@ -5,6 +5,9 @@ Creditra sends outbound `draw_confirmed` webhooks to each URL configured in
 verify that the raw request body came from a sender that knows
 `WEBHOOK_SECRET`.
 
+> **Inbound** partner → Creditra webhooks use a different path and header set.
+> See [`webhooks.md`](./webhooks.md) for `POST /api/inbound-webhooks/events`.
+
 Implementation references:
 
 - [`src/services/drawWebhookService.ts`](../src/services/drawWebhookService.ts)

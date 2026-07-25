@@ -31,6 +31,8 @@ tags:
     description: On-chain risk evaluation
   - name: Webhooks
     description: Draw confirmation webhook management
+  - name: Inbound Webhooks
+    description: Signed partner webhook ingestion (HMAC + replay protection)
   - name: Reconciliation
     description: Admin control plane for DB-vs-chain reconciliation
 
@@ -400,6 +402,35 @@ components:
           type: integer
         timeoutMs:
           type: integer
+
+    InboundWebhookRequest:
+      type: object
+      required: [event]
+      properties:
+        event:
+          type: string
+          example: partner.updated
+      additionalProperties: true
+      description: |
+        Free-form partner payload. Prefer including a stable `event` name.
+        The raw JSON body is part of the HMAC input — do not re-serialize after signing.
+
+    InboundWebhookAcceptedResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          required: [accepted, event]
+          properties:
+            accepted:
+              type: boolean
+              example: true
+            event:
+              type: string
+              example: partner.updated
+        error:
+          type: string
+          nullable: true
 
     AdminRecalibrateResponse:
       type: object
@@ -1131,6 +1162,92 @@ paths:
                 backoffMultiplier: 2.0
                 timeoutMs: 10000
                 configured: true
+
+  /api/inbound-webhooks/events:
+    post:
+      tags: [Inbound Webhooks]
+      operationId: receiveInboundWebhookEvent
+      summary: Receive a signed inbound webhook event
+      description: |
+        Partner ingress protected by HMAC-SHA256 and nonce replay protection.
+
+        Required headers:
+        - `X-Timestamp` — ISO-8601 or unix epoch seconds
+        - `X-Nonce` — unique per delivery (replay key)
+        - `X-Signature` — `sha256=<hex>` over `X-Timestamp + "." + X-Nonce + "." + raw_body`
+
+        Stale timestamps (outside `INBOUND_WEBHOOK_TIMESTAMP_TOLERANCE_MS`, default 5 minutes)
+        and repeated nonces are rejected. See `docs/webhooks.md` for the partner signing guide.
+      security: []
+      parameters:
+        - name: X-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: "^sha256=[a-fA-F0-9]{64}$"
+          description: HMAC-SHA256 signature of the signed payload
+        - name: X-Timestamp
+          in: header
+          required: true
+          schema:
+            type: string
+          description: ISO-8601 datetime or unix epoch seconds
+        - name: X-Nonce
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 256
+          description: Unique message identifier for replay protection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InboundWebhookRequest"
+            example:
+              event: partner.updated
+              id: evt_123
+      responses:
+        "202":
+          description: Event accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundWebhookAcceptedResponse"
+              example:
+                data:
+                  accepted: true
+                  event: partner.updated
+                error: null
+        "401":
+          description: Missing, invalid, stale, or replayed signature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                missingHeaders:
+                  value:
+                    error: Missing required webhook headers (X-Timestamp, X-Nonce, X-Signature)
+                invalidSignature:
+                  value:
+                    error: Invalid webhook signature
+                stale:
+                  value:
+                    error: Stale webhook timestamp
+                replay:
+                  value:
+                    error: Replay detected
+        "503":
+          description: Inbound webhook signing secret is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Inbound webhook signing is not configured on this server.
 
   /api/webhooks/test:
     post:

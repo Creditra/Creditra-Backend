@@ -290,6 +290,20 @@ HMAC is computed over the **raw JSON body** with `WEBHOOK_SECRET`. Subscribers m
 
 Webhook delivery settings expose retry and backoff knobs. Implement idempotency on receive so repeated deliveries are safe.
 
+### Inbound partner webhooks
+
+Implemented in [`src/routes/inboundWebhooks.ts`](../src/routes/inboundWebhooks.ts).
+
+#### `POST /api/inbound-webhooks/events`
+
+- **Auth:** HMAC headers only (`X-Signature`, `X-Timestamp`, `X-Nonce`). No API key.
+- **Secret:** `INBOUND_WEBHOOK_SECRET` (503 when unset).
+- **Signed payload:** `X-Timestamp + "." + X-Nonce + "." + raw_body`.
+- **Replay:** nonce TTL cache; duplicate nonces → `401 Replay detected`.
+- **Response 202:** `{ data: { accepted: true, event }, error: null }`.
+
+Partner signing guide: [`docs/webhooks.md`](./webhooks.md).
+
 ---
 
 ### Reconciliation
