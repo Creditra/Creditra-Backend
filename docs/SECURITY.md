@@ -86,19 +86,57 @@ Behaviour:
 
 Validator chain order:
 
-1. CORS allowlist ([`src/config/cors.ts`](../src/config/cors.ts))
-2. JSON body parser (100 kB)
+1. Security posture — `trust proxy` + Helmet headers ([`src/config/security.ts`](../src/config/security.ts), [`src/middleware/securityHeaders.ts`](../src/middleware/securityHeaders.ts))
+2. CORS allowlist ([`src/config/cors.ts`](../src/config/cors.ts))
 3. Content-Type guard (returns 415 if `POST/PUT/PATCH` has a body that isn't `application/json`)
-4. Request logger (assigns / propagates `x-request-id`)
-5. Auth middleware (route-specific)
-6. Rate limit middleware (route-specific)
-7. Zod validate(Body|Query|Params)
-8. Handler
-9. `errorHandler` catches anything unhandled
+4. JSON body parser (100 kB)
+5. Request logger (assigns / propagates `x-request-id`)
+6. Auth middleware (route-specific)
+7. Rate limit middleware (route-specific)
+8. Zod validate(Body|Query|Params)
+9. Handler
+10. `errorHandler` catches anything unhandled
 
 ---
 
-## 5. Rate Limiting Strategy
+## 5. HTTP security headers & proxy trust
+
+Baseline posture is applied once at bootstrap via `applySecurityPosture(app)`:
+
+| Control | Implementation | Notes |
+|---|---|---|
+| Trust proxy | `app.set('trust proxy', …)` from `TRUST_PROXY` | Required behind ALB/nginx/Cloudflare so `req.ip` and rate-limit keys see the real client. Default `false` (do not trust spoofed `X-Forwarded-For`). Accepts `true`/`false`, hop count (`1`), or Express presets (`loopback`, CIDR). |
+| HSTS | Helmet `Strict-Transport-Security` | Default `max-age=15552000` (180d) + `includeSubDomains`. Override with `HSTS_MAX_AGE`; set `HSTS_PRELOAD=true` only after preload registration. |
+| CSP | Helmet Content-Security-Policy | `default-src 'self'`, `frame-ancestors 'none'`, inline script/style allowed so `/docs` (Swagger UI) keeps working. COEP disabled for the same reason. |
+| Clickjacking | `X-Frame-Options: DENY` | Also reinforced by CSP `frame-ancestors`. |
+| MIME sniffing | `X-Content-Type-Options: nosniff` | Always on. |
+| Referrer | `Referrer-Policy: no-referrer` | Avoids leaking path tokens. |
+| Fingerprint | `X-Powered-By` removed | Helmet `hidePoweredBy`. |
+
+### Secure cookies (future)
+
+The API is header-auth only today (`X-API-Key` / `X-Admin-Api-Key`) and does **not** set cookies. If session or JWT cookies are introduced, use the defaults from `loadCookieDefaults()`:
+
+- `httpOnly: true`
+- `secure: true` in production (or when `COOKIE_SECURE=true`)
+- `sameSite: 'lax'`
+- `path: '/'`
+
+### Production deploy checklist (proxy)
+
+```env
+# Behind one reverse-proxy hop (ALB / nginx):
+TRUST_PROXY=1
+# Optional HSTS tuning:
+# HSTS_MAX_AGE=31536000
+# HSTS_PRELOAD=true
+```
+
+Without `TRUST_PROXY`, clients can forge `X-Forwarded-For` and bypass IP-based rate limits. With it set too aggressively (e.g. `true` when no proxy is present), clients can still spoof the header — match the hop count to your real topology.
+
+---
+
+## 6. Rate Limiting Strategy
 
 Implementation: [`src/middleware/rateLimit.ts`](../src/middleware/rateLimit.ts) — fixed-window token bucket per key.
 
@@ -137,7 +175,7 @@ Redis increments use a single Lua script that performs `INCR`, sets `PEXPIRE` wh
 
 ---
 
-## 6. Idempotency
+## 7. Idempotency
 
 Three independent layers:
 
@@ -149,7 +187,7 @@ Three independent layers:
 
 ---
 
-## 7. Webhook Signature Verification
+## 8. Webhook Signature Verification
 
 The backend ships **outbound** webhooks (no inbound webhook surface today). Each delivery includes:
 
@@ -173,7 +211,7 @@ Subscriber expectation (documented in [`webhook-subscribers.md`](./webhook-subsc
 
 ---
 
-## 8. Secret Management
+## 9. Secret Management
 
 - **Sources.** All secrets enter through environment variables — see [`.env.example`](../.env.example) for the canonical list. The container loaders in [`src/config/`](../src/config/) are the only code paths that read them.
 - **Validation.** `validateEnv()` in [`src/config/env.ts`](../src/config/env.ts) asserts presence of `DATABASE_URL` and `API_KEYS` at boot and refuses to start otherwise. Production additionally requires `CORS_ORIGINS` ([`src/config/cors.ts`](../src/config/cors.ts)).
@@ -188,7 +226,7 @@ Subscriber expectation (documented in [`webhook-subscribers.md`](./webhook-subsc
 
 ---
 
-## 9. Audit Logging
+## 10. Audit Logging
 
 - **Request lifecycle.** [`requestLogger.ts`](../src/middleware/requestLogger.ts) logs `request:start` and `request:end` with `{ requestId, method, path, statusCode, durationMs, walletAddress (sanitized) }`. The same `requestId` is propagated to the response via `x-request-id`.
 - **Domain events.** Persisted to the `events` table with `event_type`, `aggregate_type/id`, JSONB `payload`, `idempotency_key` for replay safety, and `created_at`. Indexed on `(aggregate_type, aggregate_id)` and `created_at` for time-range queries.
@@ -197,7 +235,7 @@ Subscriber expectation (documented in [`webhook-subscribers.md`](./webhook-subsc
 
 ---
 
-## 10. Defence-in-Depth Quick Reference
+## 11. Defence-in-Depth Quick Reference
 
 | Concern | Where to look |
 |---|---|
@@ -210,16 +248,17 @@ Subscriber expectation (documented in [`webhook-subscribers.md`](./webhook-subsc
 | Container hardening | `Dockerfile` runs as non-root `node` user, multi-stage build, Alpine runtime |
 | Slowloris / connection abuse | Reverse proxy (deployment concern); we time-bound outbound, not inbound — pair with nginx/envoy timeouts |
 | Shutdown DoS | `SHUTDOWN_TIMEOUT_MS` ceiling prevents stuck shutdowns blocking orchestrator restarts |
+| Clickjacking / MIME sniff / HSTS | Helmet baseline in `applySecurityPosture` (§5); set `TRUST_PROXY` behind reverse proxies |
 
 ---
 
-## 11. Reporting a vulnerability
+## 12. Reporting a vulnerability
 
 See the repo-root [`SECURITY.md`](../SECURITY.md). In short: **do not** open a public issue; email the security alias. Include reproduction steps, observed vs expected behavior, and the affected commit SHA. We commit to acknowledging within 72 hours.
 
 ---
 
-## 12. References
+## 13. References
 
 - [`SECURITY.md`](../SECURITY.md) — disclosure policy
 - [`docs/security-checklist-backend.md`](./security-checklist-backend.md) — pre-deploy checklist

@@ -200,6 +200,10 @@ See [`docs/OBSERVABILITY.md`](./docs/OBSERVABILITY.md).
 - Per-route token-bucket rate limit emitting `X-RateLimit-*` headers ([`src/middleware/rateLimit.ts`](./src/middleware/rateLimit.ts)).
 - HMAC-SHA256 webhook signatures (`X-Webhook-Signature: sha256=…`).
 - Outbound HTTP guarded by [`src/utils/fetchWithTimeout.ts`](./src/utils/fetchWithTimeout.ts).
+- Helmet security headers (HSTS, CSP, `X-Frame-Options: DENY`, `nosniff`, referrer policy) via [`src/middleware/securityHeaders.ts`](./src/middleware/securityHeaders.ts).
+- Configurable `TRUST_PROXY` for reverse-proxy deployments so `req.ip` / rate limits see the real client ([`src/config/security.ts`](./src/config/security.ts)).
+
+**Production (behind a reverse proxy):** set `TRUST_PROXY=1` (or the hop count matching your topology). See [`docs/SECURITY.md`](./docs/SECURITY.md) §5.
 
 Full model: [`docs/SECURITY.md`](./docs/SECURITY.md) and [`SECURITY.md`](./SECURITY.md).
 
