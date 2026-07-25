@@ -124,14 +124,117 @@ describe("logRedact", () => {
     expect(output).toBe(args);
   });
 
-  it("reads debug mode from LOG_REDACTION_DEBUG", () => {
+  it("redacts mixed-type arrays via redactLogArgs", () => {
+    const nested = {
+      walletAddress: STELLAR_ADDRESS,
+      count: 3,
+      ok: true,
+    };
+    const args: unknown[] = [
+      `seed=${STELLAR_SECRET_SEED}`,
+      nested,
+      [STELLAR_MUXED_ACCOUNT, EMAIL, 42],
+      null,
+      undefined,
+      false,
+      99,
+    ];
+
+    const output = redactLogArgs(args, false);
+
+    expect(output[0]).toBe("seed=[REDACTED_STELLAR_SECRET]");
+    expect(output[1]).toEqual({
+      walletAddress: "GCKFBE...EKJA",
+      count: 3,
+      ok: true,
+    });
+    expect(output[2]).toEqual([
+      "[REDACTED_MUXED_ACCOUNT]",
+      "[REDACTED_EMAIL]",
+      42,
+    ]);
+    expect(output[3]).toBeNull();
+    expect(output[4]).toBeUndefined();
+    expect(output[5]).toBe(false);
+    expect(output[6]).toBe(99);
+    // Structural copy — original nested object is not mutated.
+    expect(output[1]).not.toBe(nested);
+    expect(nested.walletAddress).toBe(STELLAR_ADDRESS);
+  });
+
+  it("passes non-string primitives through redactLogValue unchanged", () => {
+    expect(redactLogValue(0, false)).toBe(0);
+    expect(redactLogValue(42, false)).toBe(42);
+    expect(redactLogValue(true, false)).toBe(true);
+    expect(redactLogValue(false, false)).toBe(false);
+    expect(redactLogValue(null, false)).toBeNull();
+    expect(redactLogValue(undefined, false)).toBeUndefined();
+  });
+
+  it("returns primitives and Error references unchanged when debugEnabled is true", () => {
+    const err = new Error(`wallet=${STELLAR_ADDRESS}`);
+    expect(redactLogValue(err, true)).toBe(err);
+    expect(redactLogValue(STELLAR_ADDRESS, true)).toBe(STELLAR_ADDRESS);
+    expect(redactLogValue({ a: 1 }, true)).toEqual({ a: 1 });
+  });
+
+  it("reads debug mode from LOG_REDACTION_DEBUG including truthy '1' and 'true'", () => {
     process.env.LOG_REDACTION_DEBUG = "true";
     expect(isLogRedactionDebugEnabled()).toBe(true);
 
     process.env.LOG_REDACTION_DEBUG = "1";
     expect(isLogRedactionDebugEnabled()).toBe(true);
 
+    process.env.LOG_REDACTION_DEBUG = " TRUE ";
+    expect(isLogRedactionDebugEnabled()).toBe(true);
+
     process.env.LOG_REDACTION_DEBUG = "false";
     expect(isLogRedactionDebugEnabled()).toBe(false);
+
+    process.env.LOG_REDACTION_DEBUG = "yes";
+    expect(isLogRedactionDebugEnabled()).toBe(false);
+
+    delete process.env.LOG_REDACTION_DEBUG;
+    expect(isLogRedactionDebugEnabled()).toBe(false);
+  });
+
+  it("bypasses redaction via env for redactLogString and redactLogValue when LOG_REDACTION_DEBUG is set", () => {
+    process.env.LOG_REDACTION_DEBUG = "1";
+    expect(redactLogString(`wallet=${STELLAR_ADDRESS}`)).toBe(
+      `wallet=${STELLAR_ADDRESS}`,
+    );
+    expect(redactLogValue({ walletAddress: STELLAR_ADDRESS })).toEqual({
+      walletAddress: STELLAR_ADDRESS,
+    });
+
+    process.env.LOG_REDACTION_DEBUG = "true";
+    const args = [STELLAR_SECRET_SEED, EMAIL];
+    expect(redactLogArgs(args)).toBe(args);
+  });
+
+  it("redacts deeply nested plain objects without mutating the input", () => {
+    const input = {
+      level1: {
+        level2: {
+          level3: {
+            wallet: STELLAR_ADDRESS,
+            note: `contact ${EMAIL}`,
+            flags: [true, null, STELLAR_MUXED_ACCOUNT],
+          },
+        },
+      },
+    };
+
+    const output = redactLogValue(input, false);
+
+    expect(output.level1.level2.level3.wallet).toBe("GCKFBE...EKJA");
+    expect(output.level1.level2.level3.note).toBe("contact [REDACTED_EMAIL]");
+    expect(output.level1.level2.level3.flags).toEqual([
+      true,
+      null,
+      "[REDACTED_MUXED_ACCOUNT]",
+    ]);
+    expect(input.level1.level2.level3.wallet).toBe(STELLAR_ADDRESS);
+    expect(input.level1.level2.level3.note).toContain(EMAIL);
   });
 });
