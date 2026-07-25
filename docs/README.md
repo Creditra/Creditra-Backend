@@ -32,6 +32,7 @@ This directory holds the long-form documentation for the Creditra backend. The t
 | [`schema-validation.md`](./schema-validation.md) | Boot-time schema validator. |
 | [`cursor-pagination.md`](./cursor-pagination.md) | Cursor pagination contract. |
 | [`error-envelope.md`](./error-envelope.md) | `{ data, error }` envelope reference. |
+| [`api-versioning.md`](./api-versioning.md) | `/api/v1/*` mounts, deprecation headers, sunset policy. |
 | [`http-timeouts.md`](./http-timeouts.md) | Outbound HTTP timeout policy. |
 | [`HORIZON_LISTENER_CONFIG.md`](./HORIZON_LISTENER_CONFIG.md) | Env-var reference for the listener. |
 | [`reconciliation.md`](./reconciliation.md) | Reconciliation job details. |

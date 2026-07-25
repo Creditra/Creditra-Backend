@@ -1,9 +1,15 @@
 openapi: 3.0.3
 info:
   title: Creditra API
-  version: 0.1.0
+  version: 1.0.0
   description: |
     Backend API for Creditra – on-chain credit scoring and risk evaluation.
+
+    ## API versioning
+    Canonical routes are under `/api/v1/*`. Unversioned `/api/*` paths remain
+    available during a transition window and return `Deprecation`, `Sunset`,
+    and `Link: rel="successor-version"` headers. See docs/api-versioning.md.
+    Responses under `/api/v1/*` and legacy `/api/*` include `X-API-Version: 1`.
 
     Browser clients are restricted by a CORS allowlist. Production deployments
     must set `CORS_ORIGINS` to a comma-separated list of exact origins; local
@@ -484,7 +490,7 @@ paths:
 
   # ── Reconciliation Routes ───────────────────────────────────────────────────
 
-  /api/reconciliation/trigger:
+  /api/v1/reconciliation/trigger:
     post:
       tags: [Reconciliation]
       operationId: triggerReconciliation
@@ -521,7 +527,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/reconciliation/status:
+  /api/v1/reconciliation/status:
     get:
       tags: [Reconciliation]
       operationId: getReconciliationStatus
@@ -561,7 +567,7 @@ paths:
 
   # ── Credit Lines Routes ─────────────────────────────────────────────────────
 
-  /api/credit/lines:
+  /api/v1/credit/lines:
     get:
       tags: [Credit]
       operationId: listCreditLines
@@ -670,7 +676,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/credit/lines/{id}:
+  /api/v1/credit/lines/{id}:
     get:
       tags: [Credit]
       operationId: getCreditLineById
@@ -810,7 +816,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/credit/lines/{id}/transactions:
+  /api/v1/credit/lines/{id}/transactions:
     get:
       tags: [Credit]
       operationId: getCreditLineTransactions
@@ -901,7 +907,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/credit/lines/{id}/suspend:
+  /api/v1/credit/lines/{id}/suspend:
     post:
       tags: [Credit]
       operationId: suspendCreditLine
@@ -948,7 +954,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/credit/lines/{id}/close:
+  /api/v1/credit/lines/{id}/close:
     post:
       tags: [Credit]
       operationId: closeCreditLine
@@ -995,7 +1001,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/credit/wallet/{walletAddress}/lines:
+  /api/v1/credit/wallet/{walletAddress}/lines:
     get:
       tags: [Credit]
       operationId: getCreditLinesByWallet
@@ -1035,7 +1041,7 @@ paths:
 
   # ── Risk Evaluation Routes ──────────────────────────────────────────────────
 
-  /api/risk/evaluate:
+  /api/v1/risk/evaluate:
     post:
       tags: [Risk]
       operationId: evaluateRisk
@@ -1110,7 +1116,7 @@ paths:
                 data: null
                 error: Content-Type must be application/json
 
-  /api/webhooks/config:
+  /api/v1/webhooks/config:
     get:
       tags: [Webhooks]
       operationId: getWebhookConfig
@@ -1132,7 +1138,7 @@ paths:
                 timeoutMs: 10000
                 configured: true
 
-  /api/webhooks/test:
+  /api/v1/webhooks/test:
     post:
       tags: [Webhooks]
       operationId: testWebhooks
@@ -1163,7 +1169,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/webhooks/health:
+  /api/v1/webhooks/health:
     get:
       tags: [Webhooks]
       operationId: getWebhookHealth
@@ -1183,7 +1189,7 @@ paths:
                 maxRetries: 3
                 timeoutMs: 10000
 
-  /api/risk/evaluations/{id}:
+  /api/v1/risk/evaluations/{id}:
     get:
       tags: [Risk]
       operationId: getRiskEvaluationById
@@ -1213,7 +1219,7 @@ paths:
                 error: Risk evaluation not found
                 id: "abc123"
 
-  /api/risk/wallet/{walletAddress}/latest:
+  /api/v1/risk/wallet/{walletAddress}/latest:
     get:
       tags: [Risk]
       operationId: getLatestRiskEvaluation
@@ -1246,7 +1252,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/risk/wallet/{walletAddress}/history:
+  /api/v1/risk/wallet/{walletAddress}/history:
     get:
       tags: [Risk]
       operationId: getRiskEvaluationHistory

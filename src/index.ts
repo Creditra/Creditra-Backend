@@ -14,12 +14,17 @@ import { reconciliationRouter } from "./routes/reconciliation.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import {
+  createLegacyDeprecationMiddleware,
+  createV1VersionMiddleware,
+} from "./middleware/apiVersion.js";
+import {
   InMemoryRateLimitStore,
   RedisRateLimitStore,
   createIpKeyGenerator,
   createRateLimitMiddleware,
 } from "./middleware/rateLimit.js";
 import { loadCorsPolicy, isAllowedCorsOrigin } from "./config/cors.js";
+import { loadApiVersionPolicy } from "./config/apiVersion.js";
 import { loadRateLimitConfig, loadRateLimitStoreConfig } from "./config/rateLimit.js";
 import { validateEnv } from "./config/env.js";
 import { Container } from "./container/Container.js";
@@ -148,12 +153,39 @@ app.get("/docs.json", (_req, res) => {
   res.json(openapiSpec);
 });
 
-app.use("/api/credit", defaultRateLimit, creditRouter);
-app.use("/api/risk/evaluate", evaluateRateLimit);
-app.use("/api/risk/wallet", defaultRateLimit);
-app.use("/api/risk", riskRouter);
-app.use("/api/webhooks", webhookRouter);
-app.use("/api/reconciliation", reconciliationRouter);
+// ── API versioning ──────────────────────────────────────────────────────────
+// Canonical surface: /api/v1/*  (OpenAPI documents these paths).
+// Legacy surface:    /api/*     (same handlers + Deprecation/Sunset/Link).
+// See docs/api-versioning.md.
+const { legacySunset } = loadApiVersionPolicy();
+const v1VersionHeaders = createV1VersionMiddleware();
+const legacyDeprecationHeaders = createLegacyDeprecationMiddleware({
+  legacySunset,
+});
+
+/**
+ * Mount domain routers on a shared parent (used for both /api/v1 and legacy /api).
+ */
+function mountApiRouters(parent: express.Router): void {
+  parent.use("/credit", defaultRateLimit, creditRouter);
+  parent.use("/risk/evaluate", evaluateRateLimit);
+  parent.use("/risk/wallet", defaultRateLimit);
+  parent.use("/risk", riskRouter);
+  parent.use("/webhooks", webhookRouter);
+  parent.use("/reconciliation", reconciliationRouter);
+}
+
+const v1Router = express.Router();
+v1Router.use(v1VersionHeaders);
+mountApiRouters(v1Router);
+
+const legacyApiRouter = express.Router();
+legacyApiRouter.use(legacyDeprecationHeaders);
+mountApiRouters(legacyApiRouter);
+
+// Mount versioned routes first so /api/v1/* is not captured by /api/*.
+app.use("/api/v1", v1Router);
+app.use("/api", legacyApiRouter);
 
 // Global error handler — must be registered after routes
 app.use(errorHandler);

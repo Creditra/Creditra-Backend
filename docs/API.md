@@ -3,9 +3,14 @@
 Human-readable companion to the machine-readable spec at [`src/openapi.yaml`](../src/openapi.yaml) (served live at `/docs` and `/docs.json`). When in doubt, the YAML is authoritative.
 
 - **Base URL (dev):** `http://localhost:3000`
+- **API prefix (canonical):** `/api/v1/*` — see [`api-versioning.md`](./api-versioning.md)
 - **Default media type:** `application/json` (the server returns `415` if you `POST/PUT/PATCH` anything else)
 - **Response envelope:** `{ "data": <payload> | null, "error": <string> | null }`
 - **Body limit:** 100 kB (oversize returns `413`)
+- **Version header:** `X-API-Version: 1` on all `/api/v1/*` and legacy `/api/*` responses
+
+Unversioned `/api/*` paths remain available during the transition window and
+include `Deprecation`, `Sunset`, and `Link: rel="successor-version"` headers.
 
 ---
 
