@@ -14,12 +14,17 @@ import { reconciliationRouter } from "./routes/reconciliation.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import {
+  createJsonBodyLimitVerify,
+  createPathAwareBodyLimitMiddleware,
+} from "./middleware/bodyLimit.js";
+import {
   InMemoryRateLimitStore,
   RedisRateLimitStore,
   createIpKeyGenerator,
   createRateLimitMiddleware,
 } from "./middleware/rateLimit.js";
 import { loadCorsPolicy, isAllowedCorsOrigin } from "./config/cors.js";
+import { loadBodyLimitConfig } from "./config/bodyLimit.js";
 import { loadRateLimitConfig, loadRateLimitStoreConfig } from "./config/rateLimit.js";
 import { validateEnv } from "./config/env.js";
 import { Container } from "./container/Container.js";
@@ -53,6 +58,7 @@ const SHUTDOWN_TIMEOUT_MS = parseInt(
 );
 
 const corsPolicy = loadCorsPolicy();
+const bodyLimitConfig = loadBodyLimitConfig();
 const rateLimitConfig = loadRateLimitConfig();
 const rateLimitStoreConfig = loadRateLimitStoreConfig();
 const createRateLimitStore = (namespace: string): InMemoryRateLimitStore | RedisRateLimitStore => {
@@ -134,9 +140,17 @@ app.use((req, res, next) => {
   next();
 });
 
-// 100 kb hard cap; body-parser emits a 413 that errorHandler converts to a
-// structured response.
-app.use(express.json({ limit: '100kb' }));
+// Per-endpoint body size limits (Content-Length fast-path) + JSON parser
+// capped at the absolute max. Path-specific limits (default 100kb, bulk 1mb)
+// are enforced before buffering and again in the verify hook for chunked bodies.
+// See docs/body-limits.md.
+app.use(createPathAwareBodyLimitMiddleware(bodyLimitConfig));
+app.use(
+  express.json({
+    limit: bodyLimitConfig.maxBytes,
+    verify: createJsonBodyLimitVerify(bodyLimitConfig),
+  }),
+);
 
 app.use(requestLogger);
 
@@ -148,6 +162,8 @@ app.get("/docs.json", (_req, res) => {
   res.json(openapiSpec);
 });
 
+// Bulk ingest (`/api/credit/lines/bulk`) is configured with a higher body limit
+// in `loadBodyLimitConfig()`; mount `creditBulkRouter` here when enabling it.
 app.use("/api/credit", defaultRateLimit, creditRouter);
 app.use("/api/risk/evaluate", evaluateRateLimit);
 app.use("/api/risk/wallet", defaultRateLimit);

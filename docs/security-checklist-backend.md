@@ -48,7 +48,7 @@ For **external penetration-test preparation** (scope, auth bypass checks, rate l
 ### Content Type Validation
 - [ ] Content-Type headers are validated
 - [ ] JSON parsing errors are handled gracefully
-- [ ] Request size limits are enforced (prevent DoS)
+- [ ] Request size limits are enforced (prevent DoS) — default 100 KiB, bulk 1 MiB; reverse proxy ≥ `BODY_LIMIT_MAX_BYTES` (see `docs/body-limits.md`)
 
 ## 3. Logging & Monitoring
 

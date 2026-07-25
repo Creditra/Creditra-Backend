@@ -16,7 +16,7 @@ This document is the backend's threat model and the catalogue of in-tree mitigat
 | DB | Drift from on-chain truth | `ReconciliationWorker` runs every `RECONCILIATION_INTERVAL_MS` |
 | Borrower PII (wallet address) | Indefinite retention of identifying data | `DataRetentionWorker` anonymizes inactive borrowers' `wallet_address` and purges stale audit/risk data — see [`docs/DATA_RETENTION.md`](./DATA_RETENTION.md) |
 | Service availability | Brute force / abusive scrapers | Token-bucket rate limit with `Retry-After` |
-| Service availability | Large body payloads | 100 kB body cap, 413 mapped to envelope |
+| Service availability | Large body payloads | Per-endpoint body caps (default 100 KiB, bulk 1 MiB), early Content-Length reject, 413 problem+json — see [`docs/body-limits.md`](./body-limits.md) |
 | Outbound calls | Slow / hung dependencies | `fetchWithTimeout` connect+read timeouts |
 
 ---
@@ -87,14 +87,14 @@ Behaviour:
 Validator chain order:
 
 1. CORS allowlist ([`src/config/cors.ts`](../src/config/cors.ts))
-2. JSON body parser (100 kB)
-3. Content-Type guard (returns 415 if `POST/PUT/PATCH` has a body that isn't `application/json`)
+2. Content-Type guard (returns 415 if `POST/PUT/PATCH` has a body that isn't `application/json`)
+3. Path-aware body limit (Content-Length fast-path; default 100 KiB, bulk 1 MiB) + JSON body parser with verify hook ([`src/middleware/bodyLimit.ts`](../src/middleware/bodyLimit.ts))
 4. Request logger (assigns / propagates `x-request-id`)
 5. Auth middleware (route-specific)
 6. Rate limit middleware (route-specific)
 7. Zod validate(Body|Query|Params)
 8. Handler
-9. `errorHandler` catches anything unhandled
+9. `errorHandler` catches anything unhandled (including 413 Payload Too Large)
 
 ---
 

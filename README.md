@@ -196,7 +196,7 @@ See [`docs/OBSERVABILITY.md`](./docs/OBSERVABILITY.md).
 
 - Constant-time API key check via `crypto.timingSafeEqual` ([`src/middleware/auth.ts`](./src/middleware/auth.ts)).
 - Admin endpoints gated by a separate header (`X-Admin-Api-Key`).
-- Request body capped at 100 kB; non-JSON mutating requests rejected with 415.
+- Per-endpoint request body limits (default 100 KiB, bulk 1 MiB) with explicit 413 problem+json; non-JSON mutating requests rejected with 415.
 - Per-route token-bucket rate limit emitting `X-RateLimit-*` headers ([`src/middleware/rateLimit.ts`](./src/middleware/rateLimit.ts)).
 - HMAC-SHA256 webhook signatures (`X-Webhook-Signature: sha256=…`).
 - Outbound HTTP guarded by [`src/utils/fetchWithTimeout.ts`](./src/utils/fetchWithTimeout.ts).
@@ -278,7 +278,7 @@ Creditra-Backend/
 
 - **Graceful shutdown.** `SIGTERM` and `SIGINT` close the HTTP server, stop the reconciliation worker, drain the job queue, and close the DB pool — bounded by `SHUTDOWN_TIMEOUT_MS` (default 30s).
 - **Hot key rotation.** `loadApiKeys()` is invoked per request via a resolver closure, so `API_KEYS` may be rotated without restart (e.g. via secret manager).
-- **Body limits.** `express.json({ limit: '100kb' })`. Oversize requests are converted into a `413` via the global error handler.
+- **Body limits.** Per-endpoint caps (default 100 KiB; `/api/credit/lines/bulk` 1 MiB). Oversize requests return `413 Payload Too Large` problem+json. See [`docs/body-limits.md`](./docs/body-limits.md) for env knobs and reverse-proxy recommendations.
 - **CORS.** Production deployments **must** set `CORS_ORIGINS` to a comma-separated allowlist; dev/test falls back to loopback origins ([`src/config/cors.ts`](./src/config/cors.ts)).
 
 ---
