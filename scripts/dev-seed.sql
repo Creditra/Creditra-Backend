@@ -1,5 +1,6 @@
 -- Deterministic local-only seed data for scripts/dev-bootstrap.sh.
 -- Values are placeholders for development and must not be reused as credentials.
+-- Safe to re-run: inserts are guarded with NOT EXISTS / ON CONFLICT.
 
 WITH borrower AS (
   INSERT INTO borrowers (wallet_address)
@@ -26,6 +27,9 @@ credit_line AS (
   )
   RETURNING id, borrower_id
 ),
+-- Prefer the row just inserted (via RETURNING). Sibling CTEs cannot see each
+-- other's table mutations under a single snapshot, so fall back to a SELECT
+-- only when the insert CTE was a no-op.
 selected_credit_line AS (
   SELECT id, borrower_id FROM credit_line
   UNION ALL
@@ -33,7 +37,7 @@ selected_credit_line AS (
   FROM credit_lines cl
   JOIN borrowers b ON b.id = cl.borrower_id
   WHERE b.wallet_address = 'GCKFBEIYV2U22IO2BJ4KVJOIP7XPWQGZBW3JXDC55CYIXB5NAXMCEKJA'
-  LIMIT 1
+    AND NOT EXISTS (SELECT 1 FROM credit_line)
 ),
 risk_seed AS (
   INSERT INTO risk_evaluations (
@@ -72,17 +76,19 @@ INSERT INTO transactions (
   processed_at
 )
 SELECT
-  id,
+  scl.id,
   'borrow',
   125.00000000,
   'USDC',
   'confirmed',
   'local-seed-tx-001',
   now()
-FROM selected_credit_line
+FROM selected_credit_line scl
+-- Reference risk_seed so the data-modifying CTE is never optimised away.
+CROSS JOIN LATERAL (SELECT count(*) AS n FROM risk_seed) rs
 WHERE NOT EXISTS (
   SELECT 1
   FROM transactions tx
-  WHERE tx.credit_line_id = selected_credit_line.id
+  WHERE tx.credit_line_id = scl.id
     AND tx.blockchain_tx_hash = 'local-seed-tx-001'
 );
