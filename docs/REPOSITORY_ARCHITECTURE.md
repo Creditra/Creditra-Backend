@@ -45,7 +45,7 @@ replaces the previous behavior of always returning the full limit.
 
 ### 4. Services (`src/services/`)
 Business logic layer that uses repositories:
-- `CreditLineService.ts` - Credit line management and validation
+- `CreditLineService.ts` - Credit line management and validation; multi-write mutations (`create` / `draw` / `repay`) run inside a `TransactionRunner` so ledger + balance writes commit or roll back together (see [transactions.md](./transactions.md))
 - `RiskEvaluationService.ts` - Risk assessment and caching logic
 
 ### 5. Dependency Injection (`src/container/`)
