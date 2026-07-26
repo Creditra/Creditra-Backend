@@ -136,7 +136,8 @@ describe('PostgresCreditLineRepository', () => {
         id: mockId,
         walletAddress: 'GTEST789',
         creditLimit: '15000.00',
-        availableCredit: '15000.00', // Full credit available initially
+        // calculateAvailableCredit uses Number/toString (no forced decimals)
+        availableCredit: '15000',
         utilized: '0',
         interestRateBps: 600,
         status: CreditLineStatus.ACTIVE,
@@ -302,7 +303,8 @@ describe('PostgresCreditLineRepository', () => {
       const result = await repository.update(creditLineId, {});
 
       expect(result?.id).toBe(creditLineId);
-      expect(mockClient.query).toHaveBeenCalledTimes(1); // Only findById, no update
+      // findById + calculateAvailableCredit (no UPDATE when payload is empty)
+      expect(mockClient.query).toHaveBeenCalledTimes(2);
     });
   });
 
