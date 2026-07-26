@@ -23,17 +23,22 @@ on the next server restart — no build step needed.
 1. Implement the route handler in `src/routes/`.
 2. Open `src/openapi.yaml` and add the path under `paths:`.
 3. Add or reuse component schemas under `components/schemas:`.
-4. Run `npm run validate:spec` — must exit 0.
+4. Run `npm run validate:openapi` - must exit 0.
 5. Add at least one test in `src/tests/api.test.ts` for the new endpoint.
 6. Run `npm test` — all tests must pass.
 
-## Validating the spec
+## Validating the spec and route drift
 
 ```bash
-npm run validate:spec
+npm run validate:openapi
 ```
 
-This checks that `src/openapi.yaml` is well-formed YAML. For deeper linting
+This checks that `src/openapi.yaml` is well-formed YAML and that every mounted
+Express route operation is represented in the OpenAPI paths. The route drift
+check intentionally covers only routers mounted in `src/index.ts`; if a new
+router is mounted there, add it to `scripts/check-openapi-drift.mjs`.
+
+For deeper linting
 (spec correctness, unused schemas) install `@stoplight/spectral-cli`:
 
 ```bash
@@ -50,9 +55,9 @@ Re-run this whenever `openapi.yaml` changes.
 
 ## CI integration
 
-Add these steps to your CI pipeline:
+CI runs the combined validation through `npm run validate:openapi`:
 
 ```yaml
-- run: npm run validate:spec
+- run: npm run validate:openapi
 - run: npm test
 ```

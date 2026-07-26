@@ -65,9 +65,9 @@ jobs:
           path: coverage/
           retention-days: 7
 
-      - name: Validate OpenAPI spec
+      - name: Validate OpenAPI spec and route drift
         if: matrix.node-version == '20.x'
-        run: npm run validate:spec
+        run: npm run validate:openapi
 
       - name: Check coverage threshold
         if: matrix.node-version == '20.x'
