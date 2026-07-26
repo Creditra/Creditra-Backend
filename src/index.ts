@@ -31,7 +31,9 @@ import {
 import { loadCorsPolicy, isAllowedCorsOrigin } from "./config/cors.js";
 import { loadApiVersionPolicy } from "./config/apiVersion.js";
 import { loadRateLimitConfig, loadRateLimitStoreConfig } from "./config/rateLimit.js";
+import { loadSecurityPosture } from "./config/security.js";
 import { validateEnv } from "./config/env.js";
+import { applySecurityPosture } from "./middleware/securityHeaders.js";
 import { Container } from "./container/Container.js";
 import { getConnection } from "./db/client.js";
 import { initializeWebhooks } from "./services/drawWebhookService.js";
@@ -57,6 +59,10 @@ const openapiSpec = yaml.parse(
 ) as Record<string, unknown>;
 
 export const app = express();
+
+// Baseline security posture: trust proxy + Helmet headers (HSTS/CSP/XFO/…).
+// Must run before routes so every response, including errors, carries headers.
+applySecurityPosture(app, loadSecurityPosture());
 
 // ✅ Keep strict typing
 const port = Number(process.env.PORT ?? 3000);

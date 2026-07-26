@@ -89,6 +89,22 @@ const envSchema = z.object({
 
   /** Redis outage policy for rate limiting. Defaults to fail-open. */
   RATE_LIMIT_REDIS_FAILURE_MODE: z.enum(["open", "closed"]).default("open"),
+
+  /**
+   * Express `trust proxy` setting for reverse-proxy deployments.
+   * Accepts boolean-ish values, hop counts, or Express IP/CIDR presets.
+   * See `src/config/security.ts` and `docs/SECURITY.md`.
+   */
+  TRUST_PROXY: z.string().optional(),
+
+  /** HSTS max-age in seconds (Helmet). Defaults to 180 days when unset. */
+  HSTS_MAX_AGE: z.string().optional(),
+
+  /** When `true`, Helmet HSTS includes the preload directive. */
+  HSTS_PRELOAD: z.string().optional(),
+
+  /** Force `Secure` on future cookies even outside production. */
+  COOKIE_SECURE: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------

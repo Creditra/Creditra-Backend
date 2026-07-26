@@ -106,11 +106,12 @@ For **external penetration-test preparation** (scope, auth bypass checks, rate l
 - [ ] Preflight requests handled correctly
 
 ### HTTP Headers
-- [ ] `Strict-Transport-Security` header set (HSTS)
-- [ ] `X-Content-Type-Options: nosniff` header set
-- [ ] `X-Frame-Options: DENY` or `SAMEORIGIN` header set
-- [ ] `Content-Security-Policy` header configured
-- [ ] `X-XSS-Protection` header set (legacy browsers)
+- [x] `Strict-Transport-Security` header set (HSTS) — Helmet via `applySecurityPosture`
+- [x] `X-Content-Type-Options: nosniff` header set
+- [x] `X-Frame-Options: DENY` or `SAMEORIGIN` header set (`DENY`)
+- [x] `Content-Security-Policy` header configured (self + Swagger-safe inline)
+- [x] `X-Powered-By` removed; `Referrer-Policy: no-referrer`
+- [x] `TRUST_PROXY` documented for reverse-proxy deployments (`src/config/security.ts`)
 
 ### API Keys & Secrets
 - [ ] API keys are not hardcoded in source code
