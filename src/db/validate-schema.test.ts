@@ -26,6 +26,8 @@ describe('missingTables', () => {
         { table_name: 'risk_evaluations' },
         { table_name: 'transactions' },
         { table_name: 'events' },
+        { table_name: 'outbound_webhook_subscriptions' },
+        { table_name: 'outbound_webhook_deliveries' },
       ],
     });
     const missing = await missingTables(client);
@@ -188,6 +190,8 @@ describe('validateSchema', () => {
             { table_name: 'risk_evaluations' },
             { table_name: 'transactions' },
             { table_name: 'events' },
+            { table_name: 'outbound_webhook_subscriptions' },
+            { table_name: 'outbound_webhook_deliveries' },
           ],
         };
       }
@@ -209,6 +213,13 @@ describe('validateSchema', () => {
             { column_name: 'type' },
             { column_name: 'amount' },
             { column_name: 'event_type' },
+            { column_name: 'url' },
+            { column_name: 'event_types' },
+            { column_name: 'active' },
+            { column_name: 'secret_ref' },
+            { column_name: 'subscription_id' },
+            { column_name: 'event_id' },
+            { column_name: 'attempts' },
             { column_name: 'created_at' },
           ],
         };
@@ -223,6 +234,8 @@ describe('validateSchema', () => {
             { indexname: 'risk_evaluations_borrower_id_idx' },
             { indexname: 'transactions_credit_line_id_idx' },
             { indexname: 'events_idempotency_key_key' },
+            { indexname: 'outbound_webhook_subscriptions_url_key' },
+            { indexname: 'outbound_webhook_deliveries_status_idx' },
           ],
         };
       }
@@ -263,6 +276,8 @@ describe('validateSchema', () => {
             { table_name: 'risk_evaluations' },
             { table_name: 'transactions' },
             { table_name: 'events' },
+            { table_name: 'outbound_webhook_subscriptions' },
+            { table_name: 'outbound_webhook_deliveries' },
           ],
         };
       }
@@ -279,6 +294,8 @@ describe('validateSchema', () => {
             { indexname: 'risk_evaluations_borrower_id_idx' },
             { indexname: 'transactions_credit_line_id_idx' },
             { indexname: 'events_idempotency_key_key' },
+            { indexname: 'outbound_webhook_subscriptions_url_key' },
+            { indexname: 'outbound_webhook_deliveries_status_idx' },
           ],
         };
       }
@@ -309,6 +326,8 @@ describe('validateSchema', () => {
             { table_name: 'risk_evaluations' },
             { table_name: 'transactions' },
             { table_name: 'events' },
+            { table_name: 'outbound_webhook_subscriptions' },
+            { table_name: 'outbound_webhook_deliveries' },
           ],
         };
       }
@@ -329,6 +348,13 @@ describe('validateSchema', () => {
             { column_name: 'type' },
             { column_name: 'amount' },
             { column_name: 'event_type' },
+            { column_name: 'url' },
+            { column_name: 'event_types' },
+            { column_name: 'active' },
+            { column_name: 'secret_ref' },
+            { column_name: 'subscription_id' },
+            { column_name: 'event_id' },
+            { column_name: 'attempts' },
             { column_name: 'created_at' },
           ],
         };
@@ -364,6 +390,8 @@ describe('validateSchema', () => {
             { table_name: 'risk_evaluations' },
             { table_name: 'transactions' },
             { table_name: 'events' },
+            { table_name: 'outbound_webhook_subscriptions' },
+            { table_name: 'outbound_webhook_deliveries' },
           ],
         };
       }
@@ -376,6 +404,8 @@ describe('validateSchema', () => {
             { indexname: 'risk_evaluations_borrower_id_idx' },
             { indexname: 'transactions_credit_line_id_idx' },
             { indexname: 'events_idempotency_key_key' },
+            { indexname: 'outbound_webhook_subscriptions_url_key' },
+            { indexname: 'outbound_webhook_deliveries_status_idx' },
           ],
         };
       }
@@ -405,6 +435,8 @@ describe('validateSchema', () => {
             { table_name: 'risk_evaluations' },
             { table_name: 'transactions' },
             { table_name: 'events' },
+            { table_name: 'outbound_webhook_subscriptions' },
+            { table_name: 'outbound_webhook_deliveries' },
           ],
         };
       }
@@ -425,6 +457,13 @@ describe('validateSchema', () => {
             { column_name: 'type' },
             { column_name: 'amount' },
             { column_name: 'event_type' },
+            { column_name: 'url' },
+            { column_name: 'event_types' },
+            { column_name: 'active' },
+            { column_name: 'secret_ref' },
+            { column_name: 'subscription_id' },
+            { column_name: 'event_id' },
+            { column_name: 'attempts' },
             { column_name: 'created_at' },
           ],
         };

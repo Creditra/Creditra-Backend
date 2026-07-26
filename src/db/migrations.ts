@@ -16,6 +16,8 @@ export const EXPECTED_TABLES = [
   'risk_evaluations',
   'transactions',
   'events',
+  'outbound_webhook_subscriptions',
+  'outbound_webhook_deliveries',
 ] as const;
 
 /**

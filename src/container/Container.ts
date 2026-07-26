@@ -38,6 +38,13 @@ import { registerAuditSubscriber } from "../services/events/auditSubscriber.js";
 import { DataRetentionService } from "../services/dataRetentionService.js";
 import { DataRetentionWorker } from "../services/dataRetentionWorker.js";
 import { DashboardSummaryService } from "../services/dashboardSummaryService.js";
+import {
+  InMemoryOutboundWebhookStore,
+  PostgresOutboundWebhookStore,
+  type OutboundWebhookStore,
+} from "../services/outboundWebhookStore.js";
+import { OutboundWebhookDispatcher } from "../services/outboundWebhookDispatcher.js";
+import { resolveWebhookConfig } from "../services/drawWebhookService.js";
 
 export class Container {
   private static instance: Container;
@@ -59,7 +66,8 @@ export class Container {
   private _dashboardSummaryService!: DashboardSummaryService;
   private _dataRetentionService?: DataRetentionService;
   private _dataRetentionWorker?: DataRetentionWorker;
-  private _dashboardSummaryService!: DashboardSummaryService;
+  private _outboundWebhookStore?: OutboundWebhookStore;
+  private _outboundWebhookDispatcher?: OutboundWebhookDispatcher;
 
   // In-process domain event bus (credit lifecycle).
   private readonly _eventBus = defaultEventBus;
@@ -103,6 +111,42 @@ export class Container {
         this._dataRetentionService,
         defaultJobQueue,
       );
+    }
+
+    if (!this._outboundWebhookDispatcher) {
+      this._outboundWebhookStore = this._dbClient
+        ? new PostgresOutboundWebhookStore(this._dbClient)
+        : new InMemoryOutboundWebhookStore();
+      this._outboundWebhookDispatcher = new OutboundWebhookDispatcher(
+        this._outboundWebhookStore,
+        defaultJobQueue,
+        this._eventBus,
+        {
+          secret: process.env["WEBHOOK_SECRET"] ?? "",
+          maxAttempts: Math.max(
+            1,
+            parseInt(process.env["WEBHOOK_MAX_RETRIES"] ?? "3", 10),
+          ),
+          timeoutMs: Math.max(
+            1,
+            parseInt(process.env["WEBHOOK_TIMEOUT_MS"] ?? "10000", 10),
+          ),
+          initialBackoffMs: Math.max(
+            0,
+            parseInt(process.env["WEBHOOK_INITIAL_BACKOFF_MS"] ?? "1000", 10),
+          ),
+        },
+      );
+      try {
+        const webhookConfig = resolveWebhookConfig();
+        void this._outboundWebhookDispatcher
+          .initializeFromEnvironment(webhookConfig.urls)
+          .catch((error) => {
+            console.error("[Container] Outbound webhook initialization failed:", error);
+          });
+      } catch (error) {
+        console.error("[Container] Outbound webhook configuration failed:", error);
+      }
     }
   }
 
@@ -167,6 +211,13 @@ export class Container {
   /** Process-wide in-process domain event bus for credit lifecycle events. */
   get eventBus() {
     return this._eventBus;
+  }
+
+  get outboundWebhookDispatcher(): OutboundWebhookDispatcher {
+    if (!this._outboundWebhookDispatcher) {
+      throw new Error('Outbound webhook dispatcher is not initialized');
+    }
+    return this._outboundWebhookDispatcher;
   }
 
   /** Undefined when running against in-memory repositories (no Postgres connection). */
