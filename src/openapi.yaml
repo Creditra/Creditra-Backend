@@ -38,6 +38,8 @@ tags:
     description: Draw confirmation webhook management
   - name: Reconciliation
     description: Admin control plane for DB-vs-chain reconciliation
+  - name: Admin
+    description: Privileged operator controls and audit review
 
 security:
   - ApiKeyAuth: []
@@ -503,6 +505,62 @@ components:
 
     # ── Error Schemas ─────────────────────────────────────────────────────────
 
+    AdminAuditRecord:
+      type: object
+      required: [id, actor, action, targetType, targetId, correlationId, createdAt, previousHash, hash]
+      properties:
+        id:
+          type: string
+          format: uuid
+        actor:
+          type: string
+          description: SHA-256 fingerprint of the admin actor secret, never the raw key
+          example: sha256:2a6f2d8c9e5b1a0c
+        action:
+          type: string
+          example: api_key.issued
+        targetType:
+          type: string
+          example: api_key
+        targetId:
+          type: string
+          nullable: true
+        before:
+          nullable: true
+        after:
+          nullable: true
+        correlationId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        previousHash:
+          type: string
+          nullable: true
+        hash:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+
+    AdminAuditLogResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          required: [items, nextCursor, hasMore]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/AdminAuditRecord"
+            nextCursor:
+              type: string
+              nullable: true
+            hasMore:
+              type: boolean
+        error:
+          type: string
+          nullable: true
+
     ErrorResponse:
       type: object
       required: [error]
@@ -540,6 +598,56 @@ paths:
                 service: creditra-backend
 
   # ── Reconciliation Routes ───────────────────────────────────────────────────
+
+  /api/admin/audit-logs:
+    get:
+      tags: [Admin]
+      operationId: listAdminAuditLogs
+      summary: List append-only admin audit records
+      description: Returns newest-first audit records for privileged operator actions. Requires `X-Admin-Api-Key`.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: actor
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: targetType
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Admin audit records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAuditLogResponse"
+        "400":
+          description: Invalid pagination or filter parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid admin API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/reconciliation/trigger:
     post:

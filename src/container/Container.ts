@@ -56,6 +56,7 @@ export class Container {
   private _reconciliationService!: ReconciliationService;
   private _reconciliationWorker!: ReconciliationWorker;
   private _sorobanClient!: SorobanRpcClient;
+  private _dashboardSummaryService!: DashboardSummaryService;
   private _dataRetentionService?: DataRetentionService;
   private _dataRetentionWorker?: DataRetentionWorker;
   private _dashboardSummaryService!: DashboardSummaryService;
@@ -157,6 +158,10 @@ export class Container {
 
   get reconciliationWorker(): ReconciliationWorker {
     return this._reconciliationWorker;
+  }
+
+  get dashboardSummaryService(): DashboardSummaryService {
+    return this._dashboardSummaryService;
   }
 
   /** Process-wide in-process domain event bus for credit lifecycle events. */

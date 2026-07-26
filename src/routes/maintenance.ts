@@ -5,6 +5,8 @@ import {
     setMaintenanceMode,
     getAuditLog,
 } from '../middleware/maintenanceMode.js';
+import { defaultAdminAuditLog } from '../services/adminAuditLog.js';
+import { adminActorFromRequest } from '../utils/adminActor.js';
 
 export const maintenanceRouter = Router();
 
@@ -39,7 +41,15 @@ maintenanceRouter.post('/', adminAuth, (req, res) => {
             ? req.headers['x-admin-api-key'][0]
             : req.headers['x-admin-api-key']) ?? 'unknown';
 
+    const before = { enabled: isMaintenanceModeEnabled() };
     setMaintenanceMode(enabled, actor);
+    defaultAdminAuditLog.record({
+        actor: adminActorFromRequest(req),
+        action: 'maintenance_mode.updated',
+        target: { type: 'maintenance_mode' },
+        before,
+        after: { enabled: isMaintenanceModeEnabled() },
+    });
 
     res.json({
         maintenanceMode: isMaintenanceModeEnabled(),
