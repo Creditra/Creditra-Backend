@@ -13,6 +13,11 @@ info:
     Protected endpoints require a valid API key passed via the `X-API-Key` header.
     API keys are configured via the `API_KEYS` environment variable (comma-separated).
 
+    ## Idempotent POST retries
+    POST mutations accept an optional `Idempotency-Key` header. Reusing the same
+    key with the same route, principal, and request body returns the original
+    non-5xx response instead of executing the mutation again.
+
     ## Keeping the spec in sync
     - Every new route **must** have a corresponding entry here before merging.
     - Run `npm run validate:spec` in CI to catch YAML/structural errors early.
@@ -46,6 +51,19 @@ components:
       description: |
         API key for authenticated endpoints. Required for admin operations.
         Keys are configured via the `API_KEYS` environment variable.
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 255
+      description: >
+        Optional client-generated key for retry-safe POST mutations. The key is
+        scoped by route, authenticated principal, and request body. Reusing it
+        for a different request returns 409 Conflict.
 
   schemas:
     HealthResponse:
@@ -529,6 +547,8 @@ paths:
       operationId: triggerReconciliation
       summary: Schedule a reconciliation job
       description: Admin-gated endpoint that schedules a DB-vs-chain reconciliation job and returns immediately.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "202":
           description: Reconciliation job scheduled
@@ -686,6 +706,8 @@ paths:
       operationId: createCreditLine
       summary: Create a new credit line
       security: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -1047,6 +1069,7 @@ paths:
       security:
         - ApiKeyAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: id
           in: path
           required: true
@@ -1094,6 +1117,7 @@ paths:
       security:
         - ApiKeyAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: id
           in: path
           required: true
@@ -1180,6 +1204,8 @@ paths:
         Rate limited: default 10 requests per minute per IP address.
         Configure via RATE_LIMIT_MAX_EVALUATE and RATE_LIMIT_WINDOW_MS env vars.
       security: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -1302,6 +1328,8 @@ paths:
       summary: Test webhook connectivity
       description: Sends a test payload to all configured webhook endpoints
       security: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "200":
           description: Test results
