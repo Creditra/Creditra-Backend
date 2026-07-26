@@ -18,17 +18,37 @@ import {
     resolveWebhookConfig,
 } from "../drawWebhookService.js";
 import type { HorizonEvent } from "../horizonListener.js";
+import { setWebhookDeliveryStateStore } from "../webhookDeliveryState.js";
+import type { WebhookDeliveryStateStore } from "../webhookDeliveryState.js";
 
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
+/** Fresh in-memory store so delivered (drawId, url) pairs do not leak across tests. */
+function createTestDeliveryStore(): WebhookDeliveryStateStore {
+    const records = new Map<string, { status: string }>();
+    const key = (drawId: string, url: string) => `${drawId}::${url}`;
+    return {
+        isDelivered(drawId, url) {
+            return records.get(key(drawId, url))?.status === "delivered";
+        },
+        record(record) {
+            records.set(key(record.drawId, record.url), { status: record.status });
+        },
+        deadLetters: () => [],
+        counts: () => ({ total: 0, delivered: 0, failed: 0, deadLetter: 0 }),
+    };
+}
+
 describe("DrawWebhookService", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockFetch.mockReset();
         serviceLoggerMock.info.mockReset();
         serviceLoggerMock.warn.mockReset();
         serviceLoggerMock.error.mockReset();
+        setWebhookDeliveryStateStore(createTestDeliveryStore());
         vi.useFakeTimers();
         
         // Clear environment variables
@@ -452,6 +472,8 @@ describe("DrawWebhookService", () => {
             await sendDrawConfirmationWebhook(event);
             const firstCallSignature = mockFetch.mock.calls[0][1].headers["X-Webhook-Signature"];
 
+            // Reset delivery store so the second send actually POSTs again.
+            setWebhookDeliveryStateStore(createTestDeliveryStore());
             mockFetch.mockClear();
             await sendDrawConfirmationWebhook(event);
             const secondCallSignature = mockFetch.mock.calls[0][1].headers["X-Webhook-Signature"];
