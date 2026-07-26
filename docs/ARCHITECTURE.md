@@ -95,6 +95,7 @@ flowchart TB
 
 - **Bootstrap** ([`src/index.ts`](../src/index.ts)) constructs the Express app, registers CORS, body parser, content-type guard, request logger, route mounts, and the global error handler — in that order.
 - **DI Container** ([`src/container/Container.ts`](../src/container/Container.ts)) is a lazy singleton. On first `getInstance()` it selects a repository implementation based on `DATABASE_URL` + `NODE_ENV`, constructs the service layer, instantiates the Soroban client and reconciliation pipeline, and registers the default in-process `jobQueue`.
+- **Transaction boundaries** for multi-write credit mutations (`create` / `draw` / `repay`) live in the service layer via `TransactionRunner` (`src/db/transaction.ts`). See [transactions.md](./transactions.md) for the strategy, guarantees, and failure-injection tests.
 - **Graceful shutdown** is bounded by `SHUTDOWN_TIMEOUT_MS` (default 30 s) and stops in this order: HTTP server → reconciliation worker → job queue → DB pool.
 
 ---

@@ -29,6 +29,7 @@ This directory holds the long-form documentation for the Creditra backend. The t
 |---|---|
 | [`data-model.md`](./data-model.md) | Per-table column reference. |
 | [`REPOSITORY_ARCHITECTURE.md`](./REPOSITORY_ARCHITECTURE.md) | Repository / DIP layout. |
+| [`transactions.md`](./transactions.md) | DB transaction boundaries for atomic credit mutations (draw / repay / create). |
 | [`schema-validation.md`](./schema-validation.md) | Boot-time schema validator. |
 | [`cursor-pagination.md`](./cursor-pagination.md) | Cursor pagination contract. |
 | [`error-envelope.md`](./error-envelope.md) | `{ data, error }` envelope reference. |

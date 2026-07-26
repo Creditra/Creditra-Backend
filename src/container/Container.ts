@@ -20,6 +20,11 @@ import { type CreditLineRepository } from "../repositories/interfaces/CreditLine
 import { type RiskEvaluationRepository } from "../repositories/interfaces/RiskEvaluationRepository.js";
 import { type TransactionRepository } from "../repositories/interfaces/TransactionRepository.js";
 import { getConnection, type DbClient } from "../db/client.js";
+import {
+  createDbTransactionRunner,
+  passthroughTransactionRunner,
+  type TransactionRunner,
+} from "../db/transaction.js";
 import { InMemoryCreditLineRepository } from "../repositories/memory/InMemoryCreditLineRepository.js";
 import { InMemoryRiskEvaluationRepository } from "../repositories/memory/InMemoryRiskEvaluationRepository.js";
 import { InMemoryTransactionRepository } from "../repositories/memory/InMemoryTransactionRepository.js";
@@ -58,6 +63,8 @@ export class Container {
   private _sorobanClient!: SorobanRpcClient;
   private _dataRetentionService?: DataRetentionService;
   private _dataRetentionWorker?: DataRetentionWorker;
+  private _dashboardSummaryService!: DashboardSummaryService;
+  private _runInTransaction: TransactionRunner = passthroughTransactionRunner;
 
   // In-process domain event bus (credit lifecycle).
   private readonly _eventBus = defaultEventBus;
@@ -75,7 +82,20 @@ export class Container {
   }
 
   private rebuildServices(): void {
-    this._creditLineService = new CreditLineService(this._creditLineRepository, this._eventBus);
+    // Prefer a real BEGIN/COMMIT boundary when Postgres is wired; otherwise
+    // passthrough so unit tests and in-memory mode keep working without a DB.
+    this._runInTransaction = this._dbClient
+      ? createDbTransactionRunner(this._dbClient)
+      : passthroughTransactionRunner;
+
+    this._creditLineService = new CreditLineService(
+      this._creditLineRepository,
+      this._eventBus,
+      {
+        transactionRepository: this._transactionRepository,
+        runInTransaction: this._runInTransaction,
+      },
+    );
     this._riskEvaluationService = new RiskEvaluationService(
       this._riskEvaluationRepository,
       createRiskProvider(),
@@ -168,6 +188,10 @@ export class Container {
     return this._dataRetentionWorker;
   }
 
+  get dashboardSummaryService(): DashboardSummaryService {
+    return this._dashboardSummaryService;
+  }
+
   // Method to replace repositories (useful for testing or switching to DB implementations)
   public setRepositories(repositories: {
     creditLineRepository?: CreditLineRepository;
@@ -188,6 +212,9 @@ export class Container {
 
     if (repositories.transactionRepository) {
       this._transactionRepository = repositories.transactionRepository;
+      // CreditLineService pairs ledger writes with draw/repay — rebuild so the
+      // service holds the latest TransactionRepository reference.
+      shouldRebuildServices = true;
     }
 
     if (shouldRebuildServices) {
