@@ -44,7 +44,18 @@ A separate, single-secret header in [`src/middleware/adminAuth.ts`](../src/middl
 
 Fail-closed: when `ADMIN_API_KEY` is unset, the endpoint returns `503` so operators discover the misconfiguration rather than silently accepting any request.
 
-### 2.3 Where session/JWT would live
+### 2.3 Inbound webhooks (`X-Signature` / `X-Timestamp` / `X-Nonce`)
+
+Partner ingress at `POST /api/inbound-webhooks/events` is authenticated with HMAC-SHA256 over `timestamp.nonce.raw_body`, not API keys. Middleware lives in [`src/middleware/inboundWebhookSignature.ts`](../src/middleware/inboundWebhookSignature.ts):
+
+- Constant-time comparison via `crypto.timingSafeEqual`.
+- Timestamp skew window (`INBOUND_WEBHOOK_TIMESTAMP_TOLERANCE_MS`, default 5 minutes).
+- Nonce claim after successful verification blocks replay within the window.
+- Fail-closed `503` when `INBOUND_WEBHOOK_SECRET` is unset.
+
+Full partner scheme: [`docs/webhooks.md`](./webhooks.md).
+
+### 2.4 Where session/JWT would live
 
 No JWT or cookie auth ships today. If introduced, recommended placement:
 

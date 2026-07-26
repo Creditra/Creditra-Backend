@@ -2,8 +2,9 @@
  * Outbound-webhook management routes mounted at `/api/webhooks`.
  *
  * These endpoints describe the **server's** outbound webhook fan-out (the
- * draw-confirmation push). The backend does not currently receive any
- * inbound webhooks.
+ * draw-confirmation push). Inbound partner webhooks live on a separate router
+ * (`/api/inbound-webhooks`) with HMAC + nonce replay protection — see
+ * `docs/webhooks.md`.
  *
  * Surface:
  * - GET  `/config`      — sanitized config (URLs + retry knobs; secret

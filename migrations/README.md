@@ -47,3 +47,4 @@ This runs the initial migration (or all pending migrations) and checks for the p
 | `001_initial_schema.sql` | Borrowers, credit lines, risk evaluations, transactions, events, indexes |
 | `002_add_interest_rate_to_credit_lines.sql` | Adds `interest_rate_bps` to `credit_lines` |
 | `003_data_retention.sql` | Adds `borrowers.anonymized_at` and the `data_retention_runs` audit table — see [docs/DATA_RETENTION.md](../docs/DATA_RETENTION.md) |
+| `006_inbound_webhook_nonces.sql` | Nonce TTL table for inbound webhook replay protection — see [docs/webhooks.md](../docs/webhooks.md) |

@@ -18,10 +18,6 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import { captureRawBody } from "./middleware/rawBody.js";
 import {
-  createJsonBodyLimitVerify,
-  createPathAwareBodyLimitMiddleware,
-} from "./middleware/bodyLimit.js";
-import {
   InMemoryRateLimitStore,
   RedisRateLimitStore,
   createAdminBypassChecker,
@@ -159,17 +155,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Per-endpoint body size limits (Content-Length fast-path) + JSON parser
-// capped at the absolute max. Path-specific limits (default 100kb, bulk 1mb)
-// are enforced before buffering and again in the verify hook for chunked bodies.
-// See docs/body-limits.md.
-app.use(createPathAwareBodyLimitMiddleware(bodyLimitConfig));
-app.use(
-  express.json({
-    limit: bodyLimitConfig.maxBytes,
-    verify: createJsonBodyLimitVerify(bodyLimitConfig),
-  }),
-);
+// 100 kb hard cap; body-parser emits a 413 that errorHandler converts to a
+// structured response. `verify` captures the raw bytes for inbound webhook
+// HMAC verification (see docs/webhooks.md).
+app.use(express.json({ limit: '100kb', verify: captureRawBody }));
 
 app.use(requestLogger);
 app.use(createIdempotencyMiddleware(idempotencyStore));

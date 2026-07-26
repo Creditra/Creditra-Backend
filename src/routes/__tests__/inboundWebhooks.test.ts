@@ -20,7 +20,12 @@ function signedHeaders(body: string, nonce = 'route-nonce') {
   return {
     'x-timestamp': timestamp,
     'x-nonce': nonce,
-    'x-signature': signInboundWebhookPayload(SECRET, timestamp, nonce, Buffer.from(body)),
+    'x-signature': signInboundWebhookPayload(
+      SECRET,
+      timestamp,
+      nonce,
+      Buffer.from(body),
+    ),
   };
 }
 
@@ -49,8 +54,49 @@ describe('inbound webhook routes', () => {
   it('rejects unsigned inbound events', async () => {
     const res = await request(buildApp())
       .post('/api/inbound-webhooks/events')
+      .set('content-type', 'application/json')
       .send({ event: 'partner.updated' });
 
     expect(res.status).toBe(401);
+    expect(res.body.error).toMatch(/Missing required webhook headers/i);
+  });
+
+  it('rejects replay of a previously accepted delivery', async () => {
+    const body = JSON.stringify({ event: 'partner.payment' });
+    const headers = signedHeaders(body, 'integration-replay-nonce');
+    const app = buildApp();
+
+    await request(app)
+      .post('/api/inbound-webhooks/events')
+      .set(headers)
+      .set('content-type', 'application/json')
+      .send(body)
+      .expect(202);
+
+    const replay = await request(app)
+      .post('/api/inbound-webhooks/events')
+      .set(headers)
+      .set('content-type', 'application/json')
+      .send(body);
+
+    expect(replay.status).toBe(401);
+    expect(replay.body.error).toBe('Replay detected');
+  });
+
+  it('rejects invalid signatures at the route boundary', async () => {
+    const body = JSON.stringify({ event: 'partner.updated' });
+    const headers = {
+      ...signedHeaders(body),
+      'x-signature': `sha256=${'ff'.repeat(32)}`,
+    };
+
+    const res = await request(buildApp())
+      .post('/api/inbound-webhooks/events')
+      .set(headers)
+      .set('content-type', 'application/json')
+      .send(body);
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('Invalid webhook signature');
   });
 });
