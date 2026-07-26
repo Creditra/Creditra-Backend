@@ -3,12 +3,9 @@ import cors from 'cors';
 import { creditRouter } from './routes/credit.js';
 import { riskRouter } from './routes/risk.js';
 import { apiKeysRouter } from './routes/apiKeys.js';
-import { maintenanceRouter } from './routes/maintenance.js';
-import { metricsRouter, recordRequest } from './routes/metrics.js';
-import { reconciliationRouter } from './routes/reconciliation.js';
-import { webhookRouter } from './routes/webhook.js';
-import { dashboardRouter } from './routes/dashboard.js';
+import { recordRequest, metricsRouter } from './routes/metrics.js';
 import { maintenanceModeGuard } from './middleware/maintenanceMode.js';
+import { maintenanceRouter } from './routes/maintenance.js';
 
 /**
  * Application factory used by integration tests and lightweight local boots.

@@ -225,12 +225,11 @@ export class Container {
     return this._dataRetentionWorker;
   }
 
-  /** Cached dashboard aggregate read model. */
   get dashboardSummaryService(): DashboardSummaryService {
     return this._dashboardSummaryService;
   }
 
-  // Method to replace repositories (useful for testing or switching to DB implementations)
+  // Method to replace repositories
   public setRepositories(repositories: {
     creditLineRepository?: CreditLineRepository;
     riskEvaluationRepository?: RiskEvaluationRepository;

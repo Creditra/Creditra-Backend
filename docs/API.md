@@ -335,82 +335,17 @@ Implemented in [`src/routes/reconciliation.ts`](../src/routes/reconciliation.ts)
 
 ---
 
-### Support tools (read-only)
-
-Implemented in [`src/routes/support.ts`](../src/routes/support.ts). Intended for
-incident response so operators avoid ad-hoc DB queries.
-
-**Security invariants:**
-
-- **Auth:** every path requires `X-Admin-Api-Key` (fail-closed `503` if `ADMIN_API_KEY` unset).
-- **Read-only:** only `GET` handlers; no credit-line mutations and no job scheduling.
-- **Redaction:** response wallets are truncated (`GDRXE2...NLRK`); secret keys / emails stripped via [`src/utils/supportRedact.ts`](../src/utils/supportRedact.ts).
-
-#### `GET /api/support/borrowers/:walletAddress`
-
-Composite borrower lookup: credit-line snapshots, recent transactions, reconciliation control-plane status.
-
-- **Auth:** `X-Admin-Api-Key`.
-- **Query:** `limit` (1–100, default 20) — recent transaction page size.
-- **Response 200:**
-  ```json
-  {
-    "data": {
-      "walletAddress": "GDRXE2...NLRK",
-      "creditLines": [/* SupportCreditLineSnapshot */],
-      "recentTransactions": [/* SupportTransactionSnapshot */],
-      "reconciliation": {
-        "workerRunning": true,
-        "queueSize": 0,
-        "failedJobs": 0,
-        "readOnly": true
-      },
-      "generatedAt": "2026-01-15T12:00:00.000Z",
-      "found": true
-    },
-    "error": null
-  }
-  ```
-- **`found: false`** when the wallet has no credit lines (still HTTP 200 — not a 404 — so support can distinguish “empty borrower” from a bad id on single-line routes).
-- **400** invalid Stellar address.
-
-#### `GET /api/support/credit-lines/:id`
-
-Single credit-line troubleshooting snapshot + recent txs + recon status.
-
-- **Auth:** `X-Admin-Api-Key`.
-- **Query:** `limit` (1–100, default 20).
-- **404** when the credit line does not exist.
-
-#### `GET /api/support/credit-lines/:id/transactions`
-
-Recent transactions only for a credit line.
-
-- **Auth:** `X-Admin-Api-Key`.
-- **Query:** `limit` (1–100, default 20).
-- **Response 200:** `{ data: { transactions: [...] }, error: null }`.
-- **404** unknown credit line.
-
-#### `GET /api/support/reconciliation/status`
-
-Observational reconciliation worker/queue status for support tooling.
-
-- **Auth:** `X-Admin-Api-Key`.
-- **Response 200:** `{ data: { workerRunning, queueSize, failedJobs, readOnly: true }, error: null }`.
-- Unlike `POST /api/reconciliation/trigger`, this never schedules jobs.
-
----
-
-## 5. Rate-limit headers (every response)
+## 5. Rate-limit headers (token bucket)
 
 ```
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 87
-X-RateLimit-Reset: 1718243400      # epoch seconds
-Retry-After: 12                    # only on 429
+X-RateLimit-Reset: 1718243400      # epoch seconds when the bucket is next full
+X-RateLimit-Bypass: admin          # only when X-Admin-Api-Key bypass applied
+Retry-After: 12                    # only on 429 — seconds until ≥1 token
 ```
 
-Defaults: `RATE_LIMIT_WINDOW_MS=60000`, `RATE_LIMIT_MAX_REQUESTS=100`, `RATE_LIMIT_MAX_EVALUATE=10` (the risk endpoint is more expensive).
+Defaults: `RATE_LIMIT_WINDOW_MS=60000`, `RATE_LIMIT_MAX_REQUESTS=100`, `RATE_LIMIT_MAX_EVALUATE=10` (the risk evaluate endpoint is more expensive). Tokens refill continuously over the window (token bucket). Present a valid `X-Admin-Api-Key` matching `ADMIN_API_KEY` to bypass charging (service/admin traffic).
 
 ---
 

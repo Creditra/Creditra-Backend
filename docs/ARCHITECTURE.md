@@ -128,7 +128,7 @@ sequenceDiagram
     ReqLog->>Auth: x-api-key timingSafeEqual
     Auth-->>Client: 401 missing / 403 invalid
     Auth->>Rate: ok
-    Rate->>Rate: window bucket; emit X-RateLimit-*
+    Rate->>Rate: token bucket; emit X-RateLimit-*
     Rate-->>Client: 429 + Retry-After
     Rate->>Validate: ok
     Validate->>Validate: Zod safeParse → 400 + field details
@@ -244,10 +244,11 @@ The container selects an implementation based on `DATABASE_URL && NODE_ENV !== '
 
 Implemented in [`src/middleware/rateLimit.ts`](../src/middleware/rateLimit.ts):
 
-- Token bucket per window: `windowMs` and `maxRequests` from `RATE_LIMIT_*` env vars.
-- Two key generators ship in the codebase: `createIpKeyGenerator()` and `createApiKeyKeyGenerator()` (falls back to IP when no API key present).
-- Emits standard headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`. On exhaustion emits `Retry-After` and `429`.
-- Store is in-process; for multi-replica deployments a Redis adapter is the natural drop-in.
+- True token bucket: capacity `maxRequests`, continuous refill over `windowMs` (`RATE_LIMIT_*` env vars). Per-route defaults for general routes vs `/api/risk/evaluate`.
+- Admin/service bypass via `createAdminBypassChecker()` (`X-Admin-Api-Key` + `ADMIN_API_KEY`) — sets `X-RateLimit-Bypass: admin` and does not charge tokens.
+- Two key generators: `createIpKeyGenerator()` (proxy-aware IP) and `createApiKeyKeyGenerator()` (falls back to IP when no API key present).
+- Emits `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`. On exhaustion emits `Retry-After` and `429`.
+- Pluggable store: in-process `Map` by default; optional Redis store (`RATE_LIMIT_REDIS_URL`) for multi-replica deployments.
 
 ### Idempotency
 
