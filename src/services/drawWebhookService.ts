@@ -270,7 +270,11 @@ export function getWebhookConfig(): WebhookConfig | null {
 export function initializeWebhooks(): void {
     try {
         activeConfig = resolveWebhookConfig();
-        log.info({ urls: activeConfig.urls.length, maxRetries: activeConfig.maxRetries, timeoutMs: activeConfig.timeoutMs }, "webhook:initialized");
+        log.info("webhook:initialized", {
+            urls: activeConfig.urls.length,
+            maxRetries: activeConfig.maxRetries,
+            timeoutMs: activeConfig.timeoutMs,
+        });
     } catch (error) {
         log.error({ error }, "webhook:initialize:failed");
         activeConfig = null;
@@ -411,8 +415,11 @@ export async function sendDrawConfirmationWebhook(
     
     const successCount = results.filter(r => r.success).length;
     const failureCount = results.length - successCount;
-    
-    log.info({ successful: successCount, failed: failureCount }, "webhook:delivery:complete");
+
+    log.info("webhook:delivery:complete", {
+        successful: successCount,
+        failed: failureCount,
+    });
 
     return results;
 }

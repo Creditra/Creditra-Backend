@@ -16,7 +16,8 @@ This document is the backend's threat model and the catalogue of in-tree mitigat
 | DB | Drift from on-chain truth | `ReconciliationWorker` runs every `RECONCILIATION_INTERVAL_MS` |
 | Borrower PII (wallet address) | Indefinite retention of identifying data | `DataRetentionWorker` anonymizes inactive borrowers' `wallet_address` and purges stale audit/risk data — see [`docs/DATA_RETENTION.md`](./DATA_RETENTION.md) |
 | Service availability | Brute force / abusive scrapers | Token-bucket rate limit with `Retry-After` |
-| Service availability | Large body payloads | Per-endpoint body caps (default 100 KiB, bulk 1 MiB), early Content-Length reject, 413 problem+json — see [`docs/body-limits.md`](./body-limits.md) |
+| Service availability | Large body payloads | 100 kB body cap, 413 mapped to envelope |
+| Compliance data | Overly broad bulk export / exfiltration | Admin-only `/api/admin/exports/*` with required date range (max 90d), row ceiling (5000), and `RATE_LIMIT_MAX_EXPORT` — see [`docs/COMPLIANCE_EXPORTS.md`](./COMPLIANCE_EXPORTS.md) |
 | Outbound calls | Slow / hung dependencies | `fetchWithTimeout` connect+read timeouts |
 
 ---
@@ -72,9 +73,7 @@ Two roles ship in code; everything else is read-public:
 | Role | Header | Gated endpoints |
 |---|---|---|
 | `api-key` (partner / integration) | `X-API-Key` | `POST /api/risk/admin/recalibrate`, `/api/reconciliation/*` |
-| `admin` (operator / support) | `X-Admin-Api-Key` | `POST /api/credit/lines/:id/suspend`, `.../close`, **`/api/support/*` (read-only)** |
-
-Support tools (`/api/support/*`) are intentionally **GET-only** and fail closed when `ADMIN_API_KEY` is unset. Responses redact wallet addresses and strip secret-like fields — see [`src/utils/supportRedact.ts`](../src/utils/supportRedact.ts).
+| `admin` (operator) | `X-Admin-Api-Key` | `POST /api/credit/lines/:id/suspend`, `.../close`, `/api/admin/exports/*`, `/api/admin/api-keys/*`, `/api/admin/maintenance` |
 
 Both middlewares register **after** rate-limit but **before** the handler so an unauthenticated client can still be throttled. New roles should follow the same pattern.
 
@@ -142,11 +141,12 @@ The API is header-auth only today (`X-API-Key` / `X-Admin-Api-Key`) and does **n
 ### Production deploy checklist (proxy)
 
 ```env
-# Behind one reverse-proxy hop (ALB / nginx):
-TRUST_PROXY=1
-# Optional HSTS tuning:
-# HSTS_MAX_AGE=31536000
-# HSTS_PRELOAD=true
+RATE_LIMIT_WINDOW_MS=60000       # window length
+RATE_LIMIT_MAX_REQUESTS=100      # generic per-route ceiling
+RATE_LIMIT_MAX_EVALUATE=10       # per-route override for /api/risk/evaluate
+RATE_LIMIT_MAX_EXPORT=5          # per-route override for /api/admin/exports/*
+RATE_LIMIT_REDIS_URL=redis://... # optional shared store for scaled replicas
+RATE_LIMIT_REDIS_FAILURE_MODE=open # open | closed, default open
 ```
 
 Without `TRUST_PROXY`, clients can forge `X-Forwarded-For` and bypass IP-based rate limits. With it set too aggressively (e.g. `true` when no proxy is present), clients can still spoof the header — match the hop count to your real topology.

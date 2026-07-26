@@ -398,6 +398,18 @@ Implemented in [`src/routes/reconciliation.ts`](../src/routes/reconciliation.ts)
 - **Auth:** `X-API-Key`.
 - **Response 200:** `{ data: { workerRunning, queueSize, failedJobs }, error: null }`.
 
+### 4.x Compliance exports (admin)
+
+See [`COMPLIANCE_EXPORTS.md`](./COMPLIANCE_EXPORTS.md) for full detail. Summary:
+
+| Method | Path | Auth |
+|--------|------|------|
+| `GET` | `/api/admin/exports/credit-lines` | `X-Admin-Api-Key` |
+| `GET` | `/api/admin/exports/transactions` | `X-Admin-Api-Key` |
+| `GET` | `/api/admin/exports/audit` | `X-Admin-Api-Key` |
+
+Required query: `from`, `to` (max 90-day span). Optional: `format=json|csv`, `limit` (max 5000), `offset`, plus resource filters. Responses stream JSON envelopes or CSV attachments.
+
 ---
 
 ## 5. Rate-limit headers (token bucket)
@@ -410,7 +422,7 @@ X-RateLimit-Bypass: admin          # only when X-Admin-Api-Key bypass applied
 Retry-After: 12                    # only on 429 — seconds until ≥1 token
 ```
 
-Defaults: `RATE_LIMIT_WINDOW_MS=60000`, `RATE_LIMIT_MAX_REQUESTS=100`, `RATE_LIMIT_MAX_EVALUATE=10` (the risk evaluate endpoint is more expensive). Tokens refill continuously over the window (token bucket). Present a valid `X-Admin-Api-Key` matching `ADMIN_API_KEY` to bypass charging (service/admin traffic).
+Defaults: `RATE_LIMIT_WINDOW_MS=60000`, `RATE_LIMIT_MAX_REQUESTS=100`, `RATE_LIMIT_MAX_EVALUATE=10` (the risk endpoint is more expensive), `RATE_LIMIT_MAX_EXPORT=5` (compliance exports).
 
 ---
 

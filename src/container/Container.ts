@@ -73,7 +73,6 @@ export class Container {
   private _dataRetentionService?: DataRetentionService;
   private _dataRetentionWorker?: DataRetentionWorker;
   private _dashboardSummaryService!: DashboardSummaryService;
-  private _runInTransaction: TransactionRunner = passthroughTransactionRunner;
 
   // In-process domain event bus (credit lifecycle).
   private readonly _eventBus = defaultEventBus;
@@ -269,7 +268,7 @@ export class Container {
     return this._dashboardSummaryService;
   }
 
-  // Method to replace repositories (useful for testing or switching to DB implementations)
+  // Method to replace repositories
   public setRepositories(repositories: {
     creditLineRepository?: CreditLineRepository;
     riskEvaluationRepository?: RiskEvaluationRepository;

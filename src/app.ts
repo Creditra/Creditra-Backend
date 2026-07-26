@@ -3,6 +3,8 @@ import cors from 'cors';
 import { creditRouter } from './routes/credit.js';
 import { riskRouter } from './routes/risk.js';
 import { apiKeysRouter } from './routes/apiKeys.js';
+import { dashboardRouter } from './routes/dashboard.js';
+import { exportsRouter } from './routes/exports.js';
 import { recordRequest, metricsRouter } from './routes/metrics.js';
 import { maintenanceModeGuard } from './middleware/maintenanceMode.js';
 import { maintenanceRouter } from './routes/maintenance.js';
@@ -38,10 +40,8 @@ export function createApp() {
   app.use('/api/credit', creditRouter);
   app.use('/api/risk', riskRouter);
   app.use('/api/dashboard', dashboardRouter);
-  app.use('/api/reconciliation', reconciliationRouter);
-  app.use('/api/webhooks', webhookRouter);
   app.use('/api/admin/api-keys', apiKeysRouter);
-  app.use('/api/admin/audit-logs', adminAuditRouter);
+  app.use('/api/admin/exports', exportsRouter);
 
   // Admin-only route to toggle maintenance mode.
   app.use('/api/admin/maintenance', maintenanceRouter);

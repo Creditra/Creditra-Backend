@@ -24,72 +24,26 @@ import {
     type DeliveryRecord,
 } from "../webhookDeliveryState.js";
 import type { HorizonEvent } from "../horizonListener.js";
-import {
-    setWebhookDeliveryStateStore,
-    type DeliveryRecord,
-    type WebhookDeliveryStateStore,
-} from "../webhookDeliveryState.js";
-
-function createTestDeliveryStore(): WebhookDeliveryStateStore {
-    const records = new Map<string, DeliveryRecord>();
-    const key = (drawId: string, url: string) => `${drawId}::${url}`;
-
-    return {
-        isDelivered(drawId: string, url: string): boolean {
-            return records.get(key(drawId, url))?.status === "delivered";
-        },
-        record(record: Omit<DeliveryRecord, "updatedAt">): void {
-            records.set(key(record.drawId, record.url), {
-                ...record,
-                updatedAt: new Date().toISOString(),
-            });
-        },
-        deadLetters(): DeliveryRecord[] {
-            return [...records.values()].filter((record) => record.status === "dead_letter");
-        },
-        counts() {
-            const values = [...records.values()];
-            return {
-                total: values.length,
-                delivered: values.filter((record) => record.status === "delivered").length,
-                failed: values.filter((record) => record.status === "failed").length,
-                deadLetter: values.filter((record) => record.status === "dead_letter").length,
-            };
-        },
-    };
-}
+import { setWebhookDeliveryStateStore } from "../webhookDeliveryState.js";
+import type { WebhookDeliveryStateStore } from "../webhookDeliveryState.js";
 
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-function freshDeliveryStore(): WebhookDeliveryStateStore {
-    const records = new Map<string, DeliveryRecord>();
+/** Fresh in-memory store so delivered (drawId, url) pairs do not leak across tests. */
+function createTestDeliveryStore(): WebhookDeliveryStateStore {
+    const records = new Map<string, { status: string }>();
     const key = (drawId: string, url: string) => `${drawId}::${url}`;
     return {
         isDelivered(drawId, url) {
             return records.get(key(drawId, url))?.status === "delivered";
         },
         record(record) {
-            records.set(key(record.drawId, record.url), {
-                ...record,
-                updatedAt: new Date().toISOString(),
-            });
+            records.set(key(record.drawId, record.url), { status: record.status });
         },
-        deadLetters() {
-            return [...records.values()].filter((r) => r.status === "dead_letter");
-        },
-        counts() {
-            let delivered = 0;
-            let failed = 0;
-            let deadLetter = 0;
-            for (const r of records.values()) {
-                if (r.status === "delivered") delivered++;
-                else if (r.status === "failed") failed++;
-                else if (r.status === "dead_letter") deadLetter++;
-            }
-            return { total: records.size, delivered, failed, deadLetter };
-        },
+        deadLetters: () => [],
+        counts: () => ({ total: 0, delivered: 0, failed: 0, deadLetter: 0 }),
     };
 }
 
@@ -527,10 +481,8 @@ describe("DrawWebhookService", () => {
             await sendDrawConfirmationWebhook(event);
             const firstCallSignature = mockFetch.mock.calls[0][1].headers["X-Webhook-Signature"];
 
-            // Second send uses a different drawId so delivery-state dedup does not
-            // short-circuit the POST; signatures are still derived from the same
-            // secret over the body (body includes drawId, so they differ — we only
-            // assert format consistency of the HMAC scheme here).
+            // Reset delivery store so the second send actually POSTs again.
+            setWebhookDeliveryStateStore(createTestDeliveryStore());
             mockFetch.mockClear();
             setWebhookDeliveryStateStore(freshDeliveryStore());
             await sendDrawConfirmationWebhook(event);

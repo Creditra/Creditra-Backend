@@ -12,7 +12,7 @@ import { healthRouter } from "./routes/health.js";
 import { webhookRouter } from "./routes/webhook.js";
 import { inboundWebhookRouter } from "./routes/inboundWebhooks.js";
 import { reconciliationRouter } from "./routes/reconciliation.js";
-import { supportRouter } from "./routes/support.js";
+import { exportsRouter } from "./routes/exports.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 import { requestLogger } from "./middleware/requestLogger.js";
@@ -117,13 +117,12 @@ const appRateLimitConfig =
     ? {
         default: { ...rateLimitConfig.default, maxRequests: Number.MAX_SAFE_INTEGER },
         evaluate: { ...rateLimitConfig.evaluate, maxRequests: Number.MAX_SAFE_INTEGER },
+        export: { ...rateLimitConfig.export, maxRequests: Number.MAX_SAFE_INTEGER },
       }
     : rateLimitConfig;
 const defaultRateLimitStore = createRateLimitStore("default");
 const evaluateRateLimitStore = createRateLimitStore("evaluate");
-// Admin/service traffic presenting a valid X-Admin-Api-Key is not charged
-// against per-route token buckets (see docs/SECURITY.md §5).
-const adminRateLimitBypass = createAdminBypassChecker();
+const exportRateLimitStore = createRateLimitStore("export");
 const defaultRateLimit = createRateLimitMiddleware({
   ...appRateLimitConfig.default,
   keyGenerator: createIpKeyGenerator(),
@@ -134,10 +133,10 @@ const evaluateRateLimit = createRateLimitMiddleware({
   keyGenerator: createIpKeyGenerator(),
   skip: adminRateLimitBypass,
 }, evaluateRateLimitStore);
-const idempotencyStore =
-  process.env.DATABASE_URL && process.env.NODE_ENV !== "test"
-    ? new PostgresIdempotencyStore(getConnection())
-    : new InMemoryIdempotencyStore();
+const exportRateLimit = createRateLimitMiddleware({
+  ...appRateLimitConfig.export,
+  keyGenerator: createIpKeyGenerator(),
+}, exportRateLimitStore);
 
 app.use(cors({
   origin(origin, callback) {
@@ -177,39 +176,14 @@ app.get("/docs.json", (_req, res) => {
   res.json(openapiSpec);
 });
 
-// ── API versioning ──────────────────────────────────────────────────────────
-// Canonical surface: /api/v1/*  (OpenAPI documents these paths).
-// Legacy surface:    /api/*     (same handlers + Deprecation/Sunset/Link).
-// See docs/api-versioning.md.
-const { legacySunset } = loadApiVersionPolicy();
-const v1VersionHeaders = createV1VersionMiddleware();
-const legacyDeprecationHeaders = createLegacyDeprecationMiddleware({
-  legacySunset,
-});
-
-/**
- * Mount domain routers on a shared parent (used for both /api/v1 and legacy /api).
- */
-function mountApiRouters(parent: express.Router): void {
-  parent.use("/credit", defaultRateLimit, creditRouter);
-  parent.use("/risk/evaluate", evaluateRateLimit);
-  parent.use("/risk/wallet", defaultRateLimit);
-  parent.use("/risk", riskRouter);
-  parent.use("/webhooks", webhookRouter);
-  parent.use("/reconciliation", reconciliationRouter);
-}
-
-const v1Router = express.Router();
-v1Router.use(v1VersionHeaders);
-mountApiRouters(v1Router);
-
-const legacyApiRouter = express.Router();
-legacyApiRouter.use(legacyDeprecationHeaders);
-mountApiRouters(legacyApiRouter);
-
-// Mount versioned routes first so /api/v1/* is not captured by /api/*.
-app.use("/api/v1", v1Router);
-app.use("/api", legacyApiRouter);
+app.use("/api/credit", defaultRateLimit, creditRouter);
+app.use("/api/risk/evaluate", evaluateRateLimit);
+app.use("/api/risk/wallet", defaultRateLimit);
+app.use("/api/risk", riskRouter);
+app.use("/api/webhooks", webhookRouter);
+app.use("/api/reconciliation", reconciliationRouter);
+// Admin compliance exports — strict rate limit + adminAuth inside the router.
+app.use("/api/admin/exports", exportRateLimit, exportsRouter);
 
 // Global error handler — must be registered after routes
 app.use(errorHandler);
@@ -284,6 +258,7 @@ if (isMain) {
       await Promise.all([
         closeRateLimitStore(defaultRateLimitStore),
         closeRateLimitStore(evaluateRateLimitStore),
+        closeRateLimitStore(exportRateLimitStore),
       ]);
 
       clearTimeout(forceExitTimeout);
