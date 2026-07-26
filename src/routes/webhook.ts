@@ -12,6 +12,7 @@
  * - POST `/test`        — sends a connectivity probe to every configured
  *   URL and returns a `{ reachable, unreachable, results[] }` summary.
  * - GET  `/health`      — `active` / `disabled` state, used by dashboards.
+ * - GET  `/deliveries`  — cursor-paginated delivery records (incl. dead letters).
  *
  * Outbound payload contract (subscriber side) is documented in
  * `docs/API.md` §Webhooks: HMAC-SHA256 over the raw body, signed with
@@ -26,8 +27,11 @@ import {
 } from '../services/drawWebhookService.js';
 import { getWebhookDeliveryStateStore } from '../services/webhookDeliveryState.js';
 import { redactLogArgs } from '../utils/logRedact.js';
-import { ConflictError, isConflictError, sendConflict } from '../errors/index.js';
-import { ok, fail } from '../utils/response.js';
+import {
+  paginateArray,
+  parseCursorQuery,
+  toPaginationMeta,
+} from '../utils/cursorPagination.js';
 
 export const webhookRouter = Router();
 const container = Container.getInstance();
@@ -114,25 +118,60 @@ webhookRouter.get('/health', (_req: Request, res: Response) => {
 });
 
 /**
- * Register a runtime webhook subscription.
- * Duplicate URLs return 409 problem+json (`duplicate_resource`).
+ * Cursor-paginated delivery records (standard pagination model).
+ *
+ * Query:
+ * - `cursor` — opaque cursor from a previous page (omit / empty for first page)
+ * - `limit`  — page size (1–100, default 25)
+ * - `status` — optional filter: `delivered` | `failed` | `dead_letter`
+ *
+ * Sort: `updatedAt DESC`, composite id (`drawId::url`) ASC as tie-break.
  */
-webhookRouter.post('/subscriptions', (req: Request, res: Response) => {
+webhookRouter.get('/deliveries', (req: Request, res: Response) => {
     try {
-        const url = typeof req.body?.url === 'string' ? req.body.url : '';
-        const subscription = registerWebhookSubscription(url);
-        return ok(res, subscription, 201);
-    } catch (error) {
-        if (error instanceof ConflictError || isConflictError(error)) {
-            return sendConflict(res, error as ConflictError);
-        }
-        return fail(res, error instanceof Error ? error.message : 'Invalid subscription', 400);
-    }
-});
+        const { cursor, limit } = parseCursorQuery(req.query as Record<string, unknown>);
+        const statusFilter =
+            typeof req.query.status === 'string' && req.query.status.length > 0
+                ? req.query.status
+                : undefined;
 
-/**
- * List runtime webhook subscriptions (env-configured URLs are on GET /config).
- */
-webhookRouter.get('/subscriptions', (_req: Request, res: Response) => {
-    return ok(res, { subscriptions: listRuntimeWebhookSubscriptions() });
+        if (
+            statusFilter !== undefined &&
+            statusFilter !== 'delivered' &&
+            statusFilter !== 'failed' &&
+            statusFilter !== 'dead_letter'
+        ) {
+            return res.status(400).json({
+                data: null,
+                error: "Invalid 'status'. Must be one of: delivered, failed, dead_letter.",
+            });
+        }
+
+        const store = getWebhookDeliveryStateStore();
+        let records = store.list();
+        if (statusFilter) {
+            records = records.filter((r) => r.status === statusFilter);
+        }
+
+        const page = paginateArray(records, {
+            cursor,
+            limit,
+            order: 'desc',
+            getKey: (r) => ({
+                t: Date.parse(r.updatedAt),
+                i: `${r.drawId}::${r.url}`,
+            }),
+        });
+
+        return res.status(200).json({
+            data: {
+                items: page.items,
+                pagination: toPaginationMeta(page),
+            },
+            error: null,
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Bad request';
+        return res.status(400).json({ data: null, error: message });
+    }
 });

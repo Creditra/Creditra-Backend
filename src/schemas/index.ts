@@ -26,43 +26,10 @@ export type {
 } from './credit.schema.js';
 
 export {
-  issueApiKeySchema,
-  maintenanceToggleSchema,
-  bulkCreditLinesSchema,
-  bulkCreditLinesQuerySchema,
-} from './admin.schema.js';
+  cursorPaginationQuerySchema,
+  offsetPaginationQuerySchema,
+} from './pagination.schema.js';
 export type {
-  IssueApiKeyBody,
-  MaintenanceToggleBody,
-  BulkCreditLinesBody,
-  BulkCreditLinesQuery,
-} from './admin.schema.js';
-
-export {
-  apiEnvelopeSchema,
-  errorEnvelopeSchema,
-  creditLineSchema,
-  creditLinesListDataSchema,
-  creditLinesCursorDataSchema,
-  walletCreditLinesDataSchema,
-  drawRepayResultSchema,
-  transactionSchema,
-  transactionHistoryDataSchema,
-  riskEvaluationResultSchema,
-  riskEvaluationSchema,
-  riskHistoryDataSchema,
-  healthDataSchema,
-  reconciliationTriggerDataSchema,
-  reconciliationStatusDataSchema,
-  envelopedCreditLineSchema,
-  envelopedCreditLinesListSchema,
-  envelopedWalletCreditLinesSchema,
-  envelopedRiskResultSchema,
-  envelopedRiskEvaluationSchema,
-  envelopedRiskHistorySchema,
-  envelopedHealthSchema,
-  envelopedDrawRepaySchema,
-  envelopedTransactionHistorySchema,
-  envelopedReconciliationTriggerSchema,
-  envelopedReconciliationStatusSchema,
-} from './response.schema.js';
+  CursorPaginationQuery,
+  OffsetPaginationQuery,
+} from './pagination.schema.js';

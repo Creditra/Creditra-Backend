@@ -1,214 +1,118 @@
-# Cursor Pagination for Credit Lines
+# Cursor Pagination Standard
 
-## Overview
+Creditra list endpoints share a single **cursor-based** pagination model.
+Clients should prefer cursor mode for production traffic: it is stable under
+concurrent inserts, does not require total counts, and uses **opaque** cursors
+so internal sort keys are not part of the public contract.
 
-This document describes the cursor-based pagination implementation for the credit lines API endpoint. Cursor pagination provides stable, efficient pagination for large datasets and is the recommended approach for production use.
+Offset/`page` pagination remains available on some endpoints for backward
+compatibility; new clients should use cursors.
 
-## Features
+## Query parameters
 
-- **Backward Compatible**: The API supports both offset-based (legacy) and cursor-based pagination
-- **Stable Results**: Cursor pagination ensures consistent results even when data changes between requests
-- **Efficient**: No need to count total items or skip records
-- **Simple**: Easy to implement in client applications
+| Param | Type | Default | Bounds | Notes |
+|---|---|---|---|---|
+| `cursor` | string | — | opaque | Presence (even empty: `?cursor`) enables cursor mode |
+| `limit` | int | endpoint default | 1–100 | Shared via `DEFAULT_PAGE_SIZE` / `MAX_PAGE_SIZE` |
 
-## API Usage
+## Response shape
 
-### Endpoint
-
-```
-GET /api/credit/lines
-```
-
-### Pagination Modes
-
-#### 1. Cursor-Based Pagination (Recommended)
-
-Use the `cursor` parameter to enable cursor-based pagination:
-
-```bash
-# First page
-GET /api/credit/lines?cursor&limit=10
-
-# Next page (use nextCursor from previous response)
-GET /api/credit/lines?cursor=<nextCursor>&limit=10
-```
-
-**Response Format:**
 ```json
 {
-  "creditLines": [...],
+  "items": [ /* resource-specific */ ],
   "pagination": {
-    "limit": 10,
-    "nextCursor": "base64EncodedCursor",
+    "limit": 25,
+    "nextCursor": "eyJ2IjoxLCJ0IjoxNzAwMDAwMDAwMDAwLCJpIjoiLi4uIn0",
     "hasMore": true
   }
 }
 ```
 
-**Fields:**
-- `limit`: Number of items per page
-- `nextCursor`: Cursor for the next page (null if no more pages)
-- `hasMore`: Boolean indicating if more results are available
+Field names for the item array vary by resource (`creditLines`, `transactions`,
+`items`, …) but **`pagination` is always** `{ limit, nextCursor, hasMore }`.
 
-#### 2. Offset-Based Pagination (Legacy)
+- `nextCursor` is `null` when `hasMore` is `false`.
+- Clients must treat cursors as **opaque**: pass them back unchanged; do not
+  decode or construct them client-side.
 
-Use `offset` and `limit` parameters for traditional pagination:
+## Ordering (deterministic)
 
-```bash
-GET /api/credit/lines?offset=0&limit=10
-```
+Every cursor page is ordered by a composite key:
 
-**Response Format:**
+1. Primary timestamp (`createdAt` / `timestamp` / `updatedAt` / `at`)
+2. Stable string id tie-break
+
+| Endpoint | Order | Sort key |
+|---|---|---|
+| `GET /api/credit/lines?cursor` | ASC | `createdAt`, `id` |
+| `GET /api/credit/lines/:id/transactions?cursor` | DESC | `timestamp`, `id` |
+| `GET /api/admin/api-keys?cursor` | ASC | `createdAt`, `id` |
+| `GET /api/admin/api-keys/audit?cursor` | DESC | `at`, composite id |
+| `GET /api/webhooks/deliveries` | DESC | `updatedAt`, `drawId::url` |
+
+## Cursor format (server-internal)
+
+Cursors are **base64url**-encoded JSON:
+
 ```json
-{
-  "creditLines": [...],
-  "pagination": {
-    "total": 100,
-    "offset": 0,
-    "limit": 10
-  }
-}
+{ "v": 1, "t": 1700000000000, "i": "<tie-break-id>" }
 ```
 
-## Query Parameters
+- `v` — format version (`1`)
+- `t` — epoch milliseconds of the sort timestamp
+- `i` — unique tie-breaker string
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `cursor` | string | No | - | Cursor for pagination. When present, enables cursor mode |
-| `offset` | integer | No | 0 | Offset for legacy pagination (ignored if cursor is present) |
-| `limit` | integer | No | 100 | Number of items per page (1-100) |
+Legacy credit-line cursors of the form `base64(timestamp|id)` are still
+accepted during decode so in-flight clients are not broken mid-rollout.
+New responses always mint the versioned opaque form.
 
-## Implementation Details
+Malformed cursors are handled **leniently** on list endpoints that predate the
+standard (credit lines restart from the first page). Prefer not relying on that
+behavior; mint cursors only from `nextCursor`.
 
-### Cursor Format
+## Shared implementation
 
-Cursors are base64-encoded strings containing:
-- Timestamp of the last item (createdAt)
-- ID of the last item
+| Module | Role |
+|---|---|
+| [`src/utils/cursorPagination.ts`](../src/utils/cursorPagination.ts) | encode/decode, clamp limit, in-memory page builder, SQL seek helper |
+| [`src/schemas/pagination.schema.ts`](../src/schemas/pagination.schema.ts) | Zod query schemas |
+| [`src/utils/constants.ts`](../src/utils/constants.ts) | `DEFAULT_PAGE_SIZE`, `MAX_PAGE_SIZE`, `MIN_PAGE_SIZE` |
 
-This ensures stable ordering even when items are added or removed.
+Repositories should either call `paginateArray` (in-memory) or over-fetch
+`limit + 1` rows with a seek predicate and `buildPageFromOverfetch`.
 
-### Ordering
-
-Results are ordered by:
-1. `createdAt` timestamp (ascending)
-2. `id` (ascending, for items with same timestamp)
-
-This provides a stable, deterministic ordering for pagination.
-
-### Error Handling
-
-The API returns 400 Bad Request for invalid parameters:
-- `limit` must be between 1 and 100
-- Invalid cursors are handled gracefully by starting from the beginning
-
-## Client Implementation Examples
-
-### JavaScript/TypeScript
+## Client example
 
 ```typescript
-async function fetchAllCreditLines() {
-  const allItems = [];
-  let cursor = undefined;
-  
-  do {
-    const url = cursor 
-      ? `/api/credit/lines?cursor=${cursor}&limit=50`
-      : '/api/credit/lines?cursor&limit=50';
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    allItems.push(...data.creditLines);
-    cursor = data.pagination.nextCursor;
-  } while (cursor);
-  
-  return allItems;
+async function fetchAllCreditLines(baseUrl: string) {
+  const all = [];
+  let cursor: string | undefined;
+  let hasMore = true;
+
+  while (hasMore) {
+    const qs = new URLSearchParams({ limit: '50' });
+    // Empty cursor engages cursor mode on the first page.
+    qs.set('cursor', cursor ?? '');
+    const res = await fetch(`${baseUrl}/api/credit/lines?${qs}`);
+    const body = await res.json();
+    all.push(...body.creditLines);
+    cursor = body.pagination.nextCursor ?? undefined;
+    hasMore = body.pagination.hasMore;
+  }
+  return all;
 }
 ```
 
-### Python
+## Error handling
 
-```python
-def fetch_all_credit_lines():
-    all_items = []
-    cursor = None
-    
-    while True:
-        url = f"/api/credit/lines?cursor={cursor}&limit=50" if cursor else "/api/credit/lines?cursor&limit=50"
-        response = requests.get(url)
-        data = response.json()
-        
-        all_items.extend(data['creditLines'])
-        cursor = data['pagination']['nextCursor']
-        
-        if not cursor:
-            break
-    
-    return all_items
-```
+| Condition | HTTP | Message pattern |
+|---|---|---|
+| `limit` &lt; 1 | 400 | `Limit must be greater than 0` |
+| `limit` &gt; 100 | 400 | `Limit cannot exceed 100` |
+| Invalid filter (e.g. webhook `status`) | 400 | endpoint-specific |
 
-## Testing
+## Migration
 
-Comprehensive tests are included for:
-- First page retrieval
-- Next page using cursor
-- Last page detection (nextCursor = null)
-- Cursor exhaustion
-- Invalid cursor handling
-- Stable ordering across pages
-- Empty result sets
-- Limit validation
-
-Run tests with:
-```bash
-npm test
-```
-
-## Migration Guide
-
-### For Existing Clients
-
-No changes required! The API remains backward compatible with offset-based pagination.
-
-### For New Implementations
-
-Use cursor-based pagination for better performance and stability:
-
-**Before (offset-based):**
-```javascript
-const response = await fetch('/api/credit/lines?offset=20&limit=10');
-```
-
-**After (cursor-based):**
-```javascript
-// First page
-const firstPage = await fetch('/api/credit/lines?cursor&limit=10');
-
-// Next page
-const nextPage = await fetch(
-  `/api/credit/lines?cursor=${firstPage.pagination.nextCursor}&limit=10`
-);
-```
-
-## Performance Considerations
-
-- **Cursor pagination**: O(n) where n is the position of the cursor
-- **Offset pagination**: O(n) where n is the offset value
-- For large offsets, cursor pagination is more efficient as it doesn't require counting/skipping records
-- Cursor pagination provides consistent results even when data changes between requests
-
-## Security Notes
-
-- Cursors are opaque tokens and should not be parsed or modified by clients
-- Invalid cursors are handled gracefully without exposing internal data structures
-- No PII or sensitive data is included in cursors
-- Rate limiting should be applied at the API gateway level
-
-## Future Enhancements
-
-Potential improvements for future versions:
-- Bidirectional pagination (previous page support)
-- Custom ordering fields
-- Filtering support with cursor pagination
-- Cursor expiration/validation
+- Existing offset / page clients keep working when they omit `cursor`.
+- To migrate: request `?cursor&limit=N`, then follow `pagination.nextCursor`
+  until `hasMore` is false.

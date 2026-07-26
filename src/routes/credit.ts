@@ -66,6 +66,11 @@ import {
   sendProblem,
 } from '../errors/index.js';
 import {
+  parseCursorQuery,
+  toPaginationMeta,
+  InvalidCursorError,
+} from '../utils/cursorPagination.js';
+import {
   CreditLineNotFoundError,
   InvalidTransitionError,
   VersionConflictError,
@@ -74,6 +79,7 @@ import {
   closeCreditLine,
   getCreditLine,
   getTransactions,
+  getTransactionsWithCursor,
   submitDrawRequest,
   submitRepayRequest,
 } from '../services/creditService.js';
@@ -125,99 +131,21 @@ function handleServiceError(err: unknown, res: Response): void {
   sendProblem(res, internalError());
 }
 
-creditRouter.get(
-  '/lines',
-  validateQuery(creditLinesQuerySchema),
-  // Response schema depends on pagination mode; cursor mode is unenveloped.
-  async (req, res) => {
-    const query = req.query as unknown as CreditLinesQuery;
-    const limit = query.limit ?? 100;
+creditRouter.get('/lines', async (req, res) => {
+  try {
+    if ('cursor' in req.query) {
+      const { cursor, limit } = parseCursorQuery(req.query as Record<string, unknown>, {
+        defaultLimit: 100,
+      });
+      const result = await container.creditLineService.getAllCreditLinesWithCursor(cursor, limit);
 
-    try {
-      // Presence of `cursor` (including empty string) selects cursor pagination.
-      if (query.cursor !== undefined) {
-        const cursor =
-          typeof query.cursor === 'string' && query.cursor.length > 0
-            ? query.cursor
-            : undefined;
-        const result = await container.creditLineService.getAllCreditLinesWithCursor(
-          cursor,
+      return res.json({
+        creditLines: result.items,
+        pagination: toPaginationMeta({
           limit,
-        );
-
-        const body = {
-          creditLines: result.items,
-          pagination: {
-            limit,
-            nextCursor: result.nextCursor,
-            hasMore: result.hasMore,
-          },
-        };
-
-        // Optional response contract check (cursor mode is not enveloped).
-        if (process.env.ENABLE_RESPONSE_VALIDATION === 'true') {
-          const parsed = creditLinesCursorDataSchema.safeParse(body);
-          if (!parsed.success) {
-            return res.status(500).json({ data: null, error: 'Response contract violation' });
-          }
-        }
-
-        return res.json(body);
-      }
-
-      const offset = query.offset ?? 0;
-      const creditLines = await container.creditLineService.getAllCreditLines(offset, limit);
-      const total = await container.creditLineService.getCreditLineCount();
-
-      // Envelope success path — validate when enabled via middleware-equivalent check.
-      const payload = {
-        creditLines,
-        pagination: { total, offset, limit },
-      };
-
-      if (process.env.ENABLE_RESPONSE_VALIDATION === 'true') {
-        const parsed = envelopedCreditLinesListSchema.safeParse({ data: payload, error: null });
-        if (!parsed.success) {
-          return res.status(500).json({ data: null, error: 'Response contract violation' });
-        }
-      }
-
-      return ok(res, payload);
-    } catch (error) {
-      return fail(res, error instanceof Error ? error : undefined, 400);
-    }
-  },
-);
-
-creditRouter.get(
-  '/lines/:id',
-  validateParams(idParamSchema),
-  validateResponse(envelopedCreditLineSchema),
-  async (req, res) => {
-    try {
-      const line = await container.creditLineService.getCreditLine(req.params.id);
-      if (!line) {
-        return fail(res, 'Credit line not found', 404);
-      }
-      return ok(res, line);
-    } catch {
-      return fail(res, 'Internal server error');
-    }
-  },
-);
-
-creditRouter.post(
-  '/lines',
-  validateBody(createCreditLineSchema),
-  validateResponse(envelopedCreditLineSchema),
-  async (req, res) => {
-    try {
-      const { walletAddress, creditLimit, requestedLimit, interestRateBps } = req.body ?? {};
-      const finalLimit = creditLimit ?? requestedLimit;
-      const creditLine = await container.creditLineService.createCreditLine({
-        walletAddress,
-        creditLimit: finalLimit,
-        interestRateBps: interestRateBps ?? 0,
+          nextCursor: result.nextCursor,
+          hasMore: result.hasMore,
+        }),
       });
       // Keep the dashboard read model correct on mutation (not just TTL-fresh).
       container.dashboardSummaryService.invalidate();
@@ -228,31 +156,25 @@ creditRouter.post(
   },
 );
 
-creditRouter.put(
-  '/lines/:id',
-  validateParams(idParamSchema),
-  validateBody(updateCreditLineSchema),
-  validateResponse(envelopedCreditLineSchema),
-  async (req, res) => {
-    try {
-      const body = req.body as UpdateCreditLineBody;
-      const creditLine = await container.creditLineService.updateCreditLine(req.params.id, {
-        creditLimit: body.creditLimit,
-        interestRateBps: body.interestRateBps,
-        status: body.status as never,
-        expectedVersion: body.expectedVersion,
-      });
-      if (!creditLine) {
-        return fail(res, 'Credit line not found', 404);
-      }
-      container.dashboardSummaryService.invalidate();
-      return ok(res, creditLine);
-    } catch (error) {
-      // Optimistic-locking conflicts surface as 409; other validation as 400.
-      if (error instanceof VersionConflictError) {
-        return handleServiceError(error, res);
-      }
-      return fail(res, error instanceof Error ? error : undefined, 400);
+    const limit = parseIntegerQuery(req.query.limit, 100);
+    const offset = parseIntegerQuery(req.query.offset, 0);
+    const creditLines = await container.creditLineService.getAllCreditLines(offset, limit);
+    const total = await container.creditLineService.getCreditLineCount();
+
+    return ok(res, {
+      creditLines,
+      pagination: { total, offset, limit },
+    });
+  } catch (error) {
+    return fail(res, error instanceof Error ? error : undefined, 400);
+  }
+});
+
+creditRouter.get('/lines/:id', async (req, res) => {
+  try {
+    const line = await container.creditLineService.getCreditLine(req.params.id);
+    if (!line) {
+      return fail(res, 'Credit line not found', 404);
     }
   },
 );
@@ -297,22 +219,60 @@ creditRouter.get(
   validateResponse(envelopedTransactionHistorySchema),
   async (req: Request, res: Response): Promise<void> => {
     const id = req.params.id;
-    const { type, from, to, page, limit } = req.query as unknown as TransactionHistoryQuery;
+    const { type, from, to, page: pageParam, limit: limitParam } = req.query;
+
+    if (type !== undefined && !VALID_TRANSACTION_TYPES.includes(type as TransactionType)) {
+      fail(res, `Invalid type filter. Must be one of: ${VALID_TRANSACTION_TYPES.join(', ')}.`, 400);
+      return;
+    }
+    if (from !== undefined && isNaN(new Date(from as string).getTime())) {
+      fail(res, "Invalid 'from' date. Must be a valid ISO 8601 date.", 400);
+      return;
+    }
+    if (to !== undefined && isNaN(new Date(to as string).getTime())) {
+      fail(res, "Invalid 'to' date. Must be a valid ISO 8601 date.", 400);
+      return;
+    }
+
+    const filters = {
+      type: type as TransactionType | undefined,
+      from: from as string | undefined,
+      to: to as string | undefined,
+    };
 
     try {
-      const result = getTransactions(
-        id,
-        {
-          type: type as TransactionType | undefined,
-          from: from as string | undefined,
-          to: to as string | undefined,
-        },
-        { page: page ?? 1, limit: limit ?? 20 },
-      );
-      // ETag covers the filtered/paginated slice; new txs or filter changes
-      // produce a different hash so clients cannot reuse a stale 304.
-      okWithEtag(req, res, result);
+      // Cursor mode (standard) when `cursor` is present; page/limit remains for legacy clients.
+      if ('cursor' in req.query) {
+        const { cursor, limit } = parseCursorQuery(req.query as Record<string, unknown>, {
+          defaultLimit: 20,
+        });
+        const result = getTransactionsWithCursor(id, filters, { cursor, limit });
+        ok(res, {
+          transactions: result.items,
+          pagination: toPaginationMeta(result),
+        });
+        return;
+      }
+
+      const page = pageParam !== undefined ? parseInt(pageParam as string, 10) : 1;
+      const limit = limitParam !== undefined ? parseInt(limitParam as string, 10) : 20;
+
+      if (isNaN(page) || page < 1) {
+        fail(res, "Invalid 'page'. Must be a positive integer.", 400);
+        return;
+      }
+      if (isNaN(limit) || limit < 1 || limit > 100) {
+        fail(res, "Invalid 'limit'. Must be between 1 and 100.", 400);
+        return;
+      }
+
+      const result = getTransactions(id, filters, { page, limit });
+      ok(res, result);
     } catch (err) {
+      if (err instanceof InvalidCursorError) {
+        fail(res, err.message, 400);
+        return;
+      }
       handleServiceError(err, res);
     }
   },

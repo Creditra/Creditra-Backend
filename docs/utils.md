@@ -13,7 +13,7 @@ the route, service, and repository layers. Anything placed here MUST:
 | Module             | Purpose                                                   |
 | ------------------ | --------------------------------------------------------- |
 | `constants.ts`     | Pagination and body-size defaults shared by API endpoints |
-| `etag.ts`          | ETag generation + `okWithEtag` conditional GET helpers    |
+| `cursorPagination.ts` | Opaque cursor encode/decode, page builder, limit clamp |
 | `fetchWithTimeout` | HTTP client with structured timeout and request errors    |
 | `httpStatus.ts`    | Named HTTP status code constants (incl. `304`)            |
 | `logger.ts`        | Process-wide pino logger configuration                    |

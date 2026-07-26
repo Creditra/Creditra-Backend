@@ -1,10 +1,7 @@
 import type { CreditLine, CreateCreditLineRequest, UpdateCreditLineRequest } from '../../models/CreditLine.js';
+import type { CursorPaginationResult } from '../../utils/cursorPagination.js';
 
-export interface CursorPaginationResult {
-  items: CreditLine[];
-  nextCursor: string | null;
-  hasMore: boolean;
-}
+export type { CursorPaginationResult };
 
 export interface CreditLineRepository {
   /**
@@ -28,9 +25,9 @@ export interface CreditLineRepository {
   findAll(offset?: number, limit?: number): Promise<CreditLine[]>;
 
   /**
-   * Get all credit lines with cursor-based pagination
+   * Get all credit lines with cursor-based pagination (shared opaque cursor model).
    */
-  findAllWithCursor(cursor?: string, limit?: number): Promise<CursorPaginationResult>;
+  findAllWithCursor(cursor?: string, limit?: number): Promise<CursorPaginationResult<CreditLine>>;
 
   /**
    * Update credit line
