@@ -18,6 +18,7 @@ import { Container } from '../Container.js';
 import { validateEnv } from '../../config/env.js';
 import { CreditLineService } from '../../services/CreditLineService.js';
 import { RiskEvaluationService } from '../../services/RiskEvaluationService.js';
+import { AnomalyDetectionService } from '../../services/anomalyDetectionService.js';
 import { ReconciliationService } from '../../services/reconciliationService.js';
 import { ReconciliationWorker } from '../../services/reconciliationWorker.js';
 
@@ -31,6 +32,7 @@ const SERVICE_RESOLVERS: ReadonlyArray<{
 }> = [
   { name: 'creditLineService', ctor: CreditLineService },
   { name: 'riskEvaluationService', ctor: RiskEvaluationService },
+  { name: 'anomalyDetectionService', ctor: AnomalyDetectionService },
   { name: 'reconciliationService', ctor: ReconciliationService },
   { name: 'reconciliationWorker', ctor: ReconciliationWorker },
 ];
@@ -39,6 +41,7 @@ const REPOSITORY_RESOLVERS: ReadonlyArray<keyof Container> = [
   'creditLineRepository',
   'riskEvaluationRepository',
   'transactionRepository',
+  'riskSignalRepository',
 ];
 
 describe('Container DI contract', () => {

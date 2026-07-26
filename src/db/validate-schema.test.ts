@@ -26,8 +26,7 @@ describe('missingTables', () => {
         { table_name: 'risk_evaluations' },
         { table_name: 'transactions' },
         { table_name: 'events' },
-        { table_name: 'outbound_webhook_subscriptions' },
-        { table_name: 'outbound_webhook_deliveries' },
+        { table_name: 'risk_signals' },
       ],
     });
     const missing = await missingTables(client);
@@ -190,8 +189,7 @@ describe('validateSchema', () => {
             { table_name: 'risk_evaluations' },
             { table_name: 'transactions' },
             { table_name: 'events' },
-            { table_name: 'outbound_webhook_subscriptions' },
-            { table_name: 'outbound_webhook_deliveries' },
+            { table_name: 'risk_signals' },
           ],
         };
       }
@@ -221,6 +219,13 @@ describe('validateSchema', () => {
             { column_name: 'event_id' },
             { column_name: 'attempts' },
             { column_name: 'created_at' },
+            { column_name: 'signal_type' },
+            { column_name: 'rule_id' },
+            { column_name: 'severity' },
+            { column_name: 'correlation_id' },
+            { column_name: 'thresholds' },
+            { column_name: 'evidence' },
+            { column_name: 'status' },
           ],
         };
       }
@@ -234,8 +239,8 @@ describe('validateSchema', () => {
             { indexname: 'risk_evaluations_borrower_id_idx' },
             { indexname: 'transactions_credit_line_id_idx' },
             { indexname: 'events_idempotency_key_key' },
-            { indexname: 'outbound_webhook_subscriptions_url_key' },
-            { indexname: 'outbound_webhook_deliveries_status_idx' },
+            { indexname: 'risk_signals_wallet_address_idx' },
+            { indexname: 'risk_signals_created_at_idx' },
           ],
         };
       }
@@ -276,8 +281,7 @@ describe('validateSchema', () => {
             { table_name: 'risk_evaluations' },
             { table_name: 'transactions' },
             { table_name: 'events' },
-            { table_name: 'outbound_webhook_subscriptions' },
-            { table_name: 'outbound_webhook_deliveries' },
+            { table_name: 'risk_signals' },
           ],
         };
       }
@@ -294,8 +298,8 @@ describe('validateSchema', () => {
             { indexname: 'risk_evaluations_borrower_id_idx' },
             { indexname: 'transactions_credit_line_id_idx' },
             { indexname: 'events_idempotency_key_key' },
-            { indexname: 'outbound_webhook_subscriptions_url_key' },
-            { indexname: 'outbound_webhook_deliveries_status_idx' },
+            { indexname: 'risk_signals_wallet_address_idx' },
+            { indexname: 'risk_signals_created_at_idx' },
           ],
         };
       }
@@ -326,8 +330,7 @@ describe('validateSchema', () => {
             { table_name: 'risk_evaluations' },
             { table_name: 'transactions' },
             { table_name: 'events' },
-            { table_name: 'outbound_webhook_subscriptions' },
-            { table_name: 'outbound_webhook_deliveries' },
+            { table_name: 'risk_signals' },
           ],
         };
       }
@@ -356,6 +359,13 @@ describe('validateSchema', () => {
             { column_name: 'event_id' },
             { column_name: 'attempts' },
             { column_name: 'created_at' },
+            { column_name: 'signal_type' },
+            { column_name: 'rule_id' },
+            { column_name: 'severity' },
+            { column_name: 'correlation_id' },
+            { column_name: 'thresholds' },
+            { column_name: 'evidence' },
+            { column_name: 'status' },
           ],
         };
       }
@@ -390,8 +400,7 @@ describe('validateSchema', () => {
             { table_name: 'risk_evaluations' },
             { table_name: 'transactions' },
             { table_name: 'events' },
-            { table_name: 'outbound_webhook_subscriptions' },
-            { table_name: 'outbound_webhook_deliveries' },
+            { table_name: 'risk_signals' },
           ],
         };
       }
@@ -404,8 +413,8 @@ describe('validateSchema', () => {
             { indexname: 'risk_evaluations_borrower_id_idx' },
             { indexname: 'transactions_credit_line_id_idx' },
             { indexname: 'events_idempotency_key_key' },
-            { indexname: 'outbound_webhook_subscriptions_url_key' },
-            { indexname: 'outbound_webhook_deliveries_status_idx' },
+            { indexname: 'risk_signals_wallet_address_idx' },
+            { indexname: 'risk_signals_created_at_idx' },
           ],
         };
       }
@@ -435,8 +444,7 @@ describe('validateSchema', () => {
             { table_name: 'risk_evaluations' },
             { table_name: 'transactions' },
             { table_name: 'events' },
-            { table_name: 'outbound_webhook_subscriptions' },
-            { table_name: 'outbound_webhook_deliveries' },
+            { table_name: 'risk_signals' },
           ],
         };
       }
@@ -465,6 +473,13 @@ describe('validateSchema', () => {
             { column_name: 'event_id' },
             { column_name: 'attempts' },
             { column_name: 'created_at' },
+            { column_name: 'signal_type' },
+            { column_name: 'rule_id' },
+            { column_name: 'severity' },
+            { column_name: 'correlation_id' },
+            { column_name: 'thresholds' },
+            { column_name: 'evidence' },
+            { column_name: 'status' },
           ],
         };
       }

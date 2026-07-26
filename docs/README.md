@@ -15,6 +15,7 @@ This directory holds the long-form documentation for the Creditra backend. The t
 | Document | Subsystem |
 |---|---|
 | [`SIGNALS_INGEST.md`](./SIGNALS_INGEST.md) | The behavioral-signal pipeline — Creditra's differentiator. |
+| [`ANOMALY_DETECTION.md`](./ANOMALY_DETECTION.md) | Rules-based rapid draw/repay anomaly hooks and risk signals. |
 | [`INDEXER.md`](./INDEXER.md) | Stellar Horizon listener, cursor model, gap recovery, reconciliation runbook. |
 | [`SECURITY.md`](./SECURITY.md) | Threat model and in-tree mitigations. |
 | [`DATA_RETENTION.md`](./DATA_RETENTION.md) | Retention windows, anonymization, and deletion tooling for logs, audit events, and wallet-linked data. |

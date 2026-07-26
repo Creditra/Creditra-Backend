@@ -534,6 +534,74 @@ components:
           items:
             $ref: "#/components/schemas/RiskEvaluation"
 
+    RiskSignal:
+      type: object
+      description: |
+        Anomaly detection risk signal (advisory). Thresholds and evidence make
+        the decision explainable. See docs/ANOMALY_DETECTION.md.
+      required:
+        - id
+        - signalType
+        - ruleId
+        - severity
+        - walletAddress
+        - creditLineId
+        - correlationId
+        - thresholds
+        - evidence
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        signalType:
+          type: string
+          enum: [rapid_successive_draws, draw_burst, unusual_repay_pattern]
+        ruleId:
+          type: string
+          example: rule.rapid_successive_draws
+        severity:
+          type: string
+          enum: [low, medium, high]
+        walletAddress:
+          type: string
+        creditLineId:
+          type: string
+          format: uuid
+        correlationId:
+          type: string
+          description: Links signal to the activity evaluation that produced it
+        thresholds:
+          type: object
+          additionalProperties: true
+          description: Snapshot of rule thresholds at evaluation time
+        evidence:
+          type: object
+          additionalProperties: true
+          description: Activity counts/amounts/timestamps that fired the rule
+        status:
+          type: string
+          enum: [open, acknowledged, dismissed]
+        createdAt:
+          type: string
+          format: date-time
+
+    RiskSignalListResponse:
+      type: object
+      required: [signals, total, offset, limit]
+      properties:
+        signals:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskSignal"
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+
     # ── Webhook Schemas ───────────────────────────────────────────────────────
 
     WebhookConfigResponse:
@@ -2337,3 +2405,101 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /api/risk/admin/signals:
+    get:
+      tags: [Risk]
+      operationId: listRiskSignals
+      summary: List anomaly risk signals (admin)
+      description: |
+        Returns rules-based anomaly risk signals for operator review
+        (rapid successive draws, draw bursts, unusual repay patterns).
+        Requires API key. See docs/ANOMALY_DETECTION.md.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: walletAddress
+          in: query
+          schema:
+            type: string
+        - name: creditLineId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: signalType
+          in: query
+          schema:
+            type: string
+            enum: [rapid_successive_draws, draw_burst, unusual_repay_pattern]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, acknowledged, dismissed]
+        - name: correlationId
+          in: query
+          schema:
+            type: string
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Risk signal list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/RiskSignalListResponse"
+                  error:
+                    type: string
+                    nullable: true
+        "401":
+          description: Missing API key
+        "403":
+          description: Invalid API key
+
+  /api/risk/admin/signals/{id}:
+    get:
+      tags: [Risk]
+      operationId: getRiskSignalById
+      summary: Get anomaly risk signal by id (admin)
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Risk signal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/RiskSignal"
+                  error:
+                    type: string
+                    nullable: true
+        "404":
+          description: Risk signal not found
+        "401":
+          description: Missing API key
+        "403":
+          description: Invalid API key

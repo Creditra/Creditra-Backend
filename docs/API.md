@@ -273,6 +273,22 @@ Implemented in [`src/routes/risk.ts`](../src/routes/risk.ts), backed by `RiskEva
 - **Query:** `offset`, `limit` (validated by `riskHistoryQuerySchema`).
 - **Response 200:** `{ data: { evaluations: RiskEvaluation[] }, error: null }`.
 
+#### `GET /api/risk/admin/signals` *(API-key auth)*
+
+List anomaly risk signals (rapid draws, draw bursts, unusual repay patterns)
+for operator review. Signals are advisory only — see
+[`ANOMALY_DETECTION.md`](./ANOMALY_DETECTION.md) for rules and thresholds.
+
+- **Auth:** `X-API-Key`.
+- **Query** (`riskSignalsQuerySchema`, all optional): `walletAddress`,
+  `creditLineId`, `signalType`, `status`, `correlationId`, `offset`, `limit`.
+- **Response 200:** `{ data: { signals, total, offset, limit }, error: null }`.
+
+#### `GET /api/risk/admin/signals/:id` *(API-key auth)*
+
+- **Auth:** `X-API-Key`.
+- **404:** `Risk signal not found`.
+
 #### `POST /api/risk/admin/recalibrate` *(API-key auth)*
 
 Hook for triggering a recalibration of the risk model.
