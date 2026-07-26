@@ -6,6 +6,9 @@ import type { Response } from 'express';
  * Every JSON response emitted by the API follows this shape so clients can
  * branch on the presence of `error` rather than parsing free-form payloads.
  * Exactly one of `data` / `error` is expected to be non-null at a time.
+ *
+ * For conditional GET (ETag / If-None-Match) on read endpoints, use
+ * {@link okWithEtag} from `src/utils/etag.ts` instead of {@link ok}.
  */
 export interface ApiResponse<T = unknown> {
     /** Successful payload, or `null` when an error is present. */

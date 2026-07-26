@@ -203,6 +203,7 @@ export class Container {
     return this._reconciliationWorker;
   }
 
+  /** Cached dashboard aggregate read model (TTL + explicit invalidation). */
   get dashboardSummaryService(): DashboardSummaryService {
     return this._dashboardSummaryService;
   }

@@ -13,9 +13,9 @@ the route, service, and repository layers. Anything placed here MUST:
 | Module             | Purpose                                                   |
 | ------------------ | --------------------------------------------------------- |
 | `constants.ts`     | Pagination and body-size defaults shared by API endpoints |
-| *(config)* `bodyLimit.ts` | Runtime per-endpoint body limits — see [`docs/body-limits.md`](./body-limits.md) |
+| `etag.ts`          | ETag generation + `okWithEtag` conditional GET helpers    |
 | `fetchWithTimeout` | HTTP client with structured timeout and request errors    |
-| `httpStatus.ts`    | Named HTTP status code constants                          |
+| `httpStatus.ts`    | Named HTTP status code constants (incl. `304`)            |
 | `logger.ts`        | Process-wide pino logger configuration                    |
 | `logRedact.ts`     | Helpers for redacting sensitive values from log lines     |
 | `numbers.ts`       | `clamp`, `isFiniteInteger`, `parsePositiveInt`            |

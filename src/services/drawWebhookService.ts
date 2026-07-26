@@ -19,10 +19,7 @@ import { createHmac } from "node:crypto";
 import type { HorizonEvent } from "./horizonListener.js";
 import { getWebhookDeliveryStateStore } from "./webhookDeliveryState.js";
 import { redactLogArgs } from "../utils/logRedact.js";
-import { createServiceLogger } from "../utils/serviceLogger.js";
-import { duplicateResource } from "../errors/ConflictError.js";
-
-const log = createServiceLogger("DrawWebhookService");
+import { logger as log } from "../utils/logger.js";
 
 // ---------------------------------------------------------------------------
 // Types

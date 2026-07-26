@@ -59,6 +59,7 @@ Rate-limit responses additionally include `retryAfter` and the `Retry-After` HTT
 | 201 | Resource created |
 | 202 | Asynchronous accept (e.g. reconciliation trigger) |
 | 204 | Successful delete |
+| 304 | Not Modified — conditional GET matched `If-None-Match` (see [etag-caching.md](./etag-caching.md)) |
 | 400 | Schema validation failed |
 | 401 | Auth header missing |
 | 403 | Auth header present but invalid |
@@ -95,6 +96,16 @@ Two pagination styles ship — pick the one the endpoint advertises in its query
 - `type` ∈ `borrow | repay | interest_accrual | fee | status_change`
 - `from`, `to` — ISO-8601 date strings (`new Date(from).getTime()` must be valid)
 - `page`, `limit`
+
+### Conditional GET (ETag)
+
+Read-heavy endpoints emit an `ETag` and honour `If-None-Match` with `304 Not Modified`:
+
+- `GET /api/credit/lines/:id`
+- `GET /api/credit/lines/:id/transactions`
+- `GET /api/dashboard/summary`
+
+Responses include `Cache-Control: private, must-revalidate`. Full semantics, client examples, and security notes live in [`docs/etag-caching.md`](./etag-caching.md).
 
 ---
 

@@ -3,6 +3,7 @@ import {
     HTTP_OK,
     HTTP_CREATED,
     HTTP_NO_CONTENT,
+    HTTP_NOT_MODIFIED,
     HTTP_BAD_REQUEST,
     HTTP_UNAUTHORIZED,
     HTTP_FORBIDDEN,
@@ -23,6 +24,10 @@ describe('HTTP status constants', () => {
         expect(HTTP_OK).toBe(200);
         expect(HTTP_CREATED).toBe(201);
         expect(HTTP_NO_CONTENT).toBe(204);
+    });
+
+    it('matches the standard 3xx codes', () => {
+        expect(HTTP_NOT_MODIFIED).toBe(304);
     });
 
     it('matches the standard 4xx codes', () => {

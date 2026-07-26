@@ -35,6 +35,7 @@ import { adminAuth } from '../middleware/adminAuth.js';
 import { defaultAdminAuditLog } from '../services/adminAuditLog.js';
 import { adminActorFromRequest } from '../utils/adminActor.js';
 import { ok, fail } from '../utils/response.js';
+import { okWithEtag } from '../utils/etag.js';
 import {
   CreditLineNotFoundError,
   InvalidTransitionError,
@@ -130,7 +131,9 @@ creditRouter.get('/lines/:id', async (req, res) => {
     if (!line) {
       return fail(res, 'Credit line not found', 404);
     }
-    return ok(res, line);
+    // ETag is a content hash of the envelope; updates bump version/updatedAt
+    // so subsequent GETs with a stale If-None-Match re-download.
+    return okWithEtag(req, res, line);
   } catch {
     return fail(res, 'Internal server error');
   }
@@ -250,7 +253,9 @@ creditRouter.get(
         { type: type as TransactionType | undefined, from: from as string | undefined, to: to as string | undefined },
         { page, limit },
       );
-      ok(res, result);
+      // ETag covers the filtered/paginated slice; new txs or filter changes
+      // produce a different hash so clients cannot reuse a stale 304.
+      okWithEtag(req, res, result);
     } catch (err) {
       handleServiceError(err, res);
     }

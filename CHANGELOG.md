@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- API-level conditional GET caching (`ETag` / `If-None-Match` → `304`) for
+  read-heavy endpoints: credit line detail, transaction history, and
+  dashboard summary. See `docs/etag-caching.md` and `src/utils/etag.ts`.
 - Shared utility modules under `src/utils/` for constants, strings,
   numbers, time, and HTTP status codes.
 - `LICENSE` and metadata fields in `package.json`.
