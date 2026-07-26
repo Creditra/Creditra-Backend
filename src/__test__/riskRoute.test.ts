@@ -103,8 +103,9 @@ describe("POST /api/risk/evaluate", () => {
     });
   });
 
-  it("returns JSON content-type on 400 error", async () => {
+  it("returns problem+json content-type on 400 error", async () => {
     const res = await request(app).post("/api/risk/evaluate").send({});
-    expect(res.headers["content-type"]).toMatch(/application\/json/);
+    expect(res.headers["content-type"]).toMatch(/application\/problem\+json/);
+    expect(res.body.code).toBe("validation_failed");
   });
 });

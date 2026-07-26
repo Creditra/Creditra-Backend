@@ -782,200 +782,88 @@ components:
 
     # ── Error Schemas ─────────────────────────────────────────────────────────
 
-    AdminAuditRecord:
+    Problem:
       type: object
-      required: [id, actor, action, targetType, targetId, correlationId, createdAt, previousHash, hash]
-      properties:
-        id:
-          type: string
-          format: uuid
-        actor:
-          type: string
-          description: SHA-256 fingerprint of the admin actor secret, never the raw key
-          example: sha256:2a6f2d8c9e5b1a0c
-        action:
-          type: string
-          example: api_key.issued
-        targetType:
-          type: string
-          example: api_key
-        targetId:
-          type: string
-          nullable: true
-        before:
-          nullable: true
-        after:
-          nullable: true
-        correlationId:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        previousHash:
-          type: string
-          nullable: true
-        hash:
-          type: string
-          pattern: "^[a-f0-9]{64}$"
-
-    AdminAuditLogResponse:
-      type: object
-      properties:
-        data:
-          type: object
-          required: [items, nextCursor, hasMore]
-          properties:
-            items:
-              type: array
-              items:
-                $ref: "#/components/schemas/AdminAuditRecord"
-            nextCursor:
-              type: string
-              nullable: true
-            hasMore:
-              type: boolean
-        error:
-          type: string
-          nullable: true
-
-    ErrorResponse:
-      type: object
-      required: [data, error]
-      properties:
-        data:
-          nullable: true
-          description: Always null on error
-        error:
-          type: string
-        id:
-          type: string
-          description: Present on 404 responses that reference a specific resource
-
-    ValidationErrorResponse:
-      type: object
-      required: [data, error, details]
       description: |
-        Returned for Zod request-schema failures (body, query, or path params).
-        Stable shape — never includes stack traces or internal exception text.
-      properties:
-        data:
-          nullable: true
-          example: null
-        error:
-          type: string
-          enum: [Validation failed]
-          example: Validation failed
-        details:
-          type: array
-          items:
-            type: object
-            required: [field, message]
-            additionalProperties: false
-            properties:
-              field:
-                type: string
-                description: Dotted path to the invalid field, or "(root)"
-                example: walletAddress
-              message:
-                type: string
-                example: walletAddress must be a valid Stellar address
-      additionalProperties: false
-
-    RateLimitErrorResponse:
-      type: object
-      required: [data, error, retryAfter]
-      properties:
-        data:
-          nullable: true
-          example: null
-        error:
-          type: string
-          example: "Too many requests. Please retry after 12 seconds."
-        retryAfter:
-          type: integer
-          description: Seconds until at least one token is available
-          example: 12
-
-    # RFC 7807 problem+json for HTTP 409 conflicts (duplicate resources,
-    # version mismatches, invalid state transitions). Content-Type is
-    # application/problem+json. Sensitive identifiers (wallets, secrets) are
-    # never included in detail/details.
-    ConflictProblem:
-      type: object
+        RFC 7807 problem+json with Creditra taxonomy extensions.
+        Content-Type: application/problem+json
+        See docs/problem-json.md and docs/error-envelope.md.
       required: [type, title, status, detail, code, data, error]
       properties:
         type:
           type: string
           format: uri
-          description: Problem type URI (stable per `code`)
-          example: "https://docs.creditra.dev/problems/duplicate_resource"
+          example: "https://docs.creditra.dev/problems/validation_failed"
         title:
           type: string
-          example: Conflict
+          example: "Validation Error"
         status:
           type: integer
-          enum: [409]
-          example: 409
+          example: 400
         detail:
           type: string
-          description: Human-readable explanation (no sensitive identifiers)
-          example: "An open credit line already exists for this wallet. Close it before opening another."
+          example: "Validation failed"
         code:
           type: string
-          description: Stable machine-readable code for client branching
+          description: Stable machine code clients should branch on
           enum:
+            - validation_failed
+            - unauthorized
+            - forbidden
+            - not_found
             - duplicate_resource
             - version_conflict
             - invalid_state_transition
             - unique_constraint_violation
-          example: duplicate_resource
+            - payload_too_large
+            - unsupported_media_type
+            - rate_limited
+            - upstream_failure
+            - upstream_timeout
+            - service_unavailable
+            - internal_error
+        details:
+          description: Optional field issues or safe context (never secrets)
+          oneOf:
+            - type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+            - type: object
+              additionalProperties: true
         resource:
           type: string
-          description: Optional resource kind involved in the conflict
-          enum:
-            - credit_line
-            - risk_evaluation
-            - webhook_subscription
-            - borrower
-            - event
-          example: credit_line
-        details:
-          type: object
-          additionalProperties: true
-          description: >
-            Actionable, non-sensitive context only (field names, status enums).
-            Never contains wallet addresses, API keys, or secrets.
-          example:
-            field: walletAddress
-            existingStatus: active
+          description: Optional resource kind
+        retryAfter:
+          type: integer
+          description: Seconds until retry (rate limit); also Retry-After header
         data:
-          nullable: true
-          description: Always null on error (legacy envelope compatibility)
+          type: "null"
+          description: Legacy envelope compatibility (always null on errors)
         error:
           type: string
-          description: Same text as `detail` (legacy envelope compatibility)
+          description: Legacy envelope compatibility (same text as detail)
 
-    WebhookSubscriptionRequest:
-      type: object
-      required: [url]
-      properties:
-        url:
-          type: string
-          format: uri
-          description: Absolute http(s) subscriber URL
-          example: "https://example.com/hooks/creditra"
-      additionalProperties: false
+    ErrorResponse:
+      allOf:
+        - $ref: "#/components/schemas/Problem"
+      description: |
+        Error responses use RFC 7807 problem+json (alias of Problem).
+        Legacy clients may still read `error` / `data`.
 
-    WebhookSubscription:
-      type: object
-      required: [url, createdAt]
-      properties:
-        url:
-          type: string
-          format: uri
-        createdAt:
-          type: string
-          format: date-time
+    ConflictProblem:
+      allOf:
+        - $ref: "#/components/schemas/Problem"
+      description: HTTP 409 conflict problem+json
+
+    RateLimitErrorResponse:
+      allOf:
+        - $ref: "#/components/schemas/Problem"
+      description: Rate limit problem+json (code=rate_limited)
 
 paths:
   /health:

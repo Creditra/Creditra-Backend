@@ -80,6 +80,7 @@ describe("adminAuth middleware", () => {
             const res = {
                 status: vi.fn().mockReturnThis(),
                 json: vi.fn(),
+                setHeader: vi.fn().mockReturnThis(),
             } as unknown as Response;
             const next = vi.fn();
 
@@ -111,9 +112,10 @@ describe("adminAuth middleware", () => {
             expect(res.body.error).toMatch(/X-Admin-Api-Key/);
         });
 
-        it("returns JSON content-type on 401", async () => {
+        it("returns problem+json content-type on 401", async () => {
             const res = await request(buildApp()).post("/protected");
-            expect(res.headers["content-type"]).toMatch(/application\/json/);
+            expect(res.headers["content-type"]).toMatch(/application\/problem\+json/);
+            expect(res.body.code).toBe("unauthorized");
         });
     });
 
@@ -140,9 +142,10 @@ describe("adminAuth middleware", () => {
             expect(res.body.error).toMatch(/not configured/i);
         });
 
-        it("returns JSON content-type on 503", async () => {
+        it("returns problem+json content-type on 503", async () => {
             const res = await request(buildApp()).post("/protected");
-            expect(res.headers["content-type"]).toMatch(/application\/json/);
+            expect(res.headers["content-type"]).toMatch(/application\/problem\+json/);
+            expect(res.body.code).toBe("service_unavailable");
         });
     });
 });

@@ -60,6 +60,12 @@ import { adminActorFromRequest } from '../utils/adminActor.js';
 import { ok, fail } from '../utils/response.js';
 import { okWithEtag } from '../utils/etag.js';
 import {
+  ConflictError,
+  internalError,
+  notFound,
+  sendProblem,
+} from '../errors/index.js';
+import {
   CreditLineNotFoundError,
   InvalidTransitionError,
   VersionConflictError,
@@ -81,20 +87,42 @@ const container = Container.getInstance();
  */
 function handleServiceError(err: unknown, res: Response): void {
   if (err instanceof CreditLineNotFoundError) {
-    fail(res, err.message, 404);
+    sendProblem(
+      res,
+      notFound(err.message, 'credit_line'),
+    );
     return;
   }
-  if (
-    err instanceof ConflictError ||
-    err instanceof InvalidTransitionError ||
-    err instanceof VersionConflictError ||
-    isConflictError(err)
-  ) {
-    sendConflict(res, err as ConflictError);
+  if (err instanceof InvalidTransitionError) {
+    sendProblem(
+      res,
+      new ConflictError({
+        message: err.message,
+        code: 'invalid_state_transition',
+        resource: 'credit_line',
+      }),
+    );
     return;
   }
-  const message = err instanceof Error ? err.message : 'Internal server error';
-  res.status(500).json({ data: null, error: message });
+  if (err instanceof VersionConflictError) {
+    sendProblem(
+      res,
+      new ConflictError({
+        message: err.message,
+        code: 'version_conflict',
+        resource: 'credit_line',
+      }),
+    );
+    return;
+  }
+  // Unknown failures: problem+json without leaking internals.
+  if (err instanceof Error) {
+    console.error('[credit.handleServiceError]', {
+      message: err.message,
+      name: err.name,
+    });
+  }
+  sendProblem(res, internalError());
 }
 
 creditRouter.get(

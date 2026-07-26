@@ -5,7 +5,8 @@ Human-readable companion to the machine-readable spec at [`src/openapi.yaml`](..
 - **Base URL (dev):** `http://localhost:3000`
 - **API prefix (canonical):** `/api/v1/*` — see [`api-versioning.md`](./api-versioning.md)
 - **Default media type:** `application/json` (the server returns `415` if you `POST/PUT/PATCH` anything else)
-- **Response envelope:** `{ "data": <payload> | null, "error": <string> | null }`
+- **Success envelope:** `{ "data": <payload> | null, "error": null }`
+- **Error media type:** `application/problem+json` (RFC 7807) with stable `type` + `code` — see [`docs/error-envelope.md`](./error-envelope.md)
 - **Body limit:** 100 kB (oversize returns `413`)
 - **Version header:** `X-API-Version: 1` on all `/api/v1/*` and legacy `/api/*` responses
 
@@ -31,32 +32,37 @@ Read endpoints are public-by-design but rate-limited.
 
 ---
 
-## 2. Error envelope
+## 2. Error envelope (problem+json)
 
-Every error response (`4xx`, `5xx`) has this shape:
-
-```json
-{
-  "data": null,
-  "error": "<human readable summary>"
-}
-```
-
-Validation errors additionally include `details` (Zod request schemas — see [`json-schema-validation.md`](./json-schema-validation.md)):
+Every error response (`4xx`, `5xx`) uses **RFC 7807** `application/problem+json`
+with a stable taxonomy. Legacy `data` / `error` fields remain for older clients.
 
 ```json
 {
-  "data": null,
-  "error": "Validation failed",
+  "type": "https://docs.creditra.dev/problems/validation_failed",
+  "title": "Validation Error",
+  "status": 400,
+  "detail": "Validation failed",
+  "code": "validation_failed",
   "details": [
-    { "field": "walletAddress", "message": "walletAddress must be a valid Stellar address" }
-  ]
+    { "field": "walletAddress", "message": "Invalid Stellar address" }
+  ],
+  "data": null,
+  "error": "Validation failed"
 }
 ```
 
-Every public route validates body, query, and path params via `validateBody` / `validateQuery` / `validateParams`. Response contracts are asserted in integration tests with `assertMatchesSchema`; set `ENABLE_RESPONSE_VALIDATION=true` to enforce them at runtime.
+| Category | Codes |
+|---|---|
+| Validation | `validation_failed` |
+| Auth | `unauthorized`, `forbidden` |
+| Not found | `not_found` |
+| Conflict | `duplicate_resource`, `version_conflict`, `invalid_state_transition`, `unique_constraint_violation` |
+| Rate limited | `rate_limited` (+ `retryAfter` / `Retry-After`) |
+| Upstream | `upstream_failure`, `upstream_timeout` |
+| Other | `payload_too_large`, `unsupported_media_type`, `service_unavailable`, `internal_error` |
 
-Rate-limit responses additionally include `retryAfter` and the `Retry-After` HTTP header. See [`docs/error-envelope.md`](./error-envelope.md) for the helper API.
+See [`docs/error-envelope.md`](./error-envelope.md) for the full contract and helpers.
 
 ### Status code semantics
 

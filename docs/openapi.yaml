@@ -442,56 +442,89 @@ components:
           type: string
           example: "Risk model recalibration triggered"
 
-    ReconciliationTriggerResponse:
+    # ── Error Schemas (RFC 7807 problem+json) ─────────────────────────────────
+
+    ProblemDetails:
       type: object
+      description: |
+        RFC 7807 problem details with Creditra taxonomy extensions.
+        Content-Type: application/problem+json
+      required: [type, title, status, detail, code, data, error]
       properties:
+        type:
+          type: string
+          format: uri
+          example: "https://docs.creditra.dev/problems/validation_failed"
+        title:
+          type: string
+          example: "Validation Error"
+        status:
+          type: integer
+          example: 400
+        detail:
+          type: string
+          example: "Validation failed"
+        code:
+          type: string
+          description: Stable machine-readable taxonomy code
+          enum:
+            - validation_failed
+            - unauthorized
+            - forbidden
+            - not_found
+            - duplicate_resource
+            - version_conflict
+            - invalid_state_transition
+            - unique_constraint_violation
+            - payload_too_large
+            - unsupported_media_type
+            - rate_limited
+            - upstream_failure
+            - upstream_timeout
+            - service_unavailable
+            - internal_error
+        details:
+          description: Non-sensitive field issues or context object
+          oneOf:
+            - type: array
+              items:
+                type: object
+                required: [field, message]
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+            - type: object
+              additionalProperties: true
+        resource:
+          type: string
+        retryAfter:
+          type: integer
         data:
-          type: object
-          required: [jobId, message]
-          properties:
-            jobId:
-              type: string
-              description: Identifier for the scheduled reconciliation job
-            message:
-              type: string
-              example: Reconciliation job scheduled
+          nullable: true
         error:
           type: string
-          nullable: true
-
-    ReconciliationStatusResponse:
-      type: object
-      properties:
-        data:
-          type: object
-          required: [workerRunning, queueSize, failedJobs]
-          properties:
-            workerRunning:
-              type: boolean
-            queueSize:
-              type: integer
-              minimum: 0
-            failedJobs:
-              type: integer
-              minimum: 0
-        error:
-          type: string
-          nullable: true
-
-    # ── Error Schemas ─────────────────────────────────────────────────────────
+          description: Legacy envelope field (same text as detail)
 
     ErrorResponse:
-      type: object
-      required: [data, error]
+      allOf:
+        - $ref: "#/components/schemas/ProblemDetails"
+
+    ConflictProblem:
+      allOf:
+        - $ref: "#/components/schemas/ProblemDetails"
       properties:
-        data:
-          nullable: true
-          description: Always null on error
-        error:
+        code:
           type: string
-        id:
-          type: string
-          description: Present on 404 responses that reference a specific resource
+          enum:
+            - duplicate_resource
+            - version_conflict
+            - invalid_state_transition
+            - unique_constraint_violation
+        status:
+          type: integer
+          enum: [409]
 
     ValidationErrorResponse:
       type: object
@@ -524,12 +557,17 @@ components:
       additionalProperties: false
 
     RateLimitErrorResponse:
-      type: object
-      required: [error]
+      allOf:
+        - $ref: "#/components/schemas/ProblemDetails"
       properties:
-        error:
+        code:
           type: string
-          example: "Too many requests"
+          enum: [rate_limited]
+        status:
+          type: integer
+          enum: [429]
+        retryAfter:
+          type: integer
 
     # RFC 7807 problem+json for HTTP 409 conflicts (duplicate resources,
     # version mismatches, invalid state transitions). Content-Type is

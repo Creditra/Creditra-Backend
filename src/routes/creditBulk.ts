@@ -72,17 +72,32 @@ creditBulkRouter.post(
         }
       }
 
-      return res.status(207).json({
-        data: {
-          summary: { total: rows.length, created, failed, dry_run: isDryRun },
-          results,
-        },
-        error: null,
-      });
-    } catch (err) {
-      next(err);
+      if (isDryRun) {
+        results.push({ index: i + 1, status: 'dry_run_valid' });
+        created++;
+        continue;
+      }
+
+      try {
+        const creditService = container.creditLineService;
+        const body = parsed.data as CreateCreditLineBody;
+        const line = await creditService.createCreditLine({
+          walletAddress: body.walletAddress,
+          creditLimit: body.creditLimit ?? body.requestedLimit ?? '',
+          interestRateBps: body.interestRateBps ?? 0,
+        });
+        results.push({ index: i + 1, status: 'created', id: line.id });
+        created++;
+      } catch (err) {
+        results.push({ index: i + 1, status: 'error', error: err instanceof Error ? err.message : 'Unknown error' });
+        failed++;
+      }
     }
-  },
-);
+
+    return ok(res, { summary: { total: rows.length, created, failed, dry_run: isDryRun } as Record<string, unknown>, results }, 207);
+  } catch (err) {
+    return next(err);
+  }
+});
 
 export default creditBulkRouter;

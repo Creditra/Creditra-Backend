@@ -6,10 +6,13 @@
  * Mapped by {@link sendConflict} / the global error handler to HTTP 409 with
  * RFC 7807 problem+json details.
  *
- * Security: never put wallet addresses, secrets, API keys, or other sensitive
- * identifiers into `message` or `details`. Resource *types* and safe field
- * names are fine; values that identify end-users are not.
+ * Compatible with the conflict-409 taxonomy codes so open PR work can merge
+ * cleanly. Security: never put wallet addresses, secrets, API keys, or other
+ * sensitive identifiers into `message` or `details`.
  */
+
+import { AppError, type AppErrorOptions } from './AppError.js';
+import type { ProblemCode, ProblemResource } from './taxonomy.js';
 
 /** Stable machine-readable conflict codes clients can branch on. */
 export type ConflictCode =
@@ -19,12 +22,7 @@ export type ConflictCode =
   | 'unique_constraint_violation';
 
 /** Resource kinds involved in conflict responses (public taxonomy). */
-export type ConflictResource =
-  | 'credit_line'
-  | 'risk_evaluation'
-  | 'webhook_subscription'
-  | 'borrower'
-  | 'event';
+export type ConflictResource = ProblemResource;
 
 export interface ConflictErrorOptions {
   /** Human-readable, non-sensitive explanation (also used as problem `detail`). */
@@ -43,20 +41,25 @@ export interface ConflictErrorOptions {
 
 /**
  * Domain error representing an HTTP 409 Conflict.
+ * Extends {@link AppError} so the central translator handles it uniformly.
  */
-export class ConflictError extends Error {
-  readonly statusCode = 409 as const;
-  readonly code: ConflictCode;
-  readonly resource?: ConflictResource;
-  readonly details?: Readonly<Record<string, unknown>>;
+export class ConflictError extends AppError {
+  declare readonly code: ConflictCode;
+  declare readonly statusCode: 409;
 
   constructor(options: ConflictErrorOptions) {
-    super(options.message);
+    const code: ConflictCode = options.code ?? 'duplicate_resource';
+    const base: AppErrorOptions = {
+      code: code as ProblemCode,
+      message: options.message,
+      statusCode: 409,
+      title: 'Conflict',
+      details: options.details,
+      resource: options.resource,
+      exposeMessage: true,
+    };
+    super(base);
     this.name = 'ConflictError';
-    this.code = options.code ?? 'duplicate_resource';
-    this.resource = options.resource;
-    this.details = options.details;
-    Object.setPrototypeOf(this, new.target.prototype);
   }
 }
 
@@ -72,4 +75,16 @@ export function duplicateResource(
     resource,
     details,
   });
+}
+
+export function isConflictError(err: unknown): err is ConflictError {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    ((err as { name?: string }).name === 'ConflictError' ||
+      err instanceof ConflictError) &&
+    (err as { statusCode?: number }).statusCode === 409 &&
+    typeof (err as { code?: unknown }).code === 'string' &&
+    typeof (err as { message?: unknown }).message === 'string'
+  );
 }

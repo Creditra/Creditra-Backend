@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { z } from 'zod';
+import { sendProblem, validationFailed } from '../errors/index.js';
 
 /**
  * Stable validation error envelope used by every request/response validator.
@@ -78,23 +79,20 @@ export function assertMatchesSchema<T>(
  * On success the parsed (and potentially transformed) body replaces `req.body`
  * so downstream handlers always receive well-typed data.
  *
- * On failure a `400` response is returned with structured error details:
- * ```json
- * {
- *   "data": null,
- *   "error": "Validation failed",
- *   "details": [
- *     { "field": "walletAddress", "message": "Required" }
- *   ]
- * }
- * ```
+ * On failure a `400` problem+json response is returned with field-level
+ * `details` and stable code `validation_failed`.
  */
 export function validateBody<T>(schema: z.ZodType<T>) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.body);
 
     if (!result.success) {
-      sendValidationError(res, result.error);
+      const details = result.error.issues.map((issue) => ({
+        field: issue.path.join('.'),
+        message: issue.message,
+      }));
+
+      sendProblem(res, validationFailed('Validation failed', details));
       return;
     }
 
@@ -114,7 +112,12 @@ export function validateQuery<T>(schema: z.ZodType<T>) {
     const result = schema.safeParse(req.query);
 
     if (!result.success) {
-      sendValidationError(res, result.error);
+      const details = result.error.issues.map((issue) => ({
+        field: issue.path.join('.'),
+        message: issue.message,
+      }));
+
+      sendProblem(res, validationFailed('Validation failed', details));
       return;
     }
 
@@ -131,58 +134,16 @@ export function validateParams<T>(schema: z.ZodType<T>) {
     const result = schema.safeParse(req.params);
 
     if (!result.success) {
-      sendValidationError(res, result.error);
+      const details = result.error.issues.map((issue) => ({
+        field: issue.path.join('.'),
+        message: issue.message,
+      }));
+
+      sendProblem(res, validationFailed('Validation failed', details));
       return;
     }
 
     req.params = result.data as Request['params'];
-    next();
-  };
-}
-
-/**
- * Wraps `res.json` so the outgoing body is checked against `schema` when
- * response validation is enabled (`ENABLE_RESPONSE_VALIDATION=true`).
- *
- * On mismatch:
- * - Does **not** leak Zod internals to clients in production paths
- * - Replaces the body with a stable 500 envelope: `{ data: null, error: "Response contract violation" }`
- * - Attaches a non-enumerable symbol on the response for tests to assert
- *
- * When disabled (default), this is a no-op next().
- */
-export function validateResponse<T>(schema: z.ZodType<T>) {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    if (!isResponseValidationEnabled()) {
-      next();
-      return;
-    }
-
-    const originalJson = res.json.bind(res);
-    res.json = ((body: unknown) => {
-      const result = schema.safeParse(body);
-      if (!result.success) {
-        // Keep contract-violation details off the wire; log for operators/tests.
-        const details = toValidationDetails(result.error);
-        // eslint-disable-next-line no-console
-        console.error(
-          `[response-schema] ${req.method} ${req.originalUrl ?? req.url} failed:`,
-          details,
-        );
-        (res as Response & { responseSchemaViolation?: ValidationIssue[] }).responseSchemaViolation =
-          details;
-        if (!res.headersSent) {
-          res.status(500);
-        }
-        return originalJson(
-          validationFailed(details).error
-            ? { data: null, error: 'Response contract violation' }
-            : { data: null, error: 'Response contract violation' },
-        );
-      }
-      return originalJson(body);
-    }) as Response['json'];
-
     next();
   };
 }

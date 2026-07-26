@@ -16,11 +16,7 @@ import { supportRouter } from "./routes/support.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 import { requestLogger } from "./middleware/requestLogger.js";
-import { captureRawBody } from "./middleware/rawBody.js";
-import {
-  createLegacyDeprecationMiddleware,
-  createV1VersionMiddleware,
-} from "./middleware/apiVersion.js";
+import { sendProblem, unsupportedMediaType } from "./errors/index.js";
 import {
   InMemoryRateLimitStore,
   RedisRateLimitStore,
@@ -158,7 +154,7 @@ app.use((req, res, next) => {
   if (hasBody) {
     const ct = req.headers['content-type'] ?? '';
     if (!ct.includes('application/json')) {
-      res.status(415).json({ data: null, error: 'Content-Type must be application/json' });
+      sendProblem(res, unsupportedMediaType());
       return;
     }
   }

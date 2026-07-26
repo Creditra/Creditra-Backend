@@ -41,6 +41,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
 import { createClient } from 'redis';
+import { rateLimited, sendProblem } from '../errors/index.js';
 
 import { ADMIN_KEY_HEADER } from './adminAuth.js';
 
@@ -617,4 +618,50 @@ function isPromiseLike<T>(value: T | Promise<T>): value is Promise<T> {
     'then' in value &&
     typeof (value as Promise<T>).then === 'function'
   );
+}
+
+export function createRateLimitMiddleware(
+  options: RateLimitOptions,
+  store: RateLimitStore = new InMemoryRateLimitStore(),
+) {
+  const applyRateLimitResult = (entry: RateLimitEntry, res: Response, next: NextFunction): void => {
+    const now = Date.now();
+    const limit = options.maxRequests;
+    const remaining = Math.max(0, limit - entry.count);
+    const resetEpoch = Math.ceil(entry.resetAt / 1000);
+
+    res.set({
+      'X-RateLimit-Limit': String(limit),
+      'X-RateLimit-Remaining': String(remaining),
+      'X-RateLimit-Reset': String(resetEpoch),
+    });
+
+    if (entry.count > limit) {
+      const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
+      sendProblem(res, rateLimited(retryAfter));
+      return;
+    }
+
+    next();
+  };
+
+  return function rateLimitMiddleware(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): void {
+    const key = options.keyGenerator(req);
+
+    const result = store.increment(key, options.windowMs);
+    if (isPromiseLike(result)) {
+      void result.then((entry) => {
+        applyRateLimitResult(entry, res, next);
+      }).catch((error: unknown) => {
+        next(error);
+      });
+      return;
+    }
+
+    applyRateLimitResult(result, res, next);
+  };
 }

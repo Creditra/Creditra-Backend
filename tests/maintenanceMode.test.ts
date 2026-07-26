@@ -39,7 +39,11 @@ describe('Maintenance Mode', () => {
             .post('/api/credit')
             .send({ some: 'data' });
         expect(res.status).toBe(503);
-        expect(res.body).toMatchObject({ maintenanceMode: true });
+        expect(res.body).toMatchObject({
+            code: 'service_unavailable',
+            status: 503,
+            details: { maintenanceMode: true },
+        });
     });
 
     it('admin can enable and disable maintenance mode via API', async () => {

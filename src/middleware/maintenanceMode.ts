@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { sendProblem, serviceUnavailable } from '../errors/index.js';
 
 /**
  * In-memory maintenance mode state.
@@ -51,9 +52,11 @@ export function maintenanceModeGuard(
         return;
     }
 
-    res.status(503).json({
-        error: 'Service Unavailable',
-        message: 'The API is currently in maintenance mode (read-only). Please retry later.',
-        maintenanceMode: true,
-    });
+    sendProblem(
+        res,
+        serviceUnavailable(
+            'The API is currently in maintenance mode (read-only). Please retry later.',
+            { maintenanceMode: true },
+        ),
+    );
 }
