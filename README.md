@@ -76,6 +76,7 @@ A request enters through the Express router, is authenticated (`X-API-Key` or `X
 
 - Node.js **>= 20**
 - npm
+- Bash for `npm run dev:bootstrap` (Git Bash or WSL on Windows)
 - (Optional) Docker 24+ and Docker Compose v2 for the containerised dev loop
 - (Optional) k6 for load testing
 
@@ -87,6 +88,51 @@ cd Creditra-Backend
 npm install
 cp .env.example .env   # then fill in DATABASE_URL, API_KEYS, etc.
 ```
+
+### Local bootstrap
+
+For a reproducible local setup (Docker Compose Postgres + env template +
+migrations + schema validation + deterministic seed data):
+
+```bash
+npm run dev:bootstrap
+```
+
+What the script does:
+
+1. Validates that `.env.example` contains required keys (`DATABASE_URL`, `API_KEYS`)
+2. Creates `.env` from `.env.example` **only when `.env` is missing** (never overwrites)
+3. Runs `npm ci`
+4. Starts the Compose `db` service (`postgres:15`, host port `5432`)
+5. Waits until `DATABASE_URL` accepts connections
+6. Runs `npm run db:migrate` and `npm run db:validate`
+7. Loads idempotent local seed data from [`scripts/dev-seed.sql`](./scripts/dev-seed.sql)
+
+Flags (pass after `--` with npm):
+
+```bash
+npm run dev:bootstrap -- --skip-install   # reuse existing node_modules
+npm run dev:bootstrap -- --skip-compose   # use an already-running Postgres
+npm run dev:bootstrap -- --skip-migrate   # skip migrate + schema validate
+npm run dev:bootstrap -- --skip-seed      # skip seed SQL
+```
+
+**Secrets:** only `.env.example` (placeholders) is committed. Real keys stay in
+gitignored `.env`. Default local values match Compose
+(`postgresql://postgres:postgres@localhost:5432/creditra_db`, `API_KEYS=dev-api-key`).
+
+**Common failures**
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `Missing required command: docker` | Docker not installed / not on PATH | Install Docker Desktop, or use `--skip-compose` with your own DB |
+| `Database did not become reachable` | Engine not running, or port `5432` busy | Start Docker; free `5432`; check `DATABASE_URL` |
+| `node_modules/pg is missing` | Ran with `--skip-install` before deps | Drop the flag, or run `npm ci` first |
+| `bash: command not found` (Windows) | No Git Bash / WSL on PATH | Install [Git for Windows](https://git-scm.com/) or use WSL |
+| Migration fails on `wallet_address` of `credit_lines` | Stale DB volume from an old broken index migration | `docker compose down -v` then re-run bootstrap |
+
+Seeded demo wallet (local only):
+`GCKFBEIYV2U22IO2BJ4KVJOIP7XPWQGZBW3JXDC55CYIXB5NAXMCEKJA`.
 
 ### Run
 

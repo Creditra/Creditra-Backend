@@ -6,3 +6,5 @@
 *.rs text eol=lf
 *.json text eol=lf
 *.md text eol=lf
+*.sh text eol=lf
+*.sql text eol=lf
