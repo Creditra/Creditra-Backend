@@ -8,6 +8,7 @@
  *   RATE_LIMIT_WINDOW_MS        - Time window in ms (default: 60000)
  *   RATE_LIMIT_MAX_REQUESTS    - Max requests per window for general endpoints (default: 100)
  *   RATE_LIMIT_MAX_EVALUATE    - Max requests per window for /api/risk/evaluate (default: 10)
+ *   RATE_LIMIT_MAX_EXPORT      - Max requests per window for /api/admin/exports/* (default: 5)
  *   RATE_LIMIT_REDIS_URL       - Optional Redis URL for shared rate-limit storage
  *   RATE_LIMIT_REDIS_FAILURE_MODE - "open" or "closed" on Redis outage (default: open)
  */
@@ -22,6 +23,7 @@ export interface RateLimitConfig {
 interface RateLimitConfigs {
   default: RateLimitConfig;
   evaluate: RateLimitConfig;
+  export: RateLimitConfig;
 }
 
 export interface RateLimitStoreConfig {
@@ -53,10 +55,15 @@ export function loadRateLimitConfig(): RateLimitConfigs {
     process.env.RATE_LIMIT_MAX_EVALUATE,
     10,
   );
+  const maxExport = parseIntOrDefault(
+    process.env.RATE_LIMIT_MAX_EXPORT,
+    5,
+  );
 
   return {
     default: { windowMs, maxRequests },
     evaluate: { windowMs, maxRequests: maxEvaluate },
+    export: { windowMs, maxRequests: maxExport },
   };
 }
 

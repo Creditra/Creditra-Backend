@@ -11,6 +11,7 @@ import { riskRouter } from "./routes/risk.js";
 import { healthRouter } from "./routes/health.js";
 import { webhookRouter } from "./routes/webhook.js";
 import { reconciliationRouter } from "./routes/reconciliation.js";
+import { exportsRouter } from "./routes/exports.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import {
@@ -99,10 +100,12 @@ const appRateLimitConfig =
     ? {
         default: { ...rateLimitConfig.default, maxRequests: Number.MAX_SAFE_INTEGER },
         evaluate: { ...rateLimitConfig.evaluate, maxRequests: Number.MAX_SAFE_INTEGER },
+        export: { ...rateLimitConfig.export, maxRequests: Number.MAX_SAFE_INTEGER },
       }
     : rateLimitConfig;
 const defaultRateLimitStore = createRateLimitStore("default");
 const evaluateRateLimitStore = createRateLimitStore("evaluate");
+const exportRateLimitStore = createRateLimitStore("export");
 const defaultRateLimit = createRateLimitMiddleware({
   ...appRateLimitConfig.default,
   keyGenerator: createIpKeyGenerator(),
@@ -111,6 +114,10 @@ const evaluateRateLimit = createRateLimitMiddleware({
   ...appRateLimitConfig.evaluate,
   keyGenerator: createIpKeyGenerator(),
 }, evaluateRateLimitStore);
+const exportRateLimit = createRateLimitMiddleware({
+  ...appRateLimitConfig.export,
+  keyGenerator: createIpKeyGenerator(),
+}, exportRateLimitStore);
 
 app.use(cors({
   origin(origin, callback) {
@@ -154,6 +161,8 @@ app.use("/api/risk/wallet", defaultRateLimit);
 app.use("/api/risk", riskRouter);
 app.use("/api/webhooks", webhookRouter);
 app.use("/api/reconciliation", reconciliationRouter);
+// Admin compliance exports — strict rate limit + adminAuth inside the router.
+app.use("/api/admin/exports", exportRateLimit, exportsRouter);
 
 // Global error handler — must be registered after routes
 app.use(errorHandler);
@@ -228,6 +237,7 @@ if (isMain) {
       await Promise.all([
         closeRateLimitStore(defaultRateLimitStore),
         closeRateLimitStore(evaluateRateLimitStore),
+        closeRateLimitStore(exportRateLimitStore),
       ]);
 
       clearTimeout(forceExitTimeout);

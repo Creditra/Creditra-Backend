@@ -33,6 +33,11 @@ tags:
     description: Draw confirmation webhook management
   - name: Reconciliation
     description: Admin control plane for DB-vs-chain reconciliation
+  - name: Compliance Exports
+    description: |
+      Admin-only CSV/JSON exports for audit and compliance.
+      Require `X-Admin-Api-Key`, a bounded date range (max 90 days), and
+      respect a hard row ceiling (5000). See docs/COMPLIANCE_EXPORTS.md.
 
 security:
   - ApiKeyAuth: []
@@ -46,6 +51,13 @@ components:
       description: |
         API key for authenticated endpoints. Required for admin operations.
         Keys are configured via the `API_KEYS` environment variable.
+    AdminApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Admin-Api-Key
+      description: |
+        Operator admin key for destructive and compliance operations.
+        Configured via the `ADMIN_API_KEY` environment variable.
 
   schemas:
     HealthResponse:
@@ -463,6 +475,54 @@ components:
         error:
           type: string
           example: "Too many requests"
+
+    ExportMeta:
+      type: object
+      required: [resource, format, count, limit, offset, truncated, from, to, generatedAt]
+      properties:
+        resource:
+          type: string
+          enum: [credit-lines, transactions, audit]
+        format:
+          type: string
+          enum: [json, csv]
+        count:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 5000
+        offset:
+          type: integer
+          minimum: 0
+        truncated:
+          type: boolean
+          description: True when more matching rows exist beyond this page
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        generatedAt:
+          type: string
+          format: date-time
+
+    ComplianceExportResponse:
+      type: object
+      required: [data, meta, error]
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        meta:
+          $ref: "#/components/schemas/ExportMeta"
+        error:
+          type: string
+          nullable: true
 
 paths:
   /health:
@@ -1288,6 +1348,303 @@ paths:
                       $ref: "#/components/schemas/RiskEvaluation"
         "400":
           description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Compliance Export Routes (admin) ────────────────────────────────────────
+
+  /api/admin/exports/credit-lines:
+    get:
+      tags: [Compliance Exports]
+      operationId: exportCreditLines
+      summary: Export credit lines (CSV/JSON)
+      description: |
+        Admin-only streaming export of credit lines for a required date range.
+        Max range 90 days; max 5000 rows per request. See docs/COMPLIANCE_EXPORTS.md.
+      security:
+        - AdminApiKeyAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Inclusive lower bound (ISO-8601 UTC)
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Inclusive upper bound (ISO-8601 UTC); span ≤ 90 days
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5000
+            default: 1000
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, suspended, closed, pending]
+        - name: walletAddress
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Export payload (JSON envelope or CSV attachment)
+          headers:
+            X-Export-Count:
+              schema: { type: integer }
+            X-Export-Limit:
+              schema: { type: integer }
+            X-Export-Offset:
+              schema: { type: integer }
+            X-Export-Truncated:
+              schema: { type: string, enum: [true, false] }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceExportResponse"
+            text/csv:
+              schema:
+                type: string
+        "400":
+          description: Validation failed (missing range, span too large, bad limit)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid admin key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Export rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateLimitErrorResponse"
+        "503":
+          description: Admin authentication not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/admin/exports/transactions:
+    get:
+      tags: [Compliance Exports]
+      operationId: exportTransactions
+      summary: Export transactions (CSV/JSON)
+      description: |
+        Admin-only streaming export of transactions for a required date range.
+        Max range 90 days; max 5000 rows per request.
+      security:
+        - AdminApiKeyAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5000
+            default: 1000
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, confirmed, failed, cancelled]
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [borrow, repay, interest_accrual, fee, status_change]
+        - name: creditLineId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: walletAddress
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Export payload (JSON envelope or CSV attachment)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceExportResponse"
+            text/csv:
+              schema:
+                type: string
+        "400":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid admin key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Export rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateLimitErrorResponse"
+        "503":
+          description: Admin authentication not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/admin/exports/audit:
+    get:
+      tags: [Compliance Exports]
+      operationId: exportAuditLog
+      summary: Export lifecycle audit records (CSV/JSON)
+      description: |
+        Admin-only streaming export of credit lifecycle audit records for a
+        required date range. Max range 90 days; max 5000 rows per request.
+      security:
+        - AdminApiKeyAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5000
+            default: 1000
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            example: credit.opened
+        - name: creditLineId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Export payload (JSON envelope or CSV attachment)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceExportResponse"
+            text/csv:
+              schema:
+                type: string
+        "400":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid admin key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Export rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateLimitErrorResponse"
+        "503":
+          description: Admin authentication not configured
           content:
             application/json:
               schema:

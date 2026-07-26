@@ -3,11 +3,13 @@
  *
  * Registers a handler on the {@link EventBus} that appends a structured,
  * append-only audit record for every credit lifecycle event. The default sink
- * writes to stdout via the shared logger contract; production deployments can
- * supply a sink that persists to the audit table instead.
+ * fans out to stdout **and** the in-process {@link defaultAuditLogStore} so
+ * compliance export endpoints can stream filtered history. Production
+ * deployments can supply a sink that persists to the audit table instead.
  */
 import type { EventBus } from './eventBus.js';
 import type { CreditDomainEvent, CreditEventType } from './domainEvents.js';
+import { defaultAuditLogStore } from '../auditLogStore.js';
 
 const LIFECYCLE_EVENTS: readonly CreditEventType[] = [
   'credit.opened',
@@ -25,10 +27,11 @@ export interface AuditRecord {
   readonly details: Record<string, unknown>;
 }
 
-/** Where audit records are written. Defaults to stdout. */
+/** Where audit records are written. Defaults to stdout + in-memory store. */
 export type AuditSink = (record: AuditRecord) => void | Promise<void>;
 
 function defaultAuditSink(record: AuditRecord): void {
+  defaultAuditLogStore.append(record);
   console.log('[audit]', JSON.stringify(record));
 }
 

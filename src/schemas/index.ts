@@ -17,3 +17,17 @@ export type {
   RepayBody,
   TransactionHistoryQuery,
 } from './credit.schema.js';
+
+export {
+  creditLineExportQuerySchema,
+  transactionExportQuerySchema,
+  auditExportQuerySchema,
+  MAX_EXPORT_LIMIT,
+  DEFAULT_EXPORT_LIMIT,
+  MAX_EXPORT_RANGE_DAYS,
+} from './export.schema.js';
+export type {
+  CreditLineExportQuery,
+  TransactionExportQuery,
+  AuditExportQuery,
+} from './export.schema.js';

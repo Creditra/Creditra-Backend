@@ -19,6 +19,7 @@ describe('loadRateLimitConfig', () => {
     delete process.env.RATE_LIMIT_WINDOW_MS;
     delete process.env.RATE_LIMIT_MAX_REQUESTS;
     delete process.env.RATE_LIMIT_MAX_EVALUATE;
+    delete process.env.RATE_LIMIT_MAX_EXPORT;
     delete process.env.RATE_LIMIT_REDIS_URL;
     delete process.env.RATE_LIMIT_REDIS_FAILURE_MODE;
 
@@ -28,6 +29,8 @@ describe('loadRateLimitConfig', () => {
     expect(config.default.maxRequests).toBe(100);
     expect(config.evaluate.windowMs).toBe(60_000);
     expect(config.evaluate.maxRequests).toBe(10);
+    expect(config.export.windowMs).toBe(60_000);
+    expect(config.export.maxRequests).toBe(5);
   });
 
   it('returns in-memory store defaults when Redis env vars are unset', () => {
@@ -44,6 +47,7 @@ describe('loadRateLimitConfig', () => {
     process.env.RATE_LIMIT_WINDOW_MS = '30000';
     process.env.RATE_LIMIT_MAX_REQUESTS = '50';
     process.env.RATE_LIMIT_MAX_EVALUATE = '5';
+    process.env.RATE_LIMIT_MAX_EXPORT = '2';
 
     const config = loadRateLimitConfig();
 
@@ -51,6 +55,7 @@ describe('loadRateLimitConfig', () => {
     expect(config.default.maxRequests).toBe(50);
     expect(config.evaluate.windowMs).toBe(30_000);
     expect(config.evaluate.maxRequests).toBe(5);
+    expect(config.export.maxRequests).toBe(2);
   });
 
   it('applies Redis store settings', () => {
@@ -67,23 +72,27 @@ describe('loadRateLimitConfig', () => {
     process.env.RATE_LIMIT_WINDOW_MS = 'not-a-number';
     process.env.RATE_LIMIT_MAX_REQUESTS = '0';
     process.env.RATE_LIMIT_MAX_EVALUATE = '-5';
+    process.env.RATE_LIMIT_MAX_EXPORT = '0';
 
     const config = loadRateLimitConfig();
 
     expect(config.default.windowMs).toBe(60_000);
     expect(config.default.maxRequests).toBe(100);
     expect(config.evaluate.maxRequests).toBe(10);
+    expect(config.export.maxRequests).toBe(5);
   });
 
   it('treats non-numeric strings as invalid and uses defaults', () => {
     process.env.RATE_LIMIT_WINDOW_MS = 'abc';
     process.env.RATE_LIMIT_MAX_REQUESTS = '';
     process.env.RATE_LIMIT_MAX_EVALUATE = '   ';
+    process.env.RATE_LIMIT_MAX_EXPORT = '   ';
 
     const config = loadRateLimitConfig();
 
     expect(config.default.windowMs).toBe(60_000);
     expect(config.default.maxRequests).toBe(100);
     expect(config.evaluate.maxRequests).toBe(10);
+    expect(config.export.maxRequests).toBe(5);
   });
 });
