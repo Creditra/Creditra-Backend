@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 import { metricsRouter, recordRequest } from '../metrics.js';
 
@@ -23,9 +23,8 @@ async function invokeRoute(args: InvokeArgs): Promise<{ status: number; body: un
     throw new Error(`Route not found: ${args.method.toUpperCase()} ${args.path}`);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handlers: Array<(req: Request, res: Response, next: NextFunction) => unknown> =
-    layer.route.stack.map((s: any) => s.handle); // eslint-disable-line @typescript-eslint/no-explicit-any
+    layer.route!.stack.map((s: any) => s.handle); // eslint-disable-line @typescript-eslint/no-explicit-any
 
   let statusCode = 200;
   let responseBody: unknown = null;
@@ -46,16 +45,6 @@ async function invokeRoute(args: InvokeArgs): Promise<{ status: number; body: un
       return this;
     },
   } as unknown as Response;
-
-  const runHandlers = async (index: number): Promise<void> => {
-    if (index >= handlers.length) return;
-    await new Promise<void>((resolve) => {
-      handlers[index](req, res, () => {
-        resolve();
-        runHandlers(index + 1);
-      });
-    });
-  };
 
   // Execute the first handler (auth guard); if it calls next, proceed to the route handler.
   await new Promise<void>((resolve) => {

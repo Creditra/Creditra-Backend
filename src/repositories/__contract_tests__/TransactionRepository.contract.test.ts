@@ -13,7 +13,6 @@ import type { TransactionRepository } from '../interfaces/TransactionRepository.
 // ---------------------------------------------------------------------------
 
 const CREDIT_LINE_ID = '00000000-0000-0000-0000-000000000001';
-const WALLET = 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S1';
 
 function sampleRequest(overrides: Partial<CreateTransactionRequest> = {}): CreateTransactionRequest {
   return {

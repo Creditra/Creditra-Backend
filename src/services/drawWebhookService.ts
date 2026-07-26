@@ -19,6 +19,9 @@ import { createHmac } from "node:crypto";
 import type { HorizonEvent } from "./horizonListener.js";
 import { getWebhookDeliveryStateStore } from "./webhookDeliveryState.js";
 import { redactLogArgs } from "../utils/logRedact.js";
+import { createServiceLogger } from "../utils/serviceLogger.js";
+
+const log = createServiceLogger("DrawWebhook");
 
 // ---------------------------------------------------------------------------
 // Types
@@ -260,7 +263,7 @@ export function initializeWebhooks(): void {
         log.info("webhook:initialized", {
             urls: activeConfig.urls.length,
             maxRetries: activeConfig.maxRetries,
-            timeoutMs: activeConfig.timeoutMs
+            timeoutMs: activeConfig.timeoutMs,
         });
     } catch (error) {
         log.error("webhook:initialize:failed", { error });
@@ -354,7 +357,7 @@ export async function sendDrawConfirmationWebhook(
     
     const successCount = results.filter(r => r.success).length;
     const failureCount = results.length - successCount;
-    
+
     log.info("webhook:delivery:complete", {
         successful: successCount,
         failed: failureCount,
