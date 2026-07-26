@@ -18,10 +18,8 @@
 import { createHmac } from "node:crypto";
 import type { HorizonEvent } from "./horizonListener.js";
 import { getWebhookDeliveryStateStore } from "./webhookDeliveryState.js";
-import { fetchWithTimeout } from "../utils/fetchWithTimeout.js";
-import { createServiceLogger } from "../utils/serviceLogger.js";
-
-const log = createServiceLogger("DrawWebhookService");
+import { redactLogArgs } from "../utils/logRedact.js";
+import { logger as log } from "../utils/logger.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -189,11 +187,7 @@ async function retryWithBackoff<T>(
             lastError = error as Error;
             
             if (attempt <= maxRetries) {
-                log.warn("webhook:delivery:retry", {
-                    attempt,
-                    retryInMs: delay,
-                    error: lastError,
-                });
+                log.warn({ attempt, retryInMs: delay, error: lastError }, "webhook:delivery:retry");
                 await new Promise(resolve => setTimeout(resolve, delay));
                 delay = Math.floor(delay * backoffMultiplier);
             }
@@ -230,7 +224,7 @@ function parseDrawConfirmedEvent(event: HorizonEvent): WebhookPayload | null {
             }
         };
     } catch (error) {
-        log.error("webhook:event-parse:failed", { error });
+        log.error({ error }, "webhook:event-parse:failed");
         return null;
     }
 }
@@ -246,13 +240,9 @@ export function getWebhookConfig(): WebhookConfig | null {
 export function initializeWebhooks(): void {
     try {
         activeConfig = resolveWebhookConfig();
-        log.info("webhook:initialized", {
-            urls: activeConfig.urls.length,
-            maxRetries: activeConfig.maxRetries,
-            timeoutMs: activeConfig.timeoutMs,
-        });
+        log.info({ urls: activeConfig.urls.length, maxRetries: activeConfig.maxRetries, timeoutMs: activeConfig.timeoutMs }, "webhook:initialized");
     } catch (error) {
-        log.error("webhook:initialize:failed", { error });
+        log.error({ error }, "webhook:initialize:failed");
         activeConfig = null;
     }
 }
@@ -267,20 +257,14 @@ export async function sendDrawConfirmationWebhook(
 
     const payload = parseDrawConfirmedEvent(event);
     if (!payload) {
-        log.info("webhook:delivery:skipped-non-draw-event", {
-            ledger: event.ledger,
-            contractId: event.contractId,
-        });
+        log.info({ ledger: event.ledger, contractId: event.contractId }, "webhook:delivery:skipped-non-draw-event");
         return [];
     }
 
     const payloadString = JSON.stringify(payload);
     const signature = generateSignature(payloadString, activeConfig.secret);
 
-    log.info("webhook:delivery:start", {
-        drawId: payload.data.drawId,
-        deliveryCount: activeConfig.urls.length,
-    });
+    log.info({ drawId: payload.data.drawId, deliveryCount: activeConfig.urls.length }, "webhook:delivery:start");
 
     const store = getWebhookDeliveryStateStore();
 
@@ -345,11 +329,8 @@ export async function sendDrawConfirmationWebhook(
     
     const successCount = results.filter(r => r.success).length;
     const failureCount = results.length - successCount;
-
-    log.info("webhook:delivery:complete", {
-        successful: successCount,
-        failed: failureCount,
-    });
+    
+    log.info({ successful: successCount, failed: failureCount }, "webhook:delivery:complete");
 
     return results;
 }

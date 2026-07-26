@@ -25,5 +25,7 @@ describe('shared constants', () => {
 
     it('caps JSON body size at a reasonable value', () => {
         expect(MAX_JSON_BODY_BYTES).toBeGreaterThan(1024);
+        // Default matches the documented 100 KiB API limit.
+        expect(MAX_JSON_BODY_BYTES).toBe(100 * 1024);
     });
 });

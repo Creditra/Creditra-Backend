@@ -13,7 +13,7 @@ flowchart TB
     subgraph Edge[Edge / HTTP]
       EXP[Express app<br/>src/index.ts]
       CORS[CORS allowlist<br/>src/config/cors.ts]
-      BODY[JSON body parser<br/>limit 100kb]
+      BODY[JSON body parser<br/>per-endpoint limits]
       CT[Content-Type guard<br/>415 on non-JSON]
     end
 
@@ -107,7 +107,7 @@ sequenceDiagram
     participant Client
     participant Express
     participant CORS
-    participant BodyParser as express.json (100kb)
+    participant BodyParser as bodyLimit + express.json
     participant CTGuard as Content-Type guard
     participant ReqLog as requestLogger
     participant Auth as auth / adminAuth
@@ -148,7 +148,7 @@ Cross-cutting guarantees:
 
 - **One envelope.** Successful responses use `ok(res, data, status?)`; failures use `fail(res, error, status?)` ([`src/utils/response.ts`](../src/utils/response.ts)).
 - **One request id.** `requestLogger` reuses `x-request-id` from the client when present, otherwise generates a UUID, and echoes it back as a response header.
-- **Body limits.** `express.json({ limit: '100kb' })` and a `Content-Type` guard for `POST/PUT/PATCH`.
+- **Body limits.** Per-endpoint caps via `createPathAwareBodyLimitMiddleware` (default 100 KiB, bulk 1 MiB) plus `express.json` absolute ceiling and a `Content-Type` guard for `POST/PUT/PATCH`. See [`docs/body-limits.md`](./body-limits.md).
 
 ---
 
@@ -313,7 +313,7 @@ Read endpoints are public by design but rate-limited.
 | 403 | Auth header present but invalid |
 | 404 | Resource not found |
 | 409 | Invalid state transition (e.g. closing an already-closed line) |
-| 413 | Body > 100 kB |
+| 413 | Body exceeds per-endpoint limit |
 | 415 | Mutating request without `application/json` Content-Type |
 | 429 | Rate limit exhausted; `Retry-After` included |
 | 500 | Unhandled error — envelope keeps stack out |

@@ -607,6 +607,36 @@ components:
           type: string
           example: "Too many requests"
 
+    PayloadTooLargeProblem:
+      type: object
+      description: RFC 7807 problem details plus project envelope fields for 413 responses
+      required: [type, title, status, detail, data, error]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: https://httpstatuses.com/413
+        title:
+          type: string
+          example: Payload Too Large
+        status:
+          type: integer
+          example: 413
+        detail:
+          type: string
+        limit:
+          type: integer
+          description: Maximum accepted body size in bytes for this endpoint
+        limitLabel:
+          type: string
+          description: Human-readable limit (e.g. 100kb)
+        data:
+          nullable: true
+          example: null
+        error:
+          type: string
+          description: Envelope-compatible error message (same text as detail)
+
 paths:
   /health:
     get:
@@ -1389,14 +1419,20 @@ paths:
               example:
                 error: Validation failed
         "413":
-          description: Request body exceeds the 100 kb limit
+          description: Request body exceeds the per-endpoint size limit (default 100 KiB)
           content:
-            application/json:
+            application/problem+json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/PayloadTooLargeProblem"
               example:
+                type: https://httpstatuses.com/413
+                title: Payload Too Large
+                status: 413
+                detail: Payload Too Large. Request body exceeds the maximum size of 100kb for this endpoint.
+                limit: 102400
+                limitLabel: 100kb
                 data: null
-                error: Request body too large. Maximum size is 100kb.
+                error: Payload Too Large. Request body exceeds the maximum size of 100kb for this endpoint.
         "415":
           description: Content-Type is not application/json
           content:

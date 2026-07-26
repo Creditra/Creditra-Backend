@@ -13,6 +13,7 @@ the route, service, and repository layers. Anything placed here MUST:
 | Module             | Purpose                                                   |
 | ------------------ | --------------------------------------------------------- |
 | `constants.ts`     | Pagination and body-size defaults shared by API endpoints |
+| *(config)* `bodyLimit.ts` | Runtime per-endpoint body limits — see [`docs/body-limits.md`](./body-limits.md) |
 | `fetchWithTimeout` | HTTP client with structured timeout and request errors    |
 | `httpStatus.ts`    | Named HTTP status code constants                          |
 | `logger.ts`        | Process-wide pino logger configuration                    |

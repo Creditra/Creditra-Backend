@@ -66,8 +66,7 @@ export class Container {
   private _dashboardSummaryService!: DashboardSummaryService;
   private _dataRetentionService?: DataRetentionService;
   private _dataRetentionWorker?: DataRetentionWorker;
-  private _outboundWebhookStore?: OutboundWebhookStore;
-  private _outboundWebhookDispatcher?: OutboundWebhookDispatcher;
+  private _dashboardSummaryService!: DashboardSummaryService;
 
   // In-process domain event bus (credit lifecycle).
   private readonly _eventBus = defaultEventBus;

@@ -20,5 +20,13 @@ export const MIN_PAGE_SIZE = 1;
 /** Default cursor pagination batch size. */
 export const DEFAULT_CURSOR_BATCH_SIZE = 50;
 
-/** Maximum allowed body size (in bytes) for typical JSON API requests. */
-export const MAX_JSON_BODY_BYTES = 1_000_000;
+/**
+ * Maximum allowed body size (in bytes) for typical JSON API requests.
+ * Prefer `loadBodyLimitConfig()` / `BODY_LIMIT_DEFAULT_BYTES` from
+ * `src/config/bodyLimit.ts` for runtime enforcement; this constant remains
+ * as a shared default for callers that only need the numeric default.
+ */
+export const MAX_JSON_BODY_BYTES = 100 * 1024;
+
+/** Higher ceiling for bulk ingest endpoints (bytes). */
+export const MAX_JSON_BODY_BULK_BYTES = 1024 * 1024;

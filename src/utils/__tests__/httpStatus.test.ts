@@ -8,6 +8,8 @@ import {
     HTTP_FORBIDDEN,
     HTTP_NOT_FOUND,
     HTTP_CONFLICT,
+    HTTP_PAYLOAD_TOO_LARGE,
+    HTTP_UNSUPPORTED_MEDIA_TYPE,
     HTTP_UNPROCESSABLE_ENTITY,
     HTTP_TOO_MANY_REQUESTS,
     HTTP_INTERNAL_SERVER_ERROR,
@@ -29,6 +31,8 @@ describe('HTTP status constants', () => {
         expect(HTTP_FORBIDDEN).toBe(403);
         expect(HTTP_NOT_FOUND).toBe(404);
         expect(HTTP_CONFLICT).toBe(409);
+        expect(HTTP_PAYLOAD_TOO_LARGE).toBe(413);
+        expect(HTTP_UNSUPPORTED_MEDIA_TYPE).toBe(415);
         expect(HTTP_UNPROCESSABLE_ENTITY).toBe(422);
         expect(HTTP_TOO_MANY_REQUESTS).toBe(429);
     });

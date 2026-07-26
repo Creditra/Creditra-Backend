@@ -5,7 +5,7 @@ Human-readable companion to the machine-readable spec at [`src/openapi.yaml`](..
 - **Base URL (dev):** `http://localhost:3000`
 - **Default media type:** `application/json` (the server returns `415` if you `POST/PUT/PATCH` anything else)
 - **Response envelope:** `{ "data": <payload> | null, "error": <string> | null }`
-- **Body limit:** 100 kB (oversize returns `413`)
+- **Body limits (per endpoint):** default **100 KiB**; bulk ingest `/api/credit/lines/bulk` **1 MiB**. Oversize returns `413` problem+json — see [`docs/body-limits.md`](./body-limits.md).
 
 ---
 
@@ -64,7 +64,7 @@ Rate-limit responses additionally include `retryAfter` and the `Retry-After` HTT
 | 403 | Auth header present but invalid |
 | 404 | Resource not found |
 | 409 | Invalid state transition (e.g. close-of-closed) |
-| 413 | Body > 100 kB |
+| 413 | Body exceeds per-endpoint limit (default 100 KiB; bulk 1 MiB) |
 | 415 | Mutating request lacked `application/json` |
 | 429 | Rate limit exhausted |
 | 500 | Internal error (no stack leaked) |
