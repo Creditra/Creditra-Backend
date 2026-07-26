@@ -21,6 +21,7 @@
  * same.
  */
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { paginateArray, type CursorPage } from '../utils/cursorPagination.js';
 
 export type ApiKeyStatus = 'active' | 'revoked';
 
@@ -122,6 +123,20 @@ export class ApiKeyStore {
   }
 
   /**
+   * Cursor-paginated key metadata (createdAt ASC, id ASC).
+   * Opaque cursors; never includes secrets.
+   */
+  listWithCursor(cursor?: string, limit?: number): CursorPage<ApiKeyMetadata> {
+    const items = this.list();
+    return paginateArray(items, {
+      cursor,
+      limit,
+      order: 'asc',
+      getKey: (m) => ({ t: Date.parse(m.createdAt), i: m.id }),
+    });
+  }
+
+  /**
    * Constant-time verification that `presented` maps to a currently valid key.
    * Valid = active, or revoked but still within the grace window.
    */
@@ -142,6 +157,23 @@ export class ApiKeyStore {
   /** Copy of the audit log (newest last). Never contains secret material. */
   auditLog(): ApiKeyAuditEntry[] {
     return [...this.audit];
+  }
+
+  /**
+   * Cursor-paginated audit log (newest first: `at` DESC, `keyId` ASC).
+   * Composite id key uses `${at}|${keyId}|${action}` so entries with the same
+   * timestamp remain uniquely addressable without leaking secrets.
+   */
+  auditLogWithCursor(cursor?: string, limit?: number): CursorPage<ApiKeyAuditEntry> {
+    return paginateArray(this.audit, {
+      cursor,
+      limit,
+      order: 'desc',
+      getKey: (entry) => ({
+        t: Date.parse(entry.at),
+        i: `${entry.keyId}:${entry.action}:${entry.at}`,
+      }),
+    });
   }
 
   private isUsable(record: ApiKeyRecord, nowMs: number): boolean {

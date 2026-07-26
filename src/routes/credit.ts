@@ -34,6 +34,11 @@ import { Container } from '../container/Container.js';
 import { adminAuth } from '../middleware/adminAuth.js';
 import { ok, fail } from '../utils/response.js';
 import {
+  parseCursorQuery,
+  toPaginationMeta,
+  InvalidCursorError,
+} from '../utils/cursorPagination.js';
+import {
   CreditLineNotFoundError,
   InvalidTransitionError,
   VersionConflictError,
@@ -41,6 +46,7 @@ import {
   suspendCreditLine,
   closeCreditLine,
   getTransactions,
+  getTransactionsWithCursor,
   submitDrawRequest,
   submitRepayRequest,
 } from '../services/creditService.js';
@@ -86,26 +92,24 @@ function parseIntegerQuery(value: unknown, defaultValue: number): number {
 }
 
 creditRouter.get('/lines', async (req, res) => {
-  const limit = parseIntegerQuery(req.query.limit, 100);
-
   try {
     if ('cursor' in req.query) {
-      const cursorValue = req.query.cursor;
-      const cursor = typeof cursorValue === 'string' && cursorValue.length > 0
-        ? cursorValue
-        : undefined;
+      const { cursor, limit } = parseCursorQuery(req.query as Record<string, unknown>, {
+        defaultLimit: 100,
+      });
       const result = await container.creditLineService.getAllCreditLinesWithCursor(cursor, limit);
 
       return res.json({
         creditLines: result.items,
-        pagination: {
+        pagination: toPaginationMeta({
           limit,
           nextCursor: result.nextCursor,
           hasMore: result.hasMore,
-        },
+        }),
       });
     }
 
+    const limit = parseIntegerQuery(req.query.limit, 100);
     const offset = parseIntegerQuery(req.query.offset, 0);
     const creditLines = await container.creditLineService.getAllCreditLines(offset, limit);
     const total = await container.creditLineService.getCreditLineCount();
@@ -216,26 +220,45 @@ creditRouter.get(
       return;
     }
 
-    const page = pageParam !== undefined ? parseInt(pageParam as string, 10) : 1;
-    const limit = limitParam !== undefined ? parseInt(limitParam as string, 10) : 20;
-
-    if (isNaN(page) || page < 1) {
-      fail(res, "Invalid 'page'. Must be a positive integer.", 400);
-      return;
-    }
-    if (isNaN(limit) || limit < 1 || limit > 100) {
-      fail(res, "Invalid 'limit'. Must be between 1 and 100.", 400);
-      return;
-    }
+    const filters = {
+      type: type as TransactionType | undefined,
+      from: from as string | undefined,
+      to: to as string | undefined,
+    };
 
     try {
-      const result = getTransactions(
-        id,
-        { type: type as TransactionType | undefined, from: from as string | undefined, to: to as string | undefined },
-        { page, limit },
-      );
+      // Cursor mode (standard) when `cursor` is present; page/limit remains for legacy clients.
+      if ('cursor' in req.query) {
+        const { cursor, limit } = parseCursorQuery(req.query as Record<string, unknown>, {
+          defaultLimit: 20,
+        });
+        const result = getTransactionsWithCursor(id, filters, { cursor, limit });
+        ok(res, {
+          transactions: result.items,
+          pagination: toPaginationMeta(result),
+        });
+        return;
+      }
+
+      const page = pageParam !== undefined ? parseInt(pageParam as string, 10) : 1;
+      const limit = limitParam !== undefined ? parseInt(limitParam as string, 10) : 20;
+
+      if (isNaN(page) || page < 1) {
+        fail(res, "Invalid 'page'. Must be a positive integer.", 400);
+        return;
+      }
+      if (isNaN(limit) || limit < 1 || limit > 100) {
+        fail(res, "Invalid 'limit'. Must be between 1 and 100.", 400);
+        return;
+      }
+
+      const result = getTransactions(id, filters, { page, limit });
       ok(res, result);
     } catch (err) {
+      if (err instanceof InvalidCursorError) {
+        fail(res, err.message, 400);
+        return;
+      }
       handleServiceError(err, res);
     }
   },

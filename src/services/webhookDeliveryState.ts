@@ -39,6 +39,8 @@ export interface WebhookDeliveryStateStore {
     record(record: Omit<DeliveryRecord, "updatedAt">): void;
     /** Read-only snapshot of permanently failed (dead-letter) deliveries. */
     deadLetters(): DeliveryRecord[];
+    /** Read-only snapshot of every tracked delivery (newest last insertion order). */
+    list(): DeliveryRecord[];
     /** Counts by status plus the total tracked deliveries. */
     counts(): {
         total: number;
@@ -70,6 +72,10 @@ class InMemoryWebhookDeliveryStateStore implements WebhookDeliveryStateStore {
         return [...this.records.values()].filter(
             (r) => r.status === "dead_letter"
         );
+    }
+
+    list(): DeliveryRecord[] {
+        return [...this.records.values()];
     }
 
     counts(): {

@@ -7,15 +7,19 @@
  *
  * Surface (all require `X-Admin-Api-Key`):
  *  - POST   `/`            — issue a new key. Returns plaintext ONCE.
- *  - GET    `/`            — list key metadata (no secrets).
+ *  - GET    `/`            — list key metadata (no secrets). Supports cursor pagination.
  *  - DELETE `/:id`         — revoke a key (enters grace period).
- *  - GET    `/audit`       — audit log of issue/revoke actions.
+ *  - GET    `/audit`       — audit log of issue/revoke actions (cursor pagination).
  *
  * Operational runbook: see `docs/API_KEY_ROTATION.md`.
  */
 import { Router, type Request, type Response } from 'express';
 import { adminAuth } from '../middleware/adminAuth.js';
 import { defaultApiKeyStore } from '../services/apiKeyStore.js';
+import {
+  parseCursorQuery,
+  toPaginationMeta,
+} from '../utils/cursorPagination.js';
 
 export const apiKeysRouter = Router();
 
@@ -37,13 +41,51 @@ apiKeysRouter.post('/', adminAuth, (req: Request, res: Response) => {
 });
 
 /** GET /api/admin/api-keys — list metadata (never secrets). */
-apiKeysRouter.get('/', adminAuth, (_req: Request, res: Response) => {
-  res.json({ data: defaultApiKeyStore.list(), error: null });
+apiKeysRouter.get('/', adminAuth, (req: Request, res: Response) => {
+  try {
+    if ('cursor' in req.query) {
+      const { cursor, limit } = parseCursorQuery(req.query as Record<string, unknown>);
+      const page = defaultApiKeyStore.listWithCursor(cursor, limit);
+      res.json({
+        data: {
+          items: page.items,
+          pagination: toPaginationMeta(page),
+        },
+        error: null,
+      });
+      return;
+    }
+
+    // Legacy unpaginated response for clients that omit `cursor`.
+    res.json({ data: defaultApiKeyStore.list(), error: null });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Bad request';
+    res.status(400).json({ data: null, error: message });
+  }
 });
 
 /** GET /api/admin/api-keys/audit — issue/revoke audit log. */
-apiKeysRouter.get('/audit', adminAuth, (_req: Request, res: Response) => {
-  res.json({ data: defaultApiKeyStore.auditLog(), error: null });
+apiKeysRouter.get('/audit', adminAuth, (req: Request, res: Response) => {
+  try {
+    if ('cursor' in req.query) {
+      const { cursor, limit } = parseCursorQuery(req.query as Record<string, unknown>);
+      const page = defaultApiKeyStore.auditLogWithCursor(cursor, limit);
+      res.json({
+        data: {
+          items: page.items,
+          pagination: toPaginationMeta(page),
+        },
+        error: null,
+      });
+      return;
+    }
+
+    // Legacy unpaginated response.
+    res.json({ data: defaultApiKeyStore.auditLog(), error: null });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Bad request';
+    res.status(400).json({ data: null, error: message });
+  }
 });
 
 /** DELETE /api/admin/api-keys/:id — revoke (enters grace period). */

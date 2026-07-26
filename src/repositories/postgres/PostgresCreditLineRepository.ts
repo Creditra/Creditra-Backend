@@ -2,6 +2,10 @@ import type { CreditLine, CreateCreditLineRequest, UpdateCreditLineRequest, Cred
 import type { CreditLineRepository, CursorPaginationResult } from '../interfaces/CreditLineRepository.js';
 import type { DbClient } from '../../db/client.js';
 import { VersionConflictError } from '../../services/creditService.js';
+import {
+  buildPageFromOverfetch,
+  decodeCursor,
+} from '../../utils/cursorPagination.js';
 
 interface CreditLineRow {
   id: string;
@@ -155,30 +159,13 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
     return creditLines;
   }
 
-  async findAllWithCursor(cursor?: string, limit = 100): Promise<CursorPaginationResult> {
-    let cursorTime: Date | null = null;
-    let cursorId: string | null = null;
-
-    if (cursor) {
-      try {
-        const decodedCursor = Buffer.from(cursor, 'base64').toString('utf-8');
-        const [timestamp, id] = decodedCursor.split('|');
-        const parsedTime = new Date(Number(timestamp));
-        if (!Number.isNaN(parsedTime.getTime()) && id) {
-          cursorTime = parsedTime;
-          cursorId = id;
-        }
-      } catch {
-        cursorTime = null;
-        cursorId = null;
-      }
-    }
-
-    const whereClause = cursorTime && cursorId
+  async findAllWithCursor(cursor?: string, limit = 100): Promise<CursorPaginationResult<CreditLine>> {
+    const decoded = decodeCursor(cursor);
+    const whereClause = decoded
       ? 'WHERE (cl.created_at > $2 OR (cl.created_at = $2 AND cl.id > $3))'
       : '';
-    const values = cursorTime && cursorId
-      ? [limit + 1, cursorTime, cursorId]
+    const values = decoded
+      ? [limit + 1, new Date(decoded.t), decoded.i]
       : [limit + 1];
 
     const query = `
@@ -208,16 +195,15 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
       creditLines.push(this.toCreditLine(row, availableCredit));
     }
 
-    const hasMore = creditLines.length > limit;
-    const items = creditLines.slice(0, limit);
-    const lastItem = items[items.length - 1];
+    const page = buildPageFromOverfetch(creditLines, limit, (cl) => ({
+      t: cl.createdAt.getTime(),
+      i: cl.id,
+    }));
 
     return {
-      items,
-      hasMore,
-      nextCursor: hasMore && lastItem
-        ? Buffer.from(`${lastItem.createdAt.getTime()}|${lastItem.id}`, 'utf-8').toString('base64')
-        : null,
+      items: page.items,
+      hasMore: page.hasMore,
+      nextCursor: page.nextCursor,
     };
   }
 

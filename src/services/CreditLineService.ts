@@ -2,6 +2,7 @@ import { type CreditLine, type CreateCreditLineRequest, type UpdateCreditLineReq
 import type { CreditLineRepository, CursorPaginationResult } from '../repositories/interfaces/CreditLineRepository.js';
 import type { EventBus } from './events/eventBus.js';
 import { nowIso } from './events/domainEvents.js';
+import { clampLimit } from '../utils/cursorPagination.js';
 
 /**
  * Domain service for credit-line CRUD plus the `draw` / `repay` operations.
@@ -110,14 +111,13 @@ export class CreditLineService {
    *
    * @see `docs/cursor-pagination.md`
    */
-  async getAllCreditLinesWithCursor(cursor?: string, limit?: number): Promise<CursorPaginationResult> {
-    if (limit !== undefined && limit <= 0) {
-      throw new Error('Limit must be greater than 0');
-    }
-    if (limit !== undefined && limit > 100) {
-      throw new Error('Limit cannot exceed 100');
-    }
-    return await this.creditLineRepository.findAllWithCursor(cursor, limit);
+  async getAllCreditLinesWithCursor(
+    cursor?: string,
+    limit?: number,
+  ): Promise<CursorPaginationResult<CreditLine>> {
+    // Shared clamp keeps limit error messages identical across list endpoints.
+    const safeLimit = clampLimit(limit, { defaultLimit: 100 });
+    return await this.creditLineRepository.findAllWithCursor(cursor, safeLimit);
   }
 
   /**

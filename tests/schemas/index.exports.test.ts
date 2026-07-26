@@ -7,6 +7,8 @@ import {
   riskEvaluateSchema,
   riskHistoryQuerySchema,
   transactionHistoryQuerySchema,
+  cursorPaginationQuerySchema,
+  offsetPaginationQuerySchema,
 } from '../../src/schemas/index.js';
 
 describe('schemas index exports', () => {
@@ -21,5 +23,10 @@ describe('schemas index exports', () => {
   it('re-exports risk schemas', () => {
     expect(riskEvaluateSchema).toBeDefined();
     expect(riskHistoryQuerySchema).toBeDefined();
+  });
+
+  it('re-exports pagination schemas', () => {
+    expect(cursorPaginationQuerySchema).toBeDefined();
+    expect(offsetPaginationQuerySchema).toBeDefined();
   });
 });

@@ -32,6 +32,8 @@ export type CreateCreditLineBody = z.infer<typeof createCreditLineSchema>;
 export const creditLinesQuerySchema = z.object({
   offset: nonNegativeIntString.optional(),
   limit: positiveIntString.max(100).optional(),
+  /** When present (even empty), enables the standard cursor pagination mode. */
+  cursor: z.string().optional(),
 }).strict();
 
 export type CreditLinesQuery = z.infer<typeof creditLinesQuerySchema>;
@@ -62,6 +64,8 @@ export const transactionHistoryQuerySchema = z.object({
   to: isoDateTime.optional(),
   page: positiveIntString.optional(),
   limit: positiveIntString.max(100).optional(),
+  /** When present (even empty), enables the standard cursor pagination mode. */
+  cursor: z.string().optional(),
 }).strict();
 
 export type TransactionHistoryQuery = z.infer<typeof transactionHistoryQuerySchema>;

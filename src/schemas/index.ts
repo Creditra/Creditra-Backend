@@ -17,3 +17,12 @@ export type {
   RepayBody,
   TransactionHistoryQuery,
 } from './credit.schema.js';
+
+export {
+  cursorPaginationQuerySchema,
+  offsetPaginationQuerySchema,
+} from './pagination.schema.js';
+export type {
+  CursorPaginationQuery,
+  OffsetPaginationQuery,
+} from './pagination.schema.js';

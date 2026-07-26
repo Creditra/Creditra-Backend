@@ -74,9 +74,32 @@ Rate-limit responses additionally include `retryAfter` and the `Retry-After` HTT
 
 ## 3. Pagination & filtering conventions
 
-Two pagination styles ship — pick the one the endpoint advertises in its query schema.
+### Cursor (standard — preferred for all list endpoints)
 
-### Offset/limit (default for risk history, transactions)
+Presence of the `cursor` query param (even empty) selects cursor mode.
+
+| Param | Type | Default | Bounds |
+|---|---|---|---|
+| `cursor` | string | — | opaque |
+| `limit` | int | 25 (varies by endpoint) | 1–100 |
+
+Response pagination block:
+
+```json
+{ "limit": 25, "nextCursor": "<opaque>|null", "hasMore": true }
+```
+
+Applied to:
+
+- `GET /api/credit/lines`
+- `GET /api/credit/lines/:id/transactions`
+- `GET /api/admin/api-keys` and `GET /api/admin/api-keys/audit`
+- `GET /api/webhooks/deliveries`
+
+Cursors are opaque base64url payloads; clients must pass `nextCursor` back
+verbatim. Full details: [`docs/cursor-pagination.md`](./cursor-pagination.md).
+
+### Offset / page (legacy, still supported)
 
 | Param | Type | Default | Bounds |
 |---|---|---|---|
@@ -84,9 +107,8 @@ Two pagination styles ship — pick the one the endpoint advertises in its query
 | `limit` | int | 20 | 1–100 |
 | `page` *(transactions only)* | int | 1 | ≥ 1 |
 
-### Cursor (credit-line list)
-
-`CreditLineService.getAllCreditLinesWithCursor(cursor?, limit?)` returns `{ items, nextCursor }`. Cursor is an opaque string; clients should pass it back verbatim. See [`docs/cursor-pagination.md`](./cursor-pagination.md).
+Used when `cursor` is **omitted** on credit-line list, transaction history, and
+risk history.
 
 ### Filtering — transactions
 
@@ -94,7 +116,7 @@ Two pagination styles ship — pick the one the endpoint advertises in its query
 
 - `type` ∈ `borrow | repay | interest_accrual | fee | status_change`
 - `from`, `to` — ISO-8601 date strings (`new Date(from).getTime()` must be valid)
-- `page`, `limit`
+- `cursor`, `limit` (standard) **or** `page`, `limit` (legacy)
 
 ---
 
@@ -176,7 +198,7 @@ Patches `creditLimit`, `interestRateBps`, or `status`.
 
 Filterable transaction history.
 
-- **Query:** `type`, `from`, `to`, `page`, `limit` (see §3).
+- **Query:** `type`, `from`, `to`, plus `cursor`/`limit` (standard) or `page`/`limit` (legacy). See �3.
 - **Errors:** `400` for any bad filter; `404` if line not found.
 
 #### `POST /api/credit/lines/:id/draw`

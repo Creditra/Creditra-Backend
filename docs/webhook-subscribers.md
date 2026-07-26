@@ -164,6 +164,7 @@ The management routes are mounted under `/api/webhooks`.
 | `GET` | `/api/webhooks/config` | Returns sanitized webhook configuration: URLs, retry knobs, timeout, and configured state. It never returns `WEBHOOK_SECRET`. |
 | `POST` | `/api/webhooks/test` | Sends a connectivity probe to every configured URL and returns `{ total, reachable, unreachable, results }`. |
 | `GET` | `/api/webhooks/health` | Returns `disabled` when no URLs are configured, otherwise `active` with URL count and retry settings. |
+| `GET` | `/api/webhooks/deliveries` | Cursor-paginated delivery records (`cursor`, `limit`, optional `status`). See [`cursor-pagination.md`](./cursor-pagination.md). |
 
 ## Subscriber Checklist
 
