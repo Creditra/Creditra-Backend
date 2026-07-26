@@ -1,4 +1,5 @@
 import type { IRiskProvider, RiskProviderOutput } from "./IRiskProvider.js";
+import { fetchWithTimeout } from "../../utils/fetchWithTimeout.js";
 
 export interface ExternalApiRiskProviderConfig {
   baseUrl: string;
@@ -29,26 +30,25 @@ export class ExternalApiRiskProvider implements IRiskProvider {
   }
 
   async evaluate(walletAddress: string): Promise<RiskProviderOutput> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
-
     let response: Response;
     try {
-      response = await fetch(`${this.config.baseUrl}/evaluate`, {
+      response = await fetchWithTimeout(`${this.config.baseUrl}/evaluate`, {
         method: "POST",
-        signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.config.apiKey}`,
         },
         body: JSON.stringify({ walletAddress }),
+        timeouts: {
+          connectTimeoutMs: this.config.timeoutMs,
+          readTimeoutMs: 0,
+        },
+        retry: false,
       });
     } catch (err) {
       throw new Error(
         `External risk provider request failed: ${(err as Error).message}`,
       );
-    } finally {
-      clearTimeout(timer);
     }
 
     if (!response.ok) {

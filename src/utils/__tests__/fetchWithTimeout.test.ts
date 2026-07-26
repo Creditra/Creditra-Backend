@@ -5,6 +5,7 @@ import {
   HttpTimeoutError,
   HttpRequestError,
   getDefaultTimeouts,
+  getDefaultRetryConfig,
 } from '../fetchWithTimeout.js';
 
 describe('fetchWithTimeout', () => {
@@ -34,6 +35,17 @@ describe('fetchWithTimeout', () => {
 
       delete process.env['HTTP_CONNECT_TIMEOUT_MS'];
       delete process.env['HTTP_READ_TIMEOUT_MS'];
+    });
+  });
+
+  describe('getDefaultRetryConfig', () => {
+    it('should return safe-method retry defaults', () => {
+      const retry = getDefaultRetryConfig();
+
+      expect(retry.maxRetries).toBe(2);
+      expect(retry.retryDelayMs).toBe(250);
+      expect(retry.retryMethods).toEqual(['GET', 'HEAD', 'OPTIONS']);
+      expect(retry.retryStatuses).toContain(503);
     });
   });
 
@@ -70,6 +82,7 @@ describe('fetchWithTimeout', () => {
 
       const promise = fetchWithTimeout('https://example.com/slow', {
         timeouts: { connectTimeoutMs: 50, readTimeoutMs: 50 },
+        retry: false,
       });
 
       vi.advanceTimersByTime(100);
@@ -83,7 +96,7 @@ describe('fetchWithTimeout', () => {
       global.fetch = vi.fn().mockRejectedValue(networkError);
 
       await expect(
-        fetchWithTimeout('https://example.com/fail')
+        fetchWithTimeout('https://example.com/fail', { retry: false })
       ).rejects.toThrow(HttpRequestError);
     });
 
@@ -113,6 +126,72 @@ describe('fetchWithTimeout', () => {
           signal: expect.any(AbortSignal),
         })
       );
+    });
+
+    it('should retry retryable statuses for safe methods', async () => {
+      const retryableResponse = new Response('Service Unavailable', {
+        status: 503,
+        statusText: 'Service Unavailable',
+      });
+      const okResponse = new Response('OK', { status: 200 });
+      global.fetch = vi.fn()
+        .mockResolvedValueOnce(retryableResponse)
+        .mockResolvedValueOnce(okResponse);
+
+      const response = await fetchWithTimeout('https://example.com/api', {
+        retry: {
+          maxRetries: 1,
+          retryDelayMs: 0,
+          retryJitterMs: 0,
+        },
+      });
+
+      expect(response.status).toBe(200);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not retry POST requests by default', async () => {
+      const retryableResponse = new Response('Service Unavailable', {
+        status: 503,
+        statusText: 'Service Unavailable',
+      });
+      global.fetch = vi.fn().mockResolvedValue(retryableResponse);
+
+      const response = await fetchWithTimeout('https://example.com/api', {
+        method: 'POST',
+        retry: {
+          maxRetries: 1,
+          retryDelayMs: 0,
+          retryJitterMs: 0,
+        },
+      });
+
+      expect(response.status).toBe(503);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should retry POST only when explicitly allowed', async () => {
+      const retryableResponse = new Response('Service Unavailable', {
+        status: 503,
+        statusText: 'Service Unavailable',
+      });
+      const okResponse = new Response('OK', { status: 200 });
+      global.fetch = vi.fn()
+        .mockResolvedValueOnce(retryableResponse)
+        .mockResolvedValueOnce(okResponse);
+
+      const response = await fetchWithTimeout('https://example.com/api', {
+        method: 'POST',
+        retry: {
+          maxRetries: 1,
+          retryDelayMs: 0,
+          retryJitterMs: 0,
+          retryMethods: ['POST'],
+        },
+      });
+
+      expect(response.status).toBe(200);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
     });
   });
 

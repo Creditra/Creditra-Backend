@@ -18,8 +18,40 @@ import {
     resolveWebhookConfig,
 } from "../drawWebhookService.js";
 import type { HorizonEvent } from "../horizonListener.js";
-import { setWebhookDeliveryStateStore } from "../webhookDeliveryState.js";
-import type { WebhookDeliveryStateStore } from "../webhookDeliveryState.js";
+import {
+    setWebhookDeliveryStateStore,
+    type DeliveryRecord,
+    type WebhookDeliveryStateStore,
+} from "../webhookDeliveryState.js";
+
+function createTestDeliveryStore(): WebhookDeliveryStateStore {
+    const records = new Map<string, DeliveryRecord>();
+    const key = (drawId: string, url: string) => `${drawId}::${url}`;
+
+    return {
+        isDelivered(drawId: string, url: string): boolean {
+            return records.get(key(drawId, url))?.status === "delivered";
+        },
+        record(record: Omit<DeliveryRecord, "updatedAt">): void {
+            records.set(key(record.drawId, record.url), {
+                ...record,
+                updatedAt: new Date().toISOString(),
+            });
+        },
+        deadLetters(): DeliveryRecord[] {
+            return [...records.values()].filter((record) => record.status === "dead_letter");
+        },
+        counts() {
+            const values = [...records.values()];
+            return {
+                total: values.length,
+                delivered: values.filter((record) => record.status === "delivered").length,
+                failed: values.filter((record) => record.status === "failed").length,
+                deadLetter: values.filter((record) => record.status === "dead_letter").length,
+            };
+        },
+    };
+}
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -50,6 +82,7 @@ describe("DrawWebhookService", () => {
         serviceLoggerMock.error.mockReset();
         setWebhookDeliveryStateStore(createTestDeliveryStore());
         vi.useFakeTimers();
+        setWebhookDeliveryStateStore(createTestDeliveryStore());
         
         // Clear environment variables
         delete process.env.WEBHOOK_URLS;
@@ -430,7 +463,7 @@ describe("DrawWebhookService", () => {
             expect(results[0]).toEqual({
                 url: "https://example.com/webhook",
                 reachable: false,
-                error: "Connection refused"
+                error: "HTTP request failed: Connection refused"
             });
         });
 
@@ -475,6 +508,7 @@ describe("DrawWebhookService", () => {
             // Reset delivery store so the second send actually POSTs again.
             setWebhookDeliveryStateStore(createTestDeliveryStore());
             mockFetch.mockClear();
+            setWebhookDeliveryStateStore(createTestDeliveryStore());
             await sendDrawConfirmationWebhook(event);
             const secondCallSignature = mockFetch.mock.calls[0][1].headers["X-Webhook-Signature"];
 
@@ -492,7 +526,13 @@ describe("DrawWebhookService", () => {
             initializeWebhooks();
 
             // Mock fetch that never resolves
-            mockFetch.mockImplementation(() => new Promise(() => {}));
+            mockFetch.mockImplementation((_url, init) => new Promise((_resolve, reject) => {
+                init.signal.addEventListener("abort", () => {
+                    reject(Object.assign(new Error("The operation was aborted"), {
+                        name: "AbortError",
+                    }));
+                });
+            }));
 
             const event: HorizonEvent = {
                 ledger: 1000,
@@ -519,7 +559,7 @@ describe("DrawWebhookService", () => {
                 url: "https://example.com/webhook",
                 success: false,
                 attempt: 1,
-                error: "Request timeout"
+                error: "HTTP read timeout after 1000ms: https://example.com/webhook"
             });
         });
     });

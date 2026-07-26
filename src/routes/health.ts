@@ -20,6 +20,7 @@ import { Router } from 'express';
 import { ok } from '../utils/response.js';
 import { getConnection } from '../db/client.js';
 import { resolveConfig } from '../services/horizonListener.js';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 
 export const healthRouter = Router();
 
@@ -87,10 +88,13 @@ async function checkHorizon(): Promise<DependencyHealth> {
      const horizonUrl = resolveConfig().horizonUrl;
 
      try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), HORIZON_CHECK_TIMEOUT_MS);
-          const response = await fetch(horizonUrl, { signal: controller.signal });
-          clearTimeout(timeout);
+          const response = await fetchWithTimeout(horizonUrl, {
+               timeouts: {
+                    connectTimeoutMs: HORIZON_CHECK_TIMEOUT_MS,
+                    readTimeoutMs: 0,
+               },
+               retry: false,
+          });
 
           if (!response.ok) {
                return { status: 'degraded', message: `Horizon returned HTTP ${response.status}` };
