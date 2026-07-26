@@ -12,8 +12,9 @@ import { healthRouter } from "./routes/health.js";
 import { webhookRouter } from "./routes/webhook.js";
 import { inboundWebhookRouter } from "./routes/inboundWebhooks.js";
 import { reconciliationRouter } from "./routes/reconciliation.js";
+import { supportRouter } from "./routes/support.js";
 import { errorHandler } from "./middleware/errorHandler.js";
-import { createIdempotencyMiddleware } from "./middleware/idempotency.js";
+
 import { requestLogger } from "./middleware/requestLogger.js";
 import { captureRawBody } from "./middleware/rawBody.js";
 import {
@@ -184,6 +185,8 @@ app.use("/api/risk", riskRouter);
 app.use("/api/webhooks", webhookRouter);
 app.use("/api/inbound-webhooks", inboundWebhookRouter);
 app.use("/api/reconciliation", reconciliationRouter);
+// Support tools: admin-only, read-only borrower troubleshooting (issue #226).
+app.use("/api/support", defaultRateLimit, supportRouter);
 
 // Global error handler — must be registered after routes
 app.use(errorHandler);

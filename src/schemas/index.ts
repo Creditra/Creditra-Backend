@@ -17,3 +17,14 @@ export type {
   RepayBody,
   TransactionHistoryQuery,
 } from './credit.schema.js';
+
+export {
+  supportBorrowerParamsSchema,
+  supportCreditLineParamsSchema,
+  supportRecentQuerySchema,
+} from './support.schema.js';
+export type {
+  SupportBorrowerParams,
+  SupportCreditLineParams,
+  SupportRecentQuery,
+} from './support.schema.js';

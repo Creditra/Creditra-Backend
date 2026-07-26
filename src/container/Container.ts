@@ -225,6 +225,10 @@ export class Container {
     return this._dataRetentionWorker;
   }
 
+  get dashboardSummaryService(): DashboardSummaryService {
+    return this._dashboardSummaryService;
+  }
+
   // Method to replace repositories
   public setRepositories(repositories: {
     creditLineRepository?: CreditLineRepository;

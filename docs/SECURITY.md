@@ -61,7 +61,9 @@ Two roles ship in code; everything else is read-public:
 | Role | Header | Gated endpoints |
 |---|---|---|
 | `api-key` (partner / integration) | `X-API-Key` | `POST /api/risk/admin/recalibrate`, `/api/reconciliation/*` |
-| `admin` (operator) | `X-Admin-Api-Key` | `POST /api/credit/lines/:id/suspend`, `.../close` |
+| `admin` (operator / support) | `X-Admin-Api-Key` | `POST /api/credit/lines/:id/suspend`, `.../close`, **`/api/support/*` (read-only)** |
+
+Support tools (`/api/support/*`) are intentionally **GET-only** and fail closed when `ADMIN_API_KEY` is unset. Responses redact wallet addresses and strip secret-like fields — see [`src/utils/supportRedact.ts`](../src/utils/supportRedact.ts).
 
 Both middlewares register **after** rate-limit but **before** the handler so an unauthenticated client can still be throttled. New roles should follow the same pattern.
 

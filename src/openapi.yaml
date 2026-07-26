@@ -40,8 +40,11 @@ tags:
     description: Signed partner webhook ingestion
   - name: Reconciliation
     description: Admin control plane for DB-vs-chain reconciliation
-  - name: Admin
-    description: Privileged operator controls and audit review
+  - name: Support
+    description: |
+      Read-only admin/support tools for safe borrower lookup and troubleshooting.
+      All endpoints require `X-Admin-Api-Key`, never mutate state, and redact
+      sensitive identifiers (wallet truncation, secret stripping) in responses.
 
 security:
   - ApiKeyAuth: []
@@ -55,6 +58,14 @@ components:
       description: |
         API key for authenticated endpoints. Required for admin operations.
         Keys are configured via the `API_KEYS` environment variable.
+    AdminApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Admin-Api-Key
+      description: |
+        Admin/support operator key. Required for support tools and destructive
+        credit-line state transitions. Configured via `ADMIN_API_KEY`.
+        Fail-closed: when unset, endpoints return 503.
 
   parameters:
     IfNoneMatch:
@@ -510,6 +521,188 @@ components:
           type: string
           example: "Risk model recalibration triggered"
 
+    SupportCreditLineSnapshot:
+      type: object
+      required:
+        - id
+        - walletAddress
+        - creditLimit
+        - availableCredit
+        - utilized
+        - interestRateBps
+        - status
+        - version
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        walletAddress:
+          type: string
+          description: Truncated Stellar wallet (e.g. GDRXE2...NLRK)
+          example: "GDRXE2...NLRK"
+        creditLimit:
+          type: string
+          example: "5000.00"
+        availableCredit:
+          type: string
+        utilized:
+          type: string
+        interestRateBps:
+          type: integer
+        status:
+          type: string
+        version:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SupportTransactionSnapshot:
+      type: object
+      required:
+        - id
+        - creditLineId
+        - walletAddress
+        - amount
+        - type
+        - status
+        - blockchainTxHash
+        - createdAt
+        - processedAt
+      properties:
+        id:
+          type: string
+        creditLineId:
+          type: string
+        walletAddress:
+          type: string
+          description: Truncated Stellar wallet
+        amount:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        blockchainTxHash:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        processedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    SupportReconciliationStatus:
+      type: object
+      required: [workerRunning, queueSize, failedJobs, readOnly]
+      properties:
+        workerRunning:
+          type: boolean
+        queueSize:
+          type: integer
+          minimum: 0
+        failedJobs:
+          type: integer
+          minimum: 0
+        readOnly:
+          type: boolean
+          enum: [true]
+          description: Always true — support tools never schedule reconciliation jobs
+
+    SupportBorrowerLookupResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          required:
+            - walletAddress
+            - creditLines
+            - recentTransactions
+            - reconciliation
+            - generatedAt
+            - found
+          properties:
+            walletAddress:
+              type: string
+              description: Truncated wallet used for the lookup
+            creditLines:
+              type: array
+              items:
+                $ref: "#/components/schemas/SupportCreditLineSnapshot"
+            recentTransactions:
+              type: array
+              items:
+                $ref: "#/components/schemas/SupportTransactionSnapshot"
+            reconciliation:
+              $ref: "#/components/schemas/SupportReconciliationStatus"
+            generatedAt:
+              type: string
+              format: date-time
+            found:
+              type: boolean
+              description: False when the wallet has no credit lines (still HTTP 200)
+        error:
+          type: string
+          nullable: true
+
+    SupportCreditLineLookupResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          required:
+            - creditLine
+            - recentTransactions
+            - reconciliation
+            - generatedAt
+          properties:
+            creditLine:
+              $ref: "#/components/schemas/SupportCreditLineSnapshot"
+            recentTransactions:
+              type: array
+              items:
+                $ref: "#/components/schemas/SupportTransactionSnapshot"
+            reconciliation:
+              $ref: "#/components/schemas/SupportReconciliationStatus"
+            generatedAt:
+              type: string
+              format: date-time
+        error:
+          type: string
+          nullable: true
+
+    SupportTransactionsResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          required: [transactions]
+          properties:
+            transactions:
+              type: array
+              items:
+                $ref: "#/components/schemas/SupportTransactionSnapshot"
+        error:
+          type: string
+          nullable: true
+
+    SupportReconciliationStatusResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/SupportReconciliationStatus"
+        error:
+          type: string
+          nullable: true
+
     ReconciliationTriggerResponse:
       type: object
       properties:
@@ -845,6 +1038,215 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Failed to get reconciliation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Support Tools (read-only, admin) ─────────────────────────────────────
+
+  /api/support/borrowers/{walletAddress}:
+    get:
+      tags: [Support]
+      operationId: supportBorrowerLookup
+      summary: Safe borrower troubleshooting lookup
+      description: |
+        Read-only composite view for incident response: credit-line snapshots,
+        recent transactions, and reconciliation control-plane status.
+        Requires `X-Admin-Api-Key`. Wallet addresses in the response are truncated.
+        Never mutates state or schedules jobs.
+      security:
+        - AdminApiKeyAuth: []
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 56
+            maxLength: 56
+          description: Full Stellar G-address used for lookup
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Max recent transactions to include
+      responses:
+        "200":
+          description: Borrower support view (found may be false when no lines exist)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportBorrowerLookupResponse"
+              example:
+                data:
+                  walletAddress: "GDRXE2...NLRK"
+                  creditLines: []
+                  recentTransactions: []
+                  reconciliation:
+                    workerRunning: true
+                    queueSize: 0
+                    failedJobs: 0
+                    readOnly: true
+                  generatedAt: "2026-01-15T12:00:00.000Z"
+                  found: false
+                error: null
+        "400":
+          description: Invalid wallet address or query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid admin key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Admin authentication not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/support/credit-lines/{id}:
+    get:
+      tags: [Support]
+      operationId: supportCreditLineLookup
+      summary: Credit-line troubleshooting snapshot
+      description: |
+        Read-only snapshot of a single credit line plus recent transactions and
+        reconciliation status. Requires `X-Admin-Api-Key`. Responses redact wallets.
+      security:
+        - AdminApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Credit line support view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportCreditLineLookupResponse"
+        "401":
+          description: Missing or invalid admin key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Credit line not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Admin authentication not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/support/credit-lines/{id}/transactions:
+    get:
+      tags: [Support]
+      operationId: supportCreditLineTransactions
+      summary: Recent transactions for support troubleshooting
+      description: |
+        Read-only recent transaction list for a credit line. Requires
+        `X-Admin-Api-Key`. Wallet addresses are truncated in the payload.
+      security:
+        - AdminApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Recent transactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTransactionsResponse"
+        "401":
+          description: Missing or invalid admin key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Credit line not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Admin authentication not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/support/reconciliation/status:
+    get:
+      tags: [Support]
+      operationId: supportReconciliationStatus
+      summary: Read-only reconciliation control-plane status
+      description: |
+        Observational reconciliation worker/queue status for support tooling.
+        Unlike `POST /api/reconciliation/trigger`, this endpoint never schedules jobs.
+        Requires `X-Admin-Api-Key`. Response always includes `readOnly: true`.
+      security:
+        - AdminApiKeyAuth: []
+      responses:
+        "200":
+          description: Reconciliation status (read-only)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportReconciliationStatusResponse"
+              example:
+                data:
+                  workerRunning: true
+                  queueSize: 0
+                  failedJobs: 0
+                  readOnly: true
+                error: null
+        "401":
+          description: Missing or invalid admin key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Admin authentication not configured
           content:
             application/json:
               schema:
