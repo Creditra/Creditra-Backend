@@ -1,0 +1,33 @@
+title = "Creditra Backend secret scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "stellar-secret-key"
+description = "Stellar secret keys must never be committed"
+regex = '''\bS[A-Z2-7]{55}\b'''
+keywords = ["S"]
+
+[[allowlists]]
+description = "Documented placeholders and local examples are not deployable secrets"
+paths = [
+  '''(^|/)\.env\.example$''',
+  '''(^|/)docs/secret-scanning\.md$''',
+  '''(^|/)CONTRIBUTING\.md$''',
+]
+regexes = [
+  '''API_KEYS=change-me-before-any-real-traffic''',
+  '''DATABASE_URL=postgresql://user:password@localhost:5432/creditra''',
+  '''ADMIN_API_KEY=''',
+  '''your-api-key''',
+  '''JWT_SECRET''',
+  '''WEBHOOK_SECRET''',
+  '''HMAC_SECRET''',
+]
+
+[[allowlists]]
+description = "Gitleaks configuration documents the patterns it blocks"
+paths = [
+  '''(^|/)\.gitleaks\.toml$''',
+]

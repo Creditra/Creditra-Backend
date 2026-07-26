@@ -121,6 +121,13 @@ Before committing, format code:
 npm run lint
 ```
 
+Secret scanning:
+```bash
+npm run security:secrets
+npm run security:secrets:staged
+```
+The scan uses `.gitleaks.toml` and blocks private keys, API tokens, database URLs, and webhook secrets. Only documented placeholders in `.env.example` should be allowlisted.
+
 # Security
 Security is a priority.
 
@@ -234,7 +241,8 @@ Before requesting review, confirm:
 - [ ] `npm test` passes locally
 - [ ] `npm run lint` passes
 - [ ] `npm run typecheck` passes
-- [ ] `npm run validate:openapi` passes (if OpenAPI changed or routes changed)
+- [ ] `npm run validate:spec` passes (if OpenAPI changed)
+- [ ] `npm run security:secrets` passes
 - [ ] New code covered by tests; coverage ≥ 95 % on touched modules
 - [ ] No new secrets, credentials, or wallet pubkeys in code, tests, fixtures, or logs
 - [ ] All Zod schemas updated alongside any new route inputs
