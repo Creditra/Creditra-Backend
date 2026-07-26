@@ -179,22 +179,48 @@ components:
         interestRateBps:
           type: number
 
-    ErrorResponse:
+    ProblemDetails:
       type: object
-      required:
-        - error
+      description: RFC 7807 problem+json with Creditra taxonomy extensions
+      required: [type, title, status, detail, code, data, error]
       properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum:
+            - validation_failed
+            - unauthorized
+            - forbidden
+            - not_found
+            - duplicate_resource
+            - version_conflict
+            - invalid_state_transition
+            - unique_constraint_violation
+            - payload_too_large
+            - unsupported_media_type
+            - rate_limited
+            - upstream_failure
+            - upstream_timeout
+            - service_unavailable
+            - internal_error
+        details: {}
+        resource:
+          type: string
+        retryAfter:
+          type: integer
+        data:
+          nullable: true
         error:
-          type: object
-          required:
-            - code
-            - message
-          properties:
-            code:
-              type: string
-              enum:
-                - NOT_FOUND
-                - INVALID_INPUT
-                - INTERNAL_ERROR
-            message:
-              type: string
+          type: string
+
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'

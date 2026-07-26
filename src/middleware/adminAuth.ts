@@ -1,5 +1,10 @@
 import type { Request, Response, NextFunction } from "express";
 import { createHash, timingSafeEqual } from "node:crypto";
+import {
+    sendProblem,
+    serviceUnavailable,
+    unauthorized,
+} from "../errors/index.js";
 
 export const ADMIN_KEY_HEADER = "x-admin-api-key" as const;
 
@@ -18,18 +23,22 @@ export function adminAuth(
     const expectedKey = process.env["ADMIN_API_KEY"];
 
     if (!expectedKey) {
-        res.status(503).json({
-            error: "Admin authentication is not configured on this server.",
-        });
+        sendProblem(
+            res,
+            serviceUnavailable(
+                "Admin authentication is not configured on this server.",
+            ),
+        );
         return;
     }
 
     const providedKey = req.headers[ADMIN_KEY_HEADER];
 
     if (typeof providedKey !== "string" || !timingSafeStringEqual(providedKey, expectedKey)) {
-        res.status(401).json({
-            error: "Unauthorized: valid X-Admin-Api-Key header is required.",
-        });
+        sendProblem(
+            res,
+            unauthorized("Unauthorized: valid X-Admin-Api-Key header is required."),
+        );
         return;
     }
 

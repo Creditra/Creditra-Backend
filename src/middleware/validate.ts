@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { z } from 'zod';
+import { sendProblem, validationFailed } from '../errors/index.js';
 
 /**
  * Express middleware factory that validates `req.body` against a Zod schema.
@@ -7,15 +8,8 @@ import type { z } from 'zod';
  * On success the parsed (and potentially transformed) body replaces `req.body`
  * so downstream handlers always receive well-typed data.
  *
- * On failure a `400` response is returned with structured error details:
- * ```json
- * {
- *   "error": "Validation failed",
- *   "details": [
- *     { "field": "walletAddress", "message": "Required" }
- *   ]
- * }
- * ```
+ * On failure a `400` problem+json response is returned with field-level
+ * `details` and stable code `validation_failed`.
  */
 export function validateBody<T>(schema: z.ZodType<T>) {
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -27,7 +21,7 @@ export function validateBody<T>(schema: z.ZodType<T>) {
         message: issue.message,
       }));
 
-      res.status(400).json({ data: null, error: 'Validation failed', details });
+      sendProblem(res, validationFailed('Validation failed', details));
       return;
     }
 
@@ -53,7 +47,7 @@ export function validateQuery<T>(schema: z.ZodType<T>) {
         message: issue.message,
       }));
 
-      res.status(400).json({ data: null, error: 'Validation failed', details });
+      sendProblem(res, validationFailed('Validation failed', details));
       return;
     }
 
@@ -75,11 +69,11 @@ export function validateParams<T>(schema: z.ZodType<T>) {
         message: issue.message,
       }));
 
-      res.status(400).json({ error: 'Validation failed', details });
+      sendProblem(res, validationFailed('Validation failed', details));
       return;
     }
 
-    req.params = result.data as any;
+    req.params = result.data as Request['params'];
     next();
   };
 }

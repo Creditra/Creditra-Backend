@@ -30,7 +30,12 @@ describe('GET /api/reconciliation/status', () => {
   it('is mounted and rejects unauthenticated callers', async () => {
     const res = await request(app).get('/api/reconciliation/status');
     expect(res.status).toBe(401);
-    expect(res.body).toEqual({ error: 'Unauthorized' });
+    expect(res.body).toMatchObject({
+      code: 'unauthorized',
+      status: 401,
+      error: 'Unauthorized',
+      data: null,
+    });
   });
 });
 

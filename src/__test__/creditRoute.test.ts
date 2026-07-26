@@ -320,9 +320,10 @@ describe("GET /api/credit/lines/:id/transactions", () => {
     expect(res.body.error).toContain(MISSING_ID);
   });
 
-  it("returns 404 with JSON content-type", async () => {
+  it("returns 404 with problem+json content-type", async () => {
     const res = await request(buildApp()).get(`/api/credit/lines/${MISSING_ID}/transactions`);
-    expect(res.headers["content-type"]).toMatch(/application\/json/);
+    expect(res.headers["content-type"]).toMatch(/application\/problem\+json/);
+    expect(res.body.code).toBe("not_found");
   });
 
   it("filters by type=status_change", async () => {

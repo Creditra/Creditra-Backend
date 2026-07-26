@@ -21,6 +21,7 @@
 import { createHash } from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
 import { createClient } from 'redis';
+import { rateLimited, sendProblem } from '../errors/index.js';
 
 export interface RateLimitEntry {
   count: number;
@@ -281,12 +282,7 @@ export function createRateLimitMiddleware(
 
     if (entry.count > limit) {
       const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
-      res.set('Retry-After', String(retryAfter));
-      res.status(429).json({
-        data: null,
-        error: `Too many requests. Please retry after ${retryAfter} seconds.`,
-        retryAfter,
-      });
+      sendProblem(res, rateLimited(retryAfter));
       return;
     }
 

@@ -1,8 +1,14 @@
 import type { Request, Response, NextFunction } from 'express';
-import { fail } from '../utils/response.js';
+import {
+  AppError,
+  internalError,
+  sendProblem,
+  translateUnknownError,
+} from '../errors/index.js';
 
 /**
  * Standard error response interface for OpenAPI documentation
+ * @deprecated Prefer ProblemDetails from `src/errors` (RFC 7807).
  */
 export interface ErrorResponse {
   data: null;
@@ -10,12 +16,14 @@ export interface ErrorResponse {
 }
 
 /**
- * Global error-handling middleware.
+ * Global error-handling middleware (central problem+json translator).
  *
  * Catches any unhandled errors thrown (or passed via `next(err)`) from route
- * handlers and returns a consistent JSON error response using the fail() helper.
- * 
- * In production, stack traces and internal error details are not leaked.
+ * handlers and returns RFC 7807 `application/problem+json` with a stable
+ * taxonomy `type` and `code`.
+ *
+ * Legacy envelope fields `data` / `error` are included for older clients.
+ * Stack traces and internal error details are never included in the body.
  */
 export function errorHandler(
   err: unknown,
@@ -23,11 +31,7 @@ export function errorHandler(
   res: Response,
   _next: NextFunction,
 ): void {
-  const maybeError = err as { status?: number; type?: string };
-
-  // Body-parser emits this type when the payload exceeds the configured limit.
-  if (maybeError.type === 'entity.too.large' || maybeError.status === 413) {
-    fail(res, 'Request body too large. Maximum size is 100kb.', 413);
+  if (res.headersSent) {
     return;
   }
 
@@ -37,27 +41,28 @@ export function errorHandler(
       stack: err.stack,
       name: err.name,
     });
+  } else {
+    console.error('[errorHandler]', err);
+  }
 
-    const status = maybeError.status ?? statusFromName(err.name);
-    fail(res, status >= 500 ? 'Internal server error' : err.message, status);
+  const translated = translateUnknownError(err);
+  if (translated) {
+    sendProblem(res, translated);
     return;
   }
 
-  console.error('[errorHandler]', err);
-  fail(res, typeof err === 'string' ? err : 'Internal server error', 500);
-}
-
-function statusFromName(name: string): number {
-  switch (name) {
-    case 'ValidationError':
-      return 400;
-    case 'UnauthorizedError':
-      return 401;
-    case 'ForbiddenError':
-      return 403;
-    case 'NotFoundError':
-      return 404;
-    default:
-      return 500;
+  if (typeof err === 'string') {
+    // Historical behaviour: explicit string errors may surface their text.
+    sendProblem(
+      res,
+      new AppError({
+        code: 'internal_error',
+        message: err,
+        exposeMessage: true,
+      }),
+    );
+    return;
   }
+
+  sendProblem(res, internalError());
 }

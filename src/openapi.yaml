@@ -446,23 +446,88 @@ components:
 
     # ── Error Schemas ─────────────────────────────────────────────────────────
 
-    ErrorResponse:
+    Problem:
       type: object
-      required: [error]
+      description: |
+        RFC 7807 problem+json with Creditra taxonomy extensions.
+        Content-Type: application/problem+json
+        See docs/problem-json.md and docs/error-envelope.md.
+      required: [type, title, status, detail, code, data, error]
       properties:
+        type:
+          type: string
+          format: uri
+          example: "https://docs.creditra.dev/problems/validation_failed"
+        title:
+          type: string
+          example: "Validation Error"
+        status:
+          type: integer
+          example: 400
+        detail:
+          type: string
+          example: "Validation failed"
+        code:
+          type: string
+          description: Stable machine code clients should branch on
+          enum:
+            - validation_failed
+            - unauthorized
+            - forbidden
+            - not_found
+            - duplicate_resource
+            - version_conflict
+            - invalid_state_transition
+            - unique_constraint_violation
+            - payload_too_large
+            - unsupported_media_type
+            - rate_limited
+            - upstream_failure
+            - upstream_timeout
+            - service_unavailable
+            - internal_error
+        details:
+          description: Optional field issues or safe context (never secrets)
+          oneOf:
+            - type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+            - type: object
+              additionalProperties: true
+        resource:
+          type: string
+          description: Optional resource kind
+        retryAfter:
+          type: integer
+          description: Seconds until retry (rate limit); also Retry-After header
+        data:
+          type: "null"
+          description: Legacy envelope compatibility (always null on errors)
         error:
           type: string
-        id:
-          type: string
-          description: Present on 404 responses that reference a specific resource
+          description: Legacy envelope compatibility (same text as detail)
+
+    ErrorResponse:
+      allOf:
+        - $ref: "#/components/schemas/Problem"
+      description: |
+        Error responses use RFC 7807 problem+json (alias of Problem).
+        Legacy clients may still read `error` / `data`.
+
+    ConflictProblem:
+      allOf:
+        - $ref: "#/components/schemas/Problem"
+      description: HTTP 409 conflict problem+json
 
     RateLimitErrorResponse:
-      type: object
-      required: [error]
-      properties:
-        error:
-          type: string
-          example: "Too many requests"
+      allOf:
+        - $ref: "#/components/schemas/Problem"
+      description: Rate limit problem+json (code=rate_limited)
 
 paths:
   /health:
