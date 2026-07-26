@@ -54,8 +54,13 @@ creditBulkRouter.post('/lines/bulk', async (req: Request, res: Response, next) =
       }
 
       try {
-        const creditService = container.getCreditService();
-        const line = await creditService.createCreditLine(parsed.data as CreateCreditLineBody);
+        const creditService = container.creditLineService;
+        const body = parsed.data as CreateCreditLineBody;
+        const line = await creditService.createCreditLine({
+          walletAddress: body.walletAddress,
+          creditLimit: body.creditLimit ?? body.requestedLimit ?? '',
+          interestRateBps: body.interestRateBps ?? 0,
+        });
         results.push({ index: i + 1, status: 'created', id: line.id });
         created++;
       } catch (err) {
@@ -64,9 +69,9 @@ creditBulkRouter.post('/lines/bulk', async (req: Request, res: Response, next) =
       }
     }
 
-    return res.status(207).json(ok({ summary: { total: rows.length, created, failed, dry_run: isDryRun }, results }));
+    return ok(res, { summary: { total: rows.length, created, failed, dry_run: isDryRun } as Record<string, unknown>, results }, 207);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 });
 

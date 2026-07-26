@@ -1,7 +1,15 @@
 export { walletAddressSchema } from './common.schema.js';
 export { walletAddressParamSchema } from './params.schema.js';
-export { riskEvaluateSchema, riskHistoryQuerySchema } from './risk.schema.js';
-export type { RiskEvaluateBody, RiskHistoryQuery } from './risk.schema.js';
+export {
+  riskEvaluateSchema,
+  riskHistoryQuerySchema,
+  riskSignalsQuerySchema,
+} from './risk.schema.js';
+export type {
+  RiskEvaluateBody,
+  RiskHistoryQuery,
+  RiskSignalsQuery,
+} from './risk.schema.js';
 
 export {
   createCreditLineSchema,

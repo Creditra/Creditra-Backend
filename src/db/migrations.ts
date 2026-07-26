@@ -16,6 +16,7 @@ export const EXPECTED_TABLES = [
   'risk_evaluations',
   'transactions',
   'events',
+  'risk_signals',
 ] as const;
 
 /**

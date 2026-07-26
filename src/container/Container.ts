@@ -18,16 +18,20 @@
  */
 import { type CreditLineRepository } from "../repositories/interfaces/CreditLineRepository.js";
 import { type RiskEvaluationRepository } from "../repositories/interfaces/RiskEvaluationRepository.js";
+import { type RiskSignalRepository } from "../repositories/interfaces/RiskSignalRepository.js";
 import { type TransactionRepository } from "../repositories/interfaces/TransactionRepository.js";
 import { getConnection, type DbClient } from "../db/client.js";
 import { InMemoryCreditLineRepository } from "../repositories/memory/InMemoryCreditLineRepository.js";
 import { InMemoryRiskEvaluationRepository } from "../repositories/memory/InMemoryRiskEvaluationRepository.js";
+import { InMemoryRiskSignalRepository } from "../repositories/memory/InMemoryRiskSignalRepository.js";
 import { InMemoryTransactionRepository } from "../repositories/memory/InMemoryTransactionRepository.js";
 import { PostgresCreditLineRepository } from "../repositories/postgres/PostgresCreditLineRepository.js";
 import { PostgresRiskEvaluationRepository } from "../repositories/postgres/PostgresRiskEvaluationRepository.js";
+import { PostgresRiskSignalRepository } from "../repositories/postgres/PostgresRiskSignalRepository.js";
 import { PostgresTransactionRepository } from "../repositories/postgres/PostgresTransactionRepository.js";
 import { CreditLineService } from "../services/CreditLineService.js";
 import { RiskEvaluationService } from "../services/RiskEvaluationService.js";
+import { AnomalyDetectionService } from "../services/anomalyDetectionService.js";
 import { createRiskProvider } from "../services/providers/providerFactory.js";
 import { ReconciliationService, type SorobanRpcClient } from "../services/reconciliationService.js";
 import { ReconciliationWorker } from "../services/reconciliationWorker.js";
@@ -35,9 +39,11 @@ import { createSorobanClient, resolveSorobanConfig } from "../services/sorobanCl
 import { defaultJobQueue } from "../services/jobQueue.js";
 import { defaultEventBus } from "../services/events/eventBus.js";
 import { registerAuditSubscriber } from "../services/events/auditSubscriber.js";
+import { registerAnomalySubscriber } from "../services/events/anomalySubscriber.js";
 import { DataRetentionService } from "../services/dataRetentionService.js";
 import { DataRetentionWorker } from "../services/dataRetentionWorker.js";
 import { DashboardSummaryService } from "../services/dashboardSummaryService.js";
+import { loadAnomalyDetectionConfig } from "../config/anomalyDetection.js";
 
 export class Container {
   private static instance: Container;
@@ -49,18 +55,22 @@ export class Container {
   private _creditLineRepository!: CreditLineRepository;
   private _riskEvaluationRepository!: RiskEvaluationRepository;
   private _transactionRepository!: TransactionRepository;
+  private _riskSignalRepository!: RiskSignalRepository;
 
   // Services
   private _creditLineService!: CreditLineService;
   private _riskEvaluationService!: RiskEvaluationService;
+  private _anomalyDetectionService!: AnomalyDetectionService;
   private _reconciliationService!: ReconciliationService;
   private _reconciliationWorker!: ReconciliationWorker;
   private _sorobanClient!: SorobanRpcClient;
   private _dataRetentionService?: DataRetentionService;
   private _dataRetentionWorker?: DataRetentionWorker;
+  private _dashboardSummaryService!: DashboardSummaryService;
 
   // In-process domain event bus (credit lifecycle).
   private readonly _eventBus = defaultEventBus;
+  private _anomalyUnsubscribe?: () => void;
 
   private constructor() {
     // Initialize repositories based on environment
@@ -79,6 +89,16 @@ export class Container {
     this._riskEvaluationService = new RiskEvaluationService(
       this._riskEvaluationRepository,
       createRiskProvider(),
+    );
+    this._anomalyDetectionService = new AnomalyDetectionService(
+      this._riskSignalRepository,
+      loadAnomalyDetectionConfig(),
+    );
+    // Re-bind anomaly subscriber so it always targets the current service instance.
+    this._anomalyUnsubscribe?.();
+    this._anomalyUnsubscribe = registerAnomalySubscriber(
+      this._eventBus,
+      this._anomalyDetectionService,
     );
     this._reconciliationService = new ReconciliationService(
       this._creditLineRepository,
@@ -113,11 +133,13 @@ export class Container {
       this._creditLineRepository = new PostgresCreditLineRepository(this._dbClient);
       this._riskEvaluationRepository = new PostgresRiskEvaluationRepository(this._dbClient);
       this._transactionRepository = new PostgresTransactionRepository(this._dbClient);
+      this._riskSignalRepository = new PostgresRiskSignalRepository(this._dbClient);
     } else {
       // Use in-memory repositories (for development/testing)
       this._creditLineRepository = new InMemoryCreditLineRepository();
       this._riskEvaluationRepository = new InMemoryRiskEvaluationRepository();
       this._transactionRepository = new InMemoryTransactionRepository();
+      this._riskSignalRepository = new InMemoryRiskSignalRepository();
     }
   }
 
@@ -141,6 +163,10 @@ export class Container {
     return this._transactionRepository;
   }
 
+  get riskSignalRepository(): RiskSignalRepository {
+    return this._riskSignalRepository;
+  }
+
   // Service getters
   get creditLineService(): CreditLineService {
     return this._creditLineService;
@@ -148,6 +174,10 @@ export class Container {
 
   get riskEvaluationService(): RiskEvaluationService {
     return this._riskEvaluationService;
+  }
+
+  get anomalyDetectionService(): AnomalyDetectionService {
+    return this._anomalyDetectionService;
   }
 
   get reconciliationService(): ReconciliationService {
@@ -168,11 +198,16 @@ export class Container {
     return this._dataRetentionWorker;
   }
 
+  get dashboardSummaryService(): DashboardSummaryService {
+    return this._dashboardSummaryService;
+  }
+
   // Method to replace repositories (useful for testing or switching to DB implementations)
   public setRepositories(repositories: {
     creditLineRepository?: CreditLineRepository;
     riskEvaluationRepository?: RiskEvaluationRepository;
     transactionRepository?: TransactionRepository;
+    riskSignalRepository?: RiskSignalRepository;
   }): void {
     let shouldRebuildServices = false;
 
@@ -188,6 +223,11 @@ export class Container {
 
     if (repositories.transactionRepository) {
       this._transactionRepository = repositories.transactionRepository;
+    }
+
+    if (repositories.riskSignalRepository) {
+      this._riskSignalRepository = repositories.riskSignalRepository;
+      shouldRebuildServices = true;
     }
 
     if (shouldRebuildServices) {

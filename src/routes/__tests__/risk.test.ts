@@ -379,4 +379,86 @@ describe('Risk Routes', () => {
       });
     });
   });
+
+  describe('GET /admin/signals', () => {
+    afterEach(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (typeof (container.riskSignalRepository as any).clear === 'function') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (container.riskSignalRepository as any).clear();
+      }
+      container.anomalyDetectionService.clearState();
+    });
+
+    it('requires API key', async () => {
+      const response = await invokeRoute({
+        method: 'get',
+        path: '/admin/signals',
+      });
+      expect(response.status).toBe(401);
+    });
+
+    it('lists signals for operators', async () => {
+      await container.riskSignalRepository.create({
+        signalType: 'rapid_successive_draws',
+        ruleId: 'rule.rapid_successive_draws',
+        severity: 'medium',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2',
+        creditLineId: '33333333-3333-3333-3333-333333333333',
+        correlationId: 'route-corr-1',
+        thresholds: { minCount: 3, windowSeconds: 300 },
+        evidence: { drawCount: 3 },
+      });
+
+      const response = await invokeRoute({
+        method: 'get',
+        path: '/admin/signals',
+        headers: { 'x-api-key': validApiKey },
+        query: { limit: 10 },
+      });
+
+      expect(response.status).toBe(200);
+      const body = response.body as {
+        data: { signals: Array<{ correlationId: string }>; total: number };
+        error: null;
+      };
+      expect(body.error).toBeNull();
+      expect(body.data.total).toBeGreaterThanOrEqual(1);
+      expect(body.data.signals.some((s) => s.correlationId === 'route-corr-1')).toBe(true);
+    });
+
+    it('returns a single signal by id', async () => {
+      const created = await container.riskSignalRepository.create({
+        signalType: 'draw_burst',
+        ruleId: 'rule.draw_burst',
+        severity: 'high',
+        walletAddress: 'GBAHQCUPC7G2B4D2F2I2K2M2O2Q2S2U2W2Y2A2C2E2G2I2K2M2O2Q2S2',
+        creditLineId: '44444444-4444-4444-4444-444444444444',
+        correlationId: 'route-corr-2',
+        thresholds: { minCount: 5 },
+        evidence: { drawCount: 5 },
+      });
+
+      const response = await invokeRoute({
+        method: 'get',
+        path: '/admin/signals/:id',
+        params: { id: created.id },
+        headers: { 'x-api-key': validApiKey },
+      });
+
+      expect(response.status).toBe(200);
+      expect((response.body as { data: { id: string } }).data.id).toBe(created.id);
+    });
+
+    it('returns 404 for missing signal', async () => {
+      const response = await invokeRoute({
+        method: 'get',
+        path: '/admin/signals/:id',
+        params: { id: '00000000-0000-0000-0000-000000000000' },
+        headers: { 'x-api-key': validApiKey },
+      });
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({ data: null, error: 'Risk signal not found' });
+    });
+  });
 });
