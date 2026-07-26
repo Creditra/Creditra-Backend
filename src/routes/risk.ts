@@ -9,19 +9,28 @@
  * - GET  `/wallet/:walletAddress/history`     — paginated history.
  * - POST `/admin/recalibrate`                 — protected by `X-API-Key`.
  *
- * Wallet path params are passed through to the risk service so missing
- * evaluations can return domain 404s. The provider behind these routes is
- * pluggable — see `RISK_PROVIDER` and `src/services/providers/`.
+ * Wallet path params are validated by Zod (`walletAddressParamSchema`).
+ * Response validation is opt-in via `ENABLE_RESPONSE_VALIDATION=true`.
  */
 import { Router, type Request, type Response } from 'express';
 import { createApiKeyMiddleware } from '../middleware/auth.js';
 import { loadApiKeys } from '../config/apiKeys.js';
-import { validateBody, validateQuery } from '../middleware/validate.js';
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+  validateResponse,
+} from '../middleware/validate.js';
 import { ok, fail } from '../utils/response.js';
 import { Container } from '../container/Container.js';
 import {
   riskEvaluateSchema,
   riskHistoryQuerySchema,
+  idParamSchema,
+  walletAddressParamSchema,
+  envelopedRiskResultSchema,
+  envelopedRiskEvaluationSchema,
+  envelopedRiskHistorySchema,
   type RiskEvaluateBody,
   type RiskHistoryQuery,
 } from '../schemas/index.js';
@@ -34,6 +43,7 @@ const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
 riskRouter.post(
   '/evaluate',
   validateBody(riskEvaluateSchema),
+  validateResponse(envelopedRiskResultSchema),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { walletAddress, forceRefresh } = req.body as RiskEvaluateBody;
@@ -78,41 +88,53 @@ riskRouter.post(
   },
 );
 
-riskRouter.get('/evaluations/:id', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const evaluation = await container.riskEvaluationService.getRiskEvaluation(req.params.id);
+riskRouter.get(
+  '/evaluations/:id',
+  validateParams(idParamSchema),
+  validateResponse(envelopedRiskEvaluationSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const evaluation = await container.riskEvaluationService.getRiskEvaluation(req.params.id);
 
-    if (!evaluation) {
-      fail(res, 'Risk evaluation not found', 404);
-      return;
+      if (!evaluation) {
+        fail(res, 'Risk evaluation not found', 404);
+        return;
+      }
+
+      ok(res, evaluation);
+    } catch {
+      fail(res, 'Failed to fetch risk evaluation', 500);
     }
-
-    ok(res, evaluation);
-  } catch {
-    fail(res, 'Failed to fetch risk evaluation', 500);
-  }
-});
+  },
+);
 
 riskRouter.get(
   '/wallet/:walletAddress/latest',
+  validateParams(walletAddressParamSchema),
+  validateResponse(envelopedRiskEvaluationSchema),
   async (req: Request, res: Response): Promise<void> => {
-  try {
-    const evaluation = await container.riskEvaluationService.getLatestRiskEvaluation(req.params.walletAddress);
+    try {
+      const evaluation = await container.riskEvaluationService.getLatestRiskEvaluation(
+        req.params.walletAddress,
+      );
 
-    if (!evaluation) {
-      fail(res, 'No risk evaluation found for wallet', 404);
-      return;
+      if (!evaluation) {
+        fail(res, 'No risk evaluation found for wallet', 404);
+        return;
+      }
+
+      ok(res, evaluation);
+    } catch {
+      fail(res, 'Failed to fetch latest risk evaluation', 500);
     }
-
-    ok(res, evaluation);
-  } catch {
-    fail(res, 'Failed to fetch latest risk evaluation', 500);
-  }
-});
+  },
+);
 
 riskRouter.get(
   '/wallet/:walletAddress/history',
+  validateParams(walletAddressParamSchema),
   validateQuery(riskHistoryQuerySchema),
+  validateResponse(envelopedRiskHistorySchema),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { offset, limit } = req.query as unknown as RiskHistoryQuery;

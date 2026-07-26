@@ -16,33 +16,33 @@
 import { Router, type Request, type Response } from 'express';
 import { adminAuth } from '../middleware/adminAuth.js';
 import { defaultApiKeyStore } from '../services/apiKeyStore.js';
-import { defaultAdminAuditLog } from '../services/adminAuditLog.js';
-import { adminActorFromRequest } from '../utils/adminActor.js';
+import { validateBody, validateParams } from '../middleware/validate.js';
+import { issueApiKeySchema, idParamSchema } from '../schemas/index.js';
+import type { IssueApiKeyBody } from '../schemas/index.js';
 
 export const apiKeysRouter = Router();
 
 /** POST /api/admin/api-keys — issue a new key (returns plaintext once). */
-apiKeysRouter.post('/', adminAuth, (req: Request, res: Response) => {
-  const label = typeof req.body?.label === 'string' && req.body.label.trim()
-    ? req.body.label.trim()
-    : 'unlabelled';
-  const { id, plaintext, metadata } = defaultApiKeyStore.issue(label);
-  defaultAdminAuditLog.record({
-    actor: adminActorFromRequest(req),
-    action: 'api_key.issued',
-    target: { type: 'api_key', id },
-    after: { id, label, status: metadata.status },
-  });
-  res.status(201).json({
-    data: {
-      id,
-      // Surfaced exactly once — clients must store it now.
-      key: plaintext,
-      metadata,
-    },
-    error: null,
-  });
-});
+apiKeysRouter.post(
+  '/',
+  adminAuth,
+  validateBody(issueApiKeySchema),
+  (req: Request, res: Response) => {
+    const body = req.body as IssueApiKeyBody;
+    const label =
+      typeof body.label === 'string' && body.label.trim() ? body.label.trim() : 'unlabelled';
+    const { id, plaintext, metadata } = defaultApiKeyStore.issue(label);
+    res.status(201).json({
+      data: {
+        id,
+        // Surfaced exactly once — clients must store it now.
+        key: plaintext,
+        metadata,
+      },
+      error: null,
+    });
+  },
+);
 
 /** GET /api/admin/api-keys — list metadata (never secrets). */
 apiKeysRouter.get('/', adminAuth, (_req: Request, res: Response) => {
@@ -55,19 +55,16 @@ apiKeysRouter.get('/audit', adminAuth, (_req: Request, res: Response) => {
 });
 
 /** DELETE /api/admin/api-keys/:id — revoke (enters grace period). */
-apiKeysRouter.delete('/:id', adminAuth, (req: Request, res: Response) => {
-  const before = defaultApiKeyStore.list().find((key) => key.id === req.params.id);
-  const ok = defaultApiKeyStore.revoke(req.params.id);
-  if (!ok) {
-    res.status(404).json({ data: null, error: 'API key not found' });
-    return;
-  }
-  defaultAdminAuditLog.record({
-    actor: adminActorFromRequest(req),
-    action: 'api_key.revoked',
-    target: { type: 'api_key', id: req.params.id },
-    before,
-    after: { id: req.params.id, status: 'revoked' },
-  });
-  res.json({ data: { id: req.params.id, status: 'revoked' }, error: null });
-});
+apiKeysRouter.delete(
+  '/:id',
+  adminAuth,
+  validateParams(idParamSchema),
+  (req: Request, res: Response) => {
+    const ok = defaultApiKeyStore.revoke(req.params.id);
+    if (!ok) {
+      res.status(404).json({ data: null, error: 'API key not found' });
+      return;
+    }
+    res.json({ data: { id: req.params.id, status: 'revoked' }, error: null });
+  },
+);

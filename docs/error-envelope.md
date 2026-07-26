@@ -60,5 +60,26 @@ Postgres unique violations (`SQLSTATE 23505`) are translated by
 ## Helpers
 
 Use `ok(res, payload, status?)` and `fail(res, error, status?)` from
-`src/utils/response.ts` for the generic envelope. Use `sendConflict(res, err)`
-from `src/errors/problem.ts` for 409 problem+json.
+`src/utils/response.ts` instead of building envelopes inline. This keeps
+internal details (stack traces, SQL errors) from leaking into 5xx
+responses by default.
+
+## Schema validation errors
+
+Request schema failures (Zod) always use:
+
+```json
+{
+  "data": null,
+  "error": "Validation failed",
+  "details": [{ "field": "amount", "message": "Required" }]
+}
+```
+
+Response contract violations (only when `ENABLE_RESPONSE_VALIDATION=true`) use:
+
+```json
+{ "data": null, "error": "Response contract violation" }
+```
+
+See [`json-schema-validation.md`](./json-schema-validation.md).

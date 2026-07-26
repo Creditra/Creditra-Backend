@@ -63,8 +63,9 @@ Boundaries exercised end-to-end against an in-memory container:
 - `tests/draw-credit.test.ts` — draw endpoint validation, Stellar address parsing, pending status.
 - `tests/cors.test.ts` — `isAllowedCorsOrigin()` matrix (loopback fallback, production allowlist).
 - `tests/response.test.ts` — `ok()`/`fail()` envelope helpers.
-- `tests/middleware/*` — `errorHandler`, `rateLimit`, `validate`, body limits (default 413 + bulk higher ceiling).
-- `src/config/__tests__/bodyLimit.test.ts` — path resolution and env overrides for body limits.
+- `tests/middleware/*` — `errorHandler`, `rateLimit`, `validate`, response-schema validation, body limits.
+- `tests/response-contract.test.ts` — Zod `assertMatchesSchema` checks on live HTTP responses (prevents API contract drift).
+- `tests/schemas/*` — request + response schema unit tests (strict keys, Stellar addresses, pagination bounds).
 - `src/routes/__tests__/reconciliation.integration.test.ts` — schedule → run → status flow.
 
 ### System (~11 files)

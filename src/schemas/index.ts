@@ -1,11 +1,17 @@
 export { walletAddressSchema } from './common.schema.js';
-export { walletAddressParamSchema } from './params.schema.js';
+export {
+  walletAddressParamSchema,
+  idParamSchema,
+  type WalletAddressParams,
+  type IdParams,
+} from './params.schema.js';
 export { riskEvaluateSchema, riskHistoryQuerySchema } from './risk.schema.js';
 export type { RiskEvaluateBody, RiskHistoryQuery } from './risk.schema.js';
 
 export {
   createCreditLineSchema,
   creditLinesQuerySchema,
+  updateCreditLineSchema,
   drawSchema,
   repaySchema,
   transactionHistoryQuerySchema,
@@ -13,18 +19,50 @@ export {
 export type {
   CreateCreditLineBody,
   CreditLinesQuery,
+  UpdateCreditLineBody,
   DrawBody,
   RepayBody,
   TransactionHistoryQuery,
 } from './credit.schema.js';
 
 export {
-  supportBorrowerParamsSchema,
-  supportCreditLineParamsSchema,
-  supportRecentQuerySchema,
-} from './support.schema.js';
+  issueApiKeySchema,
+  maintenanceToggleSchema,
+  bulkCreditLinesSchema,
+  bulkCreditLinesQuerySchema,
+} from './admin.schema.js';
 export type {
-  SupportBorrowerParams,
-  SupportCreditLineParams,
-  SupportRecentQuery,
-} from './support.schema.js';
+  IssueApiKeyBody,
+  MaintenanceToggleBody,
+  BulkCreditLinesBody,
+  BulkCreditLinesQuery,
+} from './admin.schema.js';
+
+export {
+  apiEnvelopeSchema,
+  errorEnvelopeSchema,
+  creditLineSchema,
+  creditLinesListDataSchema,
+  creditLinesCursorDataSchema,
+  walletCreditLinesDataSchema,
+  drawRepayResultSchema,
+  transactionSchema,
+  transactionHistoryDataSchema,
+  riskEvaluationResultSchema,
+  riskEvaluationSchema,
+  riskHistoryDataSchema,
+  healthDataSchema,
+  reconciliationTriggerDataSchema,
+  reconciliationStatusDataSchema,
+  envelopedCreditLineSchema,
+  envelopedCreditLinesListSchema,
+  envelopedWalletCreditLinesSchema,
+  envelopedRiskResultSchema,
+  envelopedRiskEvaluationSchema,
+  envelopedRiskHistorySchema,
+  envelopedHealthSchema,
+  envelopedDrawRepaySchema,
+  envelopedTransactionHistorySchema,
+  envelopedReconciliationTriggerSchema,
+  envelopedReconciliationStatusSchema,
+} from './response.schema.js';

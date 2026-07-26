@@ -20,7 +20,8 @@ import { Router } from 'express';
 import { ok } from '../utils/response.js';
 import { getConnection } from '../db/client.js';
 import { resolveConfig } from '../services/horizonListener.js';
-import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
+import { validateResponse } from '../middleware/validate.js';
+import { envelopedHealthSchema } from '../schemas/index.js';
 
 export const healthRouter = Router();
 
@@ -113,7 +114,7 @@ async function checkHorizon(): Promise<DependencyHealth> {
      }
 }
 
-healthRouter.get('/', async (_req, res) => {
+healthRouter.get('/', validateResponse(envelopedHealthSchema), async (_req, res) => {
      const [dbStatus, horizonStatus] = await Promise.all([checkDatabase(), checkHorizon()]);
      const ready = dbStatus.status === 'ok' && horizonStatus.status === 'ok';
 

@@ -51,9 +51,12 @@ info:
     non-5xx response instead of executing the mutation again.
 
     ## Keeping the spec in sync
+    - **Zod schemas** in `src/schemas/` are the runtime source of truth for request
+      and response validation. This OpenAPI document should mirror those schemas.
     - Every new route **must** have a corresponding entry here before merging.
     - Run `npm run validate:spec` in CI to catch YAML/structural errors early.
     - Use path-level `operationId` values as the source of truth for client generation.
+    - See `docs/json-schema-validation.md` for request/response validation policy.
 
 servers:
   - url: http://localhost:3000
@@ -160,6 +163,9 @@ components:
 
     UpdateCreditLineRequest:
       type: object
+      description: |
+        Partial update body (updateCreditLineSchema). At least one of the
+        updatable fields must be present. Unknown keys are rejected.
       properties:
         creditLimit:
           type: string
@@ -834,13 +840,46 @@ components:
 
     ErrorResponse:
       type: object
-      required: [error]
+      required: [data, error]
       properties:
+        data:
+          nullable: true
+          description: Always null on error
         error:
           type: string
         id:
           type: string
           description: Present on 404 responses that reference a specific resource
+
+    ValidationErrorResponse:
+      type: object
+      required: [data, error, details]
+      description: |
+        Returned for Zod request-schema failures (body, query, or path params).
+        Stable shape — never includes stack traces or internal exception text.
+      properties:
+        data:
+          nullable: true
+          example: null
+        error:
+          type: string
+          enum: [Validation failed]
+          example: Validation failed
+        details:
+          type: array
+          items:
+            type: object
+            required: [field, message]
+            additionalProperties: false
+            properties:
+              field:
+                type: string
+                description: Dotted path to the invalid field, or "(root)"
+                example: walletAddress
+              message:
+                type: string
+                example: walletAddress must be a valid Stellar address
+      additionalProperties: false
 
     RateLimitErrorResponse:
       type: object
@@ -1260,7 +1299,7 @@ paths:
             type: integer
             minimum: 0
             default: 0
-          description: Pagination offset
+          description: Pagination offset (offset mode; ignored when `cursor` is present)
         - name: limit
           in: query
           required: false
@@ -1269,10 +1308,21 @@ paths:
             minimum: 1
             maximum: 100
             default: 100
-          description: Number of credit lines per page
+          description: Number of credit lines per page (validated by creditLinesQuerySchema)
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: |
+            When present (including empty string), switches to cursor pagination.
+            Pass `nextCursor` from the previous page for subsequent pages.
       responses:
         "200":
-          description: Array of credit lines (may be empty)
+          description: |
+            Offset mode returns `{ data: { creditLines, pagination }, error: null }`.
+            Cursor mode returns an unenveloped `{ creditLines, pagination }` body
+            (see docs/cursor-pagination.md).
           headers:
             X-RateLimit-Limit:
               $ref: "#/components/headers/X-RateLimit-Limit"
@@ -1287,17 +1337,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/CreditLinesResponse"
               example:
-                creditLines: []
-                pagination:
-                  total: 0
-                  offset: 0
-                  limit: 100
+                data:
+                  creditLines: []
+                  pagination:
+                    total: 0
+                    offset: 0
+                    limit: 100
+                error: null
         "400":
-          description: Invalid query parameter
+          description: Invalid query parameter (Zod validation)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/ValidationErrorResponse"
         "429":
           description: Token bucket empty — rate limit exceeded
           headers:

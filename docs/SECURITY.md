@@ -82,20 +82,24 @@ Both middlewares register **after** rate-limit but **before** the handler so an 
 
 ## 4. Input Validation Policy
 
-Every external boundary validates via Zod ([`src/schemas/`](../src/schemas/)). Three middleware factories wrap the schemas — body, query, params — from [`src/middleware/validate.ts`](../src/middleware/validate.ts):
+Every external boundary validates via Zod ([`src/schemas/`](../src/schemas/)). Middleware factories wrap the schemas — body, query, params, and optional response — from [`src/middleware/validate.ts`](../src/middleware/validate.ts):
 
 ```ts
-validateBody(schema)   // replaces req.body with parsed value
-validateQuery(schema)  // replaces req.query
-validateParams(schema) // replaces req.params
+validateBody(schema)       // replaces req.body with parsed value
+validateQuery(schema)      // replaces req.query
+validateParams(schema)     // replaces req.params
+validateResponse(schema)   // opt-in response contract check (ENABLE_RESPONSE_VALIDATION)
 ```
 
 Behaviour:
 
-- On failure → `400` with structured `{ field, message }[]`.
+- On request failure → `400` with stable `{ data: null, error: "Validation failed", details: [{ field, message }] }`.
 - On success → the parsed (and coerced) value **replaces** the raw input, so downstream handlers receive well-typed data.
-- All credit/risk endpoints reject unknown keys via `additionalProperties: false`.
+- All credit/risk endpoints reject unknown keys via Zod `.strict()` (`additionalProperties: false` in OpenAPI).
 - Stellar address validation lives in [`stellarAddress.ts`](../src/utils/stellarAddress.ts) (regex `/^G[A-Z2-7]{55}$/`) and is shared by `walletAddressSchema` and `walletAddressParamSchema`.
+- Response validation (when enabled) never leaks Zod internals; clients see `{ data: null, error: "Response contract violation" }`.
+
+Full policy, route coverage table, and test helpers: [`docs/json-schema-validation.md`](./json-schema-validation.md).
 
 Validator chain order:
 
@@ -106,8 +110,8 @@ Validator chain order:
 5. Auth middleware (route-specific)
 6. Rate limit middleware (route-specific)
 7. Zod validate(Body|Query|Params)
-8. Handler
-9. `errorHandler` catches anything unhandled (including 413 Payload Too Large)
+8. Handler (+ optional response schema check)
+9. `errorHandler` catches anything unhandled
 
 ---
 
