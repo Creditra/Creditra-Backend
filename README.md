@@ -190,14 +190,17 @@ Every entry below is grounded in real files in this repo.
 | Surface | Path prefix | Mounted in |
 |---|---|---|
 | Health & readiness | `GET /health` | [`src/routes/health.ts`](./src/routes/health.ts) |
-| Credit lines (CRUD) | `/api/credit/lines` | [`src/routes/credit.ts`](./src/routes/credit.ts) |
-| Credit lines by wallet | `/api/credit/wallet/:walletAddress/lines` | [`src/routes/credit.ts`](./src/routes/credit.ts) |
-| Transactions | `/api/credit/lines/:id/transactions` | [`src/routes/credit.ts`](./src/routes/credit.ts) |
-| Draw / repay | `POST /api/credit/lines/:id/{draw,repay}` | [`src/routes/credit.ts`](./src/routes/credit.ts) |
-| Admin suspend / close | `POST /api/credit/lines/:id/{suspend,close}` (admin auth) | [`src/routes/credit.ts`](./src/routes/credit.ts) |
-| Risk evaluation | `POST /api/risk/evaluate`, history endpoints | [`src/routes/risk.ts`](./src/routes/risk.ts) |
-| Webhook config & test | `/api/webhooks/*` | [`src/routes/webhook.ts`](./src/routes/webhook.ts) |
-| Reconciliation trigger / status | `/api/reconciliation/*` (admin) | [`src/routes/reconciliation.ts`](./src/routes/reconciliation.ts) |
+| Credit lines (CRUD) | `/api/v1/credit/lines` | [`src/routes/credit.ts`](./src/routes/credit.ts) |
+| Credit lines by wallet | `/api/v1/credit/wallet/:walletAddress/lines` | [`src/routes/credit.ts`](./src/routes/credit.ts) |
+| Transactions | `/api/v1/credit/lines/:id/transactions` | [`src/routes/credit.ts`](./src/routes/credit.ts) |
+| Draw / repay | `POST /api/v1/credit/lines/:id/{draw,repay}` | [`src/routes/credit.ts`](./src/routes/credit.ts) |
+| Admin suspend / close | `POST /api/v1/credit/lines/:id/{suspend,close}` (admin auth) | [`src/routes/credit.ts`](./src/routes/credit.ts) |
+| Risk evaluation | `POST /api/v1/risk/evaluate`, history endpoints | [`src/routes/risk.ts`](./src/routes/risk.ts) |
+| Webhook config & test | `/api/v1/webhooks/*` | [`src/routes/webhook.ts`](./src/routes/webhook.ts) |
+| Reconciliation trigger / status | `/api/v1/reconciliation/*` (admin) | [`src/routes/reconciliation.ts`](./src/routes/reconciliation.ts) |
+
+Legacy unversioned `/api/*` paths remain mounted for compatibility and emit
+`Deprecation` / `Sunset` / `Link` headers. See [`docs/api-versioning.md`](./docs/api-versioning.md).
 | OpenAPI docs | `GET /docs`, `GET /docs.json` | [`src/index.ts`](./src/index.ts) |
 
 Full machine-readable spec: [`src/openapi.yaml`](./src/openapi.yaml). Human-readable inventory: [`docs/API.md`](./docs/API.md).

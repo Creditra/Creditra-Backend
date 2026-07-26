@@ -10,9 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- API-level conditional GET caching (`ETag` / `If-None-Match` → `304`) for
-  read-heavy endpoints: credit line detail, transaction history, and
-  dashboard summary. See `docs/etag-caching.md` and `src/utils/etag.ts`.
+- Explicit API versioning under `/api/v1/*` with dual-mount compatibility for
+  unversioned `/api/*` during a transition window.
+  - Response headers: `X-API-Version` on all API routes; `Deprecation`,
+    `Sunset`, and `Link: rel="successor-version"` on legacy paths.
+  - Configurable legacy sunset via `API_LEGACY_SUNSET` (default
+    `Thu, 31 Dec 2026 23:59:59 GMT`).
+  - OpenAPI paths updated to `/api/v1/*`; policy documented in
+    `docs/api-versioning.md`.
 - Shared utility modules under `src/utils/` for constants, strings,
   numbers, time, and HTTP status codes.
 - `LICENSE` and metadata fields in `package.json`.
