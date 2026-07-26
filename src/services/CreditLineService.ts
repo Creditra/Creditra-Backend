@@ -2,6 +2,8 @@ import { type CreditLine, type CreateCreditLineRequest, type UpdateCreditLineReq
 import type { CreditLineRepository, CursorPaginationResult } from '../repositories/interfaces/CreditLineRepository.js';
 import type { EventBus } from './events/eventBus.js';
 import { nowIso } from './events/domainEvents.js';
+import { ConflictError, duplicateResource } from '../errors/ConflictError.js';
+import { conflictFromUniqueViolation } from '../errors/uniqueViolation.js';
 
 /**
  * Domain service for credit-line CRUD plus the `draw` / `repay` operations.
@@ -62,7 +64,29 @@ export class CreditLineService {
       throw new Error('Interest rate must be between 0 and 10000 basis points');
     }
 
-    const created = await this.creditLineRepository.create(request);
+    // Reject duplicate open: an open (non-closed) line already exists for wallet.
+    // Message intentionally omits the wallet address (sensitive identifier).
+    const existing = await this.creditLineRepository.findByWalletAddress(request.walletAddress);
+    const openLine = existing.find(
+      (line) => line.status !== CreditLineStatus.CLOSED,
+    );
+    if (openLine) {
+      throw duplicateResource(
+        'credit_line',
+        'An open credit line already exists for this wallet. Close it before opening another.',
+        { field: 'walletAddress', existingStatus: openLine.status },
+      );
+    }
+
+    let created: CreditLine;
+    try {
+      created = await this.creditLineRepository.create(request);
+    } catch (err) {
+      if (err instanceof ConflictError) throw err;
+      const conflict = conflictFromUniqueViolation(err);
+      if (conflict) throw conflict;
+      throw err;
+    }
 
     this.emit({
       type: 'credit.opened',

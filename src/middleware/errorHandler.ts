@@ -1,15 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { fail } from '../utils/response.js';
-import {
-  isPayloadTooLargeError,
-  respondPayloadTooLarge,
-  type RequestWithBodyLimit,
-} from './bodyLimit.js';
-import {
-  BODY_LIMIT_DEFAULT_BYTES,
-  bodyTooLargeMessage,
-} from '../config/bodyLimit.js';
-import { HTTP_PAYLOAD_TOO_LARGE } from '../utils/httpStatus.js';
+import { ConflictError, isConflictError, sendConflict } from '../errors/index.js';
 
 /**
  * Standard error response interface for OpenAPI documentation
@@ -24,6 +15,9 @@ export interface ErrorResponse {
  *
  * Catches any unhandled errors thrown (or passed via `next(err)`) from route
  * handlers and returns a consistent JSON error response using the fail() helper.
+ *
+ * {@link ConflictError} is mapped to RFC 7807 `application/problem+json` with
+ * a stable `code` (HTTP 409).
  *
  * In production, stack traces and internal error details are not leaked.
  * Oversized bodies (body-parser or {@link PayloadTooLargeError}) return an
@@ -60,6 +54,16 @@ export function errorHandler(
     return;
   }
 
+  if (err instanceof ConflictError || isConflictError(err)) {
+    sendConflict(res, err instanceof ConflictError ? err : new ConflictError({
+      message: (err as ConflictError).message,
+      code: (err as ConflictError).code,
+      resource: (err as ConflictError).resource,
+      details: (err as ConflictError).details,
+    }));
+    return;
+  }
+
   if (err instanceof Error) {
     console.error('[errorHandler]', {
       message: err.message,
@@ -67,7 +71,24 @@ export function errorHandler(
       name: err.name,
     });
 
-    const status = maybeError.status ?? maybeError.statusCode ?? statusFromName(err.name);
+    // Domain errors that predate ConflictError still map by name.
+    if (err.name === 'ConflictError' || err.name === 'VersionConflictError' || err.name === 'InvalidTransitionError') {
+      sendConflict(
+        res,
+        new ConflictError({
+          message: err.message,
+          code:
+            err.name === 'VersionConflictError'
+              ? 'version_conflict'
+              : err.name === 'InvalidTransitionError'
+                ? 'invalid_state_transition'
+                : 'duplicate_resource',
+        }),
+      );
+      return;
+    }
+
+    const status = maybeError.status ?? statusFromName(err.name);
     fail(res, status >= 500 ? 'Internal server error' : err.message, status);
     return;
   }
@@ -93,6 +114,10 @@ function statusFromName(name: string): number {
       return 403;
     case 'NotFoundError':
       return 404;
+    case 'ConflictError':
+    case 'VersionConflictError':
+    case 'InvalidTransitionError':
+      return 409;
     default:
       return 500;
   }

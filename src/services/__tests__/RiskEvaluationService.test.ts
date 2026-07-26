@@ -79,6 +79,23 @@ describe('RiskEvaluationService', () => {
       expect(mockProvider.evaluate).not.toHaveBeenCalled();
     });
 
+    it("createRiskEvaluation throws ConflictError when unexpired evaluation exists", async () => {
+      const cached = buildCachedEval();
+      vi.mocked(mockRepository.isValid).mockResolvedValue(true);
+      vi.mocked(mockRepository.findLatestByWalletAddress).mockResolvedValue(
+        cached,
+      );
+
+      await expect(
+        service.createRiskEvaluation({ walletAddress: WALLET }),
+      ).rejects.toMatchObject({
+        name: "ConflictError",
+        code: "duplicate_resource",
+        resource: "risk_evaluation",
+      });
+      expect(mockProvider.evaluate).not.toHaveBeenCalled();
+    });
+
     it("should perform new evaluation when no valid cache", async () => {
       vi.mocked(mockRepository.isValid).mockResolvedValue(false);
       vi.mocked(mockRepository.save).mockResolvedValue(

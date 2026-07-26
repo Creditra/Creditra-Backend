@@ -25,6 +25,7 @@ import {
   type RiskEvaluateBody,
   type RiskHistoryQuery,
 } from '../schemas/index.js';
+import { ConflictError, isConflictError, sendConflict } from '../errors/index.js';
 
 export const riskRouter = Router();
 const container = Container.getInstance();
@@ -43,6 +44,35 @@ riskRouter.post(
 
       ok(res, result);
     } catch (error) {
+      if (error instanceof ConflictError || isConflictError(error)) {
+        sendConflict(res, error as ConflictError);
+        return;
+      }
+      fail(res, error, 500);
+    }
+  },
+);
+
+/**
+ * Explicit create path for risk evaluations. Conflicts (409) when an
+ * unexpired evaluation already exists unless `forceRefresh` is true.
+ */
+riskRouter.post(
+  '/evaluations',
+  validateBody(riskEvaluateSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { walletAddress, forceRefresh } = req.body as RiskEvaluateBody;
+      const result = await container.riskEvaluationService.createRiskEvaluation({
+        walletAddress,
+        forceRefresh,
+      });
+      ok(res, result, 201);
+    } catch (error) {
+      if (error instanceof ConflictError || isConflictError(error)) {
+        sendConflict(res, error as ConflictError);
+        return;
+      }
       fail(res, error, 500);
     }
   },

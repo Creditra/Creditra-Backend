@@ -47,6 +47,7 @@ import {
   submitDrawRequest,
   submitRepayRequest,
 } from '../services/creditService.js';
+import { ConflictError, isConflictError, sendConflict } from '../errors/index.js';
 
 export const creditRouter = Router();
 const container = Container.getInstance();
@@ -69,12 +70,13 @@ function handleServiceError(err: unknown, res: Response): void {
     fail(res, err.message, 404);
     return;
   }
-  if (err instanceof InvalidTransitionError) {
-    fail(res, err.message, 409);
-    return;
-  }
-  if (err instanceof VersionConflictError) {
-    fail(res, err.message, 409);
+  if (
+    err instanceof ConflictError ||
+    err instanceof InvalidTransitionError ||
+    err instanceof VersionConflictError ||
+    isConflictError(err)
+  ) {
+    sendConflict(res, err as ConflictError);
     return;
   }
   const message = err instanceof Error ? err.message : 'Internal server error';
@@ -147,6 +149,13 @@ creditRouter.post('/lines', validateBody(createCreditLineSchema), async (req, re
     container.dashboardSummaryService.invalidate();
     return ok(res, creditLine, 201);
   } catch (error) {
+    if (
+      error instanceof ConflictError ||
+      error instanceof VersionConflictError ||
+      isConflictError(error)
+    ) {
+      return sendConflict(res, error as ConflictError);
+    }
     return fail(res, error instanceof Error ? error : undefined, 400);
   }
 });
@@ -166,8 +175,12 @@ creditRouter.put('/lines/:id', async (req, res) => {
     container.dashboardSummaryService.invalidate();
     return ok(res, creditLine);
   } catch (error) {
-    // Optimistic-locking conflicts surface as 409; other validation as 400.
-    if (error instanceof VersionConflictError) {
+    // Optimistic-locking / duplicate conflicts surface as 409 problem+json.
+    if (
+      error instanceof ConflictError ||
+      error instanceof VersionConflictError ||
+      isConflictError(error)
+    ) {
       return handleServiceError(error, res);
     }
     return fail(res, error instanceof Error ? error : undefined, 400);

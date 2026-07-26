@@ -2,6 +2,8 @@ import type { CreditLine, CreateCreditLineRequest, UpdateCreditLineRequest, Cred
 import type { CreditLineRepository, CursorPaginationResult } from '../interfaces/CreditLineRepository.js';
 import type { DbClient } from '../../db/client.js';
 import { VersionConflictError } from '../../services/creditService.js';
+import { ConflictError, duplicateResource } from '../../errors/ConflictError.js';
+import { conflictFromUniqueViolation } from '../../errors/uniqueViolation.js';
 
 interface CreditLineRow {
   id: string;
@@ -22,6 +24,22 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
     // First, ensure borrower exists or create it
     const borrowerId = await this.ensureBorrower(request.walletAddress);
 
+    // Application-level duplicate open check (mirrors partial unique index).
+    const openCheck = await this.client.query(
+      `SELECT cl.status FROM credit_lines cl
+       WHERE cl.borrower_id = $1 AND cl.status <> 'closed'
+       LIMIT 1`,
+      [borrowerId],
+    );
+    if (openCheck.rows.length > 0) {
+      const status = (openCheck.rows[0] as { status: string }).status;
+      throw duplicateResource(
+        'credit_line',
+        'An open credit line already exists for this wallet. Close it before opening another.',
+        { field: 'walletAddress', existingStatus: status },
+      );
+    }
+
     const query = `
       INSERT INTO credit_lines (borrower_id, credit_limit, currency, status, interest_rate_bps)
       VALUES ($1, $2, $3, $4, $5)
@@ -36,7 +54,22 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
       request.interestRateBps
     ];
 
-    const result = await this.client.query(query, values);
+    let result: { rows: unknown[] };
+    try {
+      result = await this.client.query(query, values);
+    } catch (err) {
+      const conflict = conflictFromUniqueViolation(err);
+      if (conflict) {
+        throw new ConflictError({
+          message:
+            'An open credit line already exists for this wallet. Close it before opening another.',
+          code: 'duplicate_resource',
+          resource: 'credit_line',
+          details: { field: 'walletAddress', reason: 'unique_constraint' },
+        });
+      }
+      throw err;
+    }
     const row = result.rows[0] as {
       id: string;
       borrower_id: string;
@@ -315,15 +348,28 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
       return row.id;
     }
 
-    // Create new borrower
-    const createQuery = `
-      INSERT INTO borrowers (wallet_address)
-      VALUES ($1)
-      RETURNING id
-    `;
-    const createResult = await this.client.query(createQuery, [walletAddress]);
-    const row = createResult.rows[0] as { id: string };
-    return row.id;
+    // Create new borrower — concurrent inserts race on wallet_address unique.
+    try {
+      const createQuery = `
+        INSERT INTO borrowers (wallet_address)
+        VALUES ($1)
+        RETURNING id
+      `;
+      const createResult = await this.client.query(createQuery, [walletAddress]);
+      const row = createResult.rows[0] as { id: string };
+      return row.id;
+    } catch (err) {
+      // Another writer won the race; re-select instead of leaking the 23505.
+      if (conflictFromUniqueViolation(err)) {
+        const retry = await this.client.query(findQuery, [walletAddress]);
+        if (retry.rows.length > 0) {
+          return (retry.rows[0] as { id: string }).id;
+        }
+      }
+      const conflict = conflictFromUniqueViolation(err);
+      if (conflict) throw conflict;
+      throw err;
+    }
   }
 
   /**

@@ -16,7 +16,13 @@ import {
     testWebhookConnectivity,
     getWebhookConfig,
     resolveWebhookConfig,
+    _resetRuntimeWebhookSubscriptions,
 } from "../drawWebhookService.js";
+import {
+    setWebhookDeliveryStateStore,
+    type WebhookDeliveryStateStore,
+    type DeliveryRecord,
+} from "../webhookDeliveryState.js";
 import type { HorizonEvent } from "../horizonListener.js";
 import {
     setWebhookDeliveryStateStore,
@@ -57,19 +63,33 @@ function createTestDeliveryStore(): WebhookDeliveryStateStore {
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-/** Fresh in-memory store so delivered (drawId, url) pairs do not leak across tests. */
-function createTestDeliveryStore(): WebhookDeliveryStateStore {
-    const records = new Map<string, { status: string }>();
+function freshDeliveryStore(): WebhookDeliveryStateStore {
+    const records = new Map<string, DeliveryRecord>();
     const key = (drawId: string, url: string) => `${drawId}::${url}`;
     return {
         isDelivered(drawId, url) {
             return records.get(key(drawId, url))?.status === "delivered";
         },
         record(record) {
-            records.set(key(record.drawId, record.url), { status: record.status });
+            records.set(key(record.drawId, record.url), {
+                ...record,
+                updatedAt: new Date().toISOString(),
+            });
         },
-        deadLetters: () => [],
-        counts: () => ({ total: 0, delivered: 0, failed: 0, deadLetter: 0 }),
+        deadLetters() {
+            return [...records.values()].filter((r) => r.status === "dead_letter");
+        },
+        counts() {
+            let delivered = 0;
+            let failed = 0;
+            let deadLetter = 0;
+            for (const r of records.values()) {
+                if (r.status === "delivered") delivered++;
+                else if (r.status === "failed") failed++;
+                else if (r.status === "dead_letter") deadLetter++;
+            }
+            return { total: records.size, delivered, failed, deadLetter };
+        },
     };
 }
 
@@ -82,7 +102,9 @@ describe("DrawWebhookService", () => {
         serviceLoggerMock.error.mockReset();
         setWebhookDeliveryStateStore(createTestDeliveryStore());
         vi.useFakeTimers();
-        setWebhookDeliveryStateStore(createTestDeliveryStore());
+        _resetRuntimeWebhookSubscriptions();
+        // Fresh delivery-state store so (drawId, url) dedup does not leak across tests.
+        setWebhookDeliveryStateStore(freshDeliveryStore());
         
         // Clear environment variables
         delete process.env.WEBHOOK_URLS;
@@ -505,10 +527,12 @@ describe("DrawWebhookService", () => {
             await sendDrawConfirmationWebhook(event);
             const firstCallSignature = mockFetch.mock.calls[0][1].headers["X-Webhook-Signature"];
 
-            // Reset delivery store so the second send actually POSTs again.
-            setWebhookDeliveryStateStore(createTestDeliveryStore());
+            // Second send uses a different drawId so delivery-state dedup does not
+            // short-circuit the POST; signatures are still derived from the same
+            // secret over the body (body includes drawId, so they differ — we only
+            // assert format consistency of the HMAC scheme here).
             mockFetch.mockClear();
-            setWebhookDeliveryStateStore(createTestDeliveryStore());
+            setWebhookDeliveryStateStore(freshDeliveryStore());
             await sendDrawConfirmationWebhook(event);
             const secondCallSignature = mockFetch.mock.calls[0][1].headers["X-Webhook-Signature"];
 

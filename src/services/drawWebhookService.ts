@@ -19,7 +19,10 @@ import { createHmac } from "node:crypto";
 import type { HorizonEvent } from "./horizonListener.js";
 import { getWebhookDeliveryStateStore } from "./webhookDeliveryState.js";
 import { redactLogArgs } from "../utils/logRedact.js";
-import { logger as log } from "../utils/logger.js";
+import { createServiceLogger } from "../utils/serviceLogger.js";
+import { duplicateResource } from "../errors/ConflictError.js";
+
+const log = createServiceLogger("DrawWebhookService");
 
 // ---------------------------------------------------------------------------
 // Types
@@ -70,6 +73,30 @@ export interface WebhookDeliveryResult {
 // ---------------------------------------------------------------------------
 
 let activeConfig: WebhookConfig | null = null;
+
+/**
+ * Runtime webhook subscriptions (in addition to env `WEBHOOK_URLS`).
+ * Keyed by normalised URL so duplicate registration is O(1).
+ * Secrets are never stored here — signing still uses config.secret.
+ */
+const runtimeSubscriptions = new Map<string, { url: string; createdAt: string }>();
+
+/** Normalise a subscription URL for equality (trim trailing slash, lowercase host). */
+export function normaliseWebhookUrl(url: string): string {
+    const trimmed = url.trim();
+    try {
+        const parsed = new URL(trimmed);
+        parsed.hash = '';
+        // Drop default ports; keep path without trailing slash (except root).
+        let path = parsed.pathname;
+        if (path.length > 1 && path.endsWith('/')) {
+            path = path.slice(0, -1);
+        }
+        return `${parsed.protocol}//${parsed.host.toLowerCase()}${path}${parsed.search}`;
+    } catch {
+        return trimmed;
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Configuration helpers
@@ -234,7 +261,11 @@ function parseDrawConfirmedEvent(event: HorizonEvent): WebhookPayload | null {
 // ---------------------------------------------------------------------------
 
 export function getWebhookConfig(): WebhookConfig | null {
-    return activeConfig;
+    if (!activeConfig) return null;
+    // Merge env URLs with runtime subscriptions for a complete view.
+    const runtimeUrls = Array.from(runtimeSubscriptions.values()).map((s) => s.url);
+    const merged = Array.from(new Set([...activeConfig.urls, ...runtimeUrls]));
+    return { ...activeConfig, urls: merged };
 }
 
 export function initializeWebhooks(): void {
@@ -245,6 +276,58 @@ export function initializeWebhooks(): void {
         log.error({ error }, "webhook:initialize:failed");
         activeConfig = null;
     }
+}
+
+/**
+ * Register a runtime webhook subscription URL.
+ *
+ * @throws {ConflictError} when the URL is already registered (env or runtime).
+ * Message and details never include the full URL when it may carry secrets
+ * (query tokens); only a non-sensitive field name is exposed.
+ */
+export function registerWebhookSubscription(url: string): { url: string; createdAt: string } {
+    if (!url || typeof url !== 'string' || !url.trim()) {
+        throw new Error('Webhook URL is required');
+    }
+    const trimmed = url.trim();
+    try {
+        // Validate absolute http(s) URL without storing credentials in details.
+        const parsed = new URL(trimmed);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+            throw new Error('Webhook URL must use http or https');
+        }
+    } catch (err) {
+        if (err instanceof Error && err.message.startsWith('Webhook URL')) throw err;
+        throw new Error('Webhook URL is invalid');
+    }
+
+    const key = normaliseWebhookUrl(trimmed);
+    const envUrls = activeConfig?.urls ?? [];
+    const envKeys = new Set(envUrls.map(normaliseWebhookUrl));
+
+    if (envKeys.has(key) || runtimeSubscriptions.has(key)) {
+        throw duplicateResource(
+            'webhook_subscription',
+            'A webhook subscription for this endpoint already exists.',
+            { field: 'url', reason: 'duplicate_url' },
+        );
+    }
+
+    const createdAt = new Date().toISOString();
+    const record = { url: trimmed, createdAt };
+    runtimeSubscriptions.set(key, record);
+    // Delivery reads getWebhookConfig() which merges env + runtime URLs.
+    return record;
+}
+
+/** List runtime subscriptions only (env URLs are visible via /config). */
+export function listRuntimeWebhookSubscriptions(): Array<{ url: string; createdAt: string }> {
+    return Array.from(runtimeSubscriptions.values());
+}
+
+/** Test helper: clear runtime subscriptions. */
+export function _resetRuntimeWebhookSubscriptions(): void {
+    runtimeSubscriptions.clear();
 }
 
 export async function sendDrawConfirmationWebhook(
