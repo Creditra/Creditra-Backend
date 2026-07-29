@@ -8,6 +8,7 @@ import { exportsRouter } from './routes/exports.js';
 import { recordRequest, metricsRouter } from './routes/metrics.js';
 import { maintenanceModeGuard } from './middleware/maintenanceMode.js';
 import { maintenanceRouter } from './routes/maintenance.js';
+import { serviceTokensRouter } from './routes/serviceTokens.js';
 
 /**
  * Application factory used by integration tests and lightweight local boots.
@@ -41,6 +42,7 @@ export function createApp() {
   app.use('/api/risk', riskRouter);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api/admin/api-keys', apiKeysRouter);
+  app.use('/api/admin/service-tokens', serviceTokensRouter);
   app.use('/api/admin/exports', exportsRouter);
 
   // Admin-only route to toggle maintenance mode.
