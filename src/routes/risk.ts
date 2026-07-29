@@ -10,6 +10,8 @@
  * - GET  `/admin/signals`                     — list anomaly risk signals (API key).
  * - GET  `/admin/signals/:id`                 — fetch one risk signal (API key).
  * - POST `/admin/recalibrate`                 — protected by `X-API-Key`.
+ * - POST `/admin/policy-preview`              — explainable policy evaluation,
+ *   no persistence (API key).
  *
  * Wallet path params are validated by Zod (`walletAddressParamSchema`).
  * Response validation is opt-in via `ENABLE_RESPONSE_VALIDATION=true`.
@@ -25,19 +27,24 @@ import {
 } from '../middleware/validate.js';
 import { ok, fail } from '../utils/response.js';
 import { Container } from '../container/Container.js';
+import { evaluatePolicy, createDefaultRegistry } from '../services/policyEngine.js';
 import {
   riskEvaluateSchema,
   riskHistoryQuerySchema,
   riskSignalsQuerySchema,
+  riskPolicyPreviewSchema,
   type RiskEvaluateBody,
   type RiskHistoryQuery,
   type RiskSignalsQuery,
+  type RiskPolicyPreviewBody,
 } from '../schemas/index.js';
 import { ConflictError, isConflictError, sendConflict } from '../errors/index.js';
+import { envelopedRiskResultSchema } from '../schemas/response.schema.js';
 
 export const riskRouter = Router();
 const container = Container.getInstance();
 const requireApiKey = createApiKeyMiddleware(() => loadApiKeys());
+const policyRegistry = createDefaultRegistry();
 
 riskRouter.post(
   '/evaluate',
@@ -201,5 +208,22 @@ riskRouter.get(
 riskRouter.post('/admin/recalibrate', requireApiKey, (_req: Request, res: Response): void => {
   ok(res, { message: 'Risk model recalibration triggered' });
 });
+
+/**
+ * POST /api/risk/admin/policy-preview
+ * Evaluate credit policy rules against a proposed borrower input and return the
+ * explainable outcome (rules fired, rejection codes). Nothing is persisted —
+ * this is a pure, in-memory evaluation for internal tooling and support workflows.
+ */
+riskRouter.post(
+  '/admin/policy-preview',
+  requireApiKey,
+  validateBody(riskPolicyPreviewSchema),
+  (req: Request, res: Response): void => {
+    const body = req.body as RiskPolicyPreviewBody;
+    const result = evaluatePolicy(policyRegistry, body);
+    ok(res, result);
+  },
+);
 
 export default riskRouter;

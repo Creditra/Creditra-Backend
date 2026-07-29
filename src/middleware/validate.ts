@@ -147,3 +147,46 @@ export function validateParams<T>(schema: z.ZodType<T>) {
     next();
   };
 }
+
+/**
+ * Wraps `res.json` so the outgoing body is checked against `schema` when
+ * response validation is enabled (`ENABLE_RESPONSE_VALIDATION=true`).
+ *
+ * On mismatch:
+ * - Does **not** leak Zod internals to clients in production paths
+ * - Replaces the body with a stable 500 envelope: `{ data: null, error: "Response contract violation" }`
+ * - Attaches a non-enumerable-free field on the response for tests to assert
+ *
+ * When disabled (default), this is a no-op next().
+ */
+export function validateResponse<T>(schema: z.ZodType<T>) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!isResponseValidationEnabled()) {
+      next();
+      return;
+    }
+
+    const originalJson = res.json.bind(res);
+    res.json = ((body: unknown) => {
+      const result = schema.safeParse(body);
+      if (!result.success) {
+        // Keep contract-violation details off the wire; log for operators/tests.
+        const details = toValidationDetails(result.error);
+        // eslint-disable-next-line no-console
+        console.error(
+          `[response-schema] ${req.method} ${req.originalUrl ?? req.url} failed:`,
+          details,
+        );
+        (res as Response & { responseSchemaViolation?: ValidationIssue[] }).responseSchemaViolation =
+          details;
+        if (!res.headersSent) {
+          res.status(500);
+        }
+        return originalJson({ data: null, error: 'Response contract violation' });
+      }
+      return originalJson(body);
+    }) as Response['json'];
+
+    next();
+  };
+}

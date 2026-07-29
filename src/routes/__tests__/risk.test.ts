@@ -473,4 +473,77 @@ describe('Risk Routes', () => {
       expect(response.body).toEqual({ data: null, error: 'Risk signal not found' });
     });
   });
+
+  describe('POST /admin/policy-preview', () => {
+    const basePayload = {
+      walletAddress: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      creditScore: 80,
+      requestedAmount: 10_000_00,
+      kycLevel: 1,
+      lastDrawAt: null,
+      outstandingBalance: 0,
+    };
+
+    it('requires API key', async () => {
+      const response = await invokeRoute({
+        method: 'post',
+        path: '/admin/policy-preview',
+        body: basePayload,
+      });
+      expect(response.status).toBe(401);
+    });
+
+    it('rejects invalid API key', async () => {
+      const response = await invokeRoute({
+        method: 'post',
+        path: '/admin/policy-preview',
+        body: basePayload,
+        headers: { 'x-api-key': 'bad-key' },
+      });
+      expect(response.status).toBe(403);
+    });
+
+    it('returns an approved, explainable evaluation without persisting anything', async () => {
+      const response = await invokeRoute({
+        method: 'post',
+        path: '/admin/policy-preview',
+        body: basePayload,
+        headers: { 'x-api-key': validApiKey },
+      });
+
+      expect(response.status).toBe(200);
+      const body = response.body as {
+        data: { approved: boolean; rejections: unknown[]; evaluatedRules: string[] };
+      };
+      expect(body.data.approved).toBe(true);
+      expect(body.data.rejections).toEqual([]);
+      expect(body.data.evaluatedRules).toContain('credit-score-minimum');
+    });
+
+    it('returns rejection codes for a policy-failing input', async () => {
+      const response = await invokeRoute({
+        method: 'post',
+        path: '/admin/policy-preview',
+        body: { ...basePayload, creditScore: 10 },
+        headers: { 'x-api-key': validApiKey },
+      });
+
+      expect(response.status).toBe(200);
+      const body = response.body as {
+        data: { approved: boolean; rejections: Array<{ code: string }> };
+      };
+      expect(body.data.approved).toBe(false);
+      expect(body.data.rejections.map((r) => r.code)).toContain('CREDIT_SCORE_TOO_LOW');
+    });
+
+    it('rejects a malformed body with 400', async () => {
+      const response = await invokeRoute({
+        method: 'post',
+        path: '/admin/policy-preview',
+        body: { ...basePayload, walletAddress: 'not-a-wallet' },
+        headers: { 'x-api-key': validApiKey },
+      });
+      expect(response.status).toBe(400);
+    });
+  });
 });

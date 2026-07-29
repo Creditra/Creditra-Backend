@@ -34,3 +34,17 @@ export const riskSignalsQuerySchema = z.object({
 }).strict();
 
 export type RiskSignalsQuery = z.infer<typeof riskSignalsQuerySchema>;
+
+/** Admin-only policy preview body (POST /api/risk/admin/policy-preview). */
+export const riskPolicyPreviewSchema = z.object({
+  walletAddress: z
+    .string()
+    .refine(isValidStellarAddress, 'walletAddress must be a valid Stellar address'),
+  creditScore: z.number().int().min(0).max(100),
+  requestedAmount: z.number().int().nonnegative(),
+  kycLevel: z.union([z.literal(0), z.literal(1), z.literal(2)]),
+  lastDrawAt: z.string().datetime().nullable(),
+  outstandingBalance: z.number().int().nonnegative(),
+}).strict();
+
+export type RiskPolicyPreviewBody = z.infer<typeof riskPolicyPreviewSchema>;
