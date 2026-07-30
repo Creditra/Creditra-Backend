@@ -4,11 +4,13 @@ export {
   riskEvaluateSchema,
   riskHistoryQuerySchema,
   riskSignalsQuerySchema,
+  riskPolicyPreviewSchema,
 } from './risk.schema.js';
 export type {
   RiskEvaluateBody,
   RiskHistoryQuery,
   RiskSignalsQuery,
+  RiskPolicyPreviewBody,
 } from './risk.schema.js';
 
 export {

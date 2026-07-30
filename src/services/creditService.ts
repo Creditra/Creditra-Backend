@@ -17,6 +17,7 @@
  * container.
  */
 import { randomUUID } from 'node:crypto';
+import { ConflictError } from '../errors/index.js';
 import { creditLines, type CreditLineStatus as StoredCreditLineStatus } from '../models/creditLineStore.js';
 import { TransactionType } from '../models/Transaction.js';
 import type { DrawBody, RepayBody } from '../schemas/index.js';

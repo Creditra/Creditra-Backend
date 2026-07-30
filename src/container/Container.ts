@@ -48,6 +48,12 @@ import { registerAnomalySubscriber } from "../services/events/anomalySubscriber.
 import { DataRetentionService } from "../services/dataRetentionService.js";
 import { DataRetentionWorker } from "../services/dataRetentionWorker.js";
 import { DashboardSummaryService } from "../services/dashboardSummaryService.js";
+import {
+  InMemoryOutboundWebhookStore,
+  PostgresOutboundWebhookStore,
+} from "../services/outboundWebhookStore.js";
+import { OutboundWebhookDispatcher } from "../services/outboundWebhookDispatcher.js";
+import { resolveWebhookConfig } from "../services/drawWebhookService.js";
 import { loadAnomalyDetectionConfig } from "../config/anomalyDetection.js";
 
 export class Container {
