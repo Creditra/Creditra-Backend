@@ -44,7 +44,8 @@
     "security:secrets:staged": "node scripts/security/scan-secrets.mjs --staged",
     "load:smoke": "k6 run scripts/load/smoke.js",
     "load:stress": "k6 run scripts/load/stress.js",
-    "load:spike": "k6 run scripts/load/spike.js"
+    "load:spike": "k6 run scripts/load/spike.js",
+    "smoke": "node scripts/smoke/run.mjs"
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^15.1.0",

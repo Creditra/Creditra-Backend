@@ -1,0 +1,29 @@
+name: Staging Smoke Test
+
+# Validates critical flows against a already-deployed staging target. Read-only
+# / simulate-only checks — no chain writes, no destructive operations.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Staging base URL to smoke test'
+        required: true
+        default: 'https://staging.example.com'
+  # Optionally triggered on deploy: uncomment and point at your deploy workflow
+  # once staging deploys emit a workflow_run event.
+  # workflow_run:
+  #   workflows: ['Deploy Staging']
+  #   types: [completed]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run smoke tests against staging
+        env:
+          SMOKE_BASE_URL: ${{ github.event.inputs.base_url || 'https://staging.example.com' }}
+          SMOKE_ADMIN_KEY: ${{ secrets.STAGING_ADMIN_API_KEY }}
+        run: node scripts/smoke/run.mjs
