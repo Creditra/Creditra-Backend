@@ -49,11 +49,11 @@ import { DataRetentionService } from "../services/dataRetentionService.js";
 import { DataRetentionWorker } from "../services/dataRetentionWorker.js";
 import { DashboardSummaryService } from "../services/dashboardSummaryService.js";
 import {
-  InMemoryOutboundWebhookStore,
-  PostgresOutboundWebhookStore,
-} from "../services/outboundWebhookStore.js";
-import { OutboundWebhookDispatcher } from "../services/outboundWebhookDispatcher.js";
-import { resolveWebhookConfig } from "../services/drawWebhookService.js";
+  InMemoryDomainEventStore,
+  PostgresDomainEventStore,
+  type DomainEventStore,
+} from "../services/domainEventStore.js";
+import { registerDomainEventStoreSubscriber } from "../services/events/domainEventSubscriber.js";
 import { loadAnomalyDetectionConfig } from "../config/anomalyDetection.js";
 
 export class Container {
@@ -83,6 +83,8 @@ export class Container {
   // In-process domain event bus (credit lifecycle).
   private readonly _eventBus = defaultEventBus;
   private _anomalyUnsubscribe?: () => void;
+  private _domainEventStore!: DomainEventStore;
+  private _domainEventUnsubscribe?: () => void;
 
   private constructor() {
     // Initialize repositories based on environment
@@ -183,6 +185,16 @@ export class Container {
         console.error("[Container] Outbound webhook configuration failed:", error);
       }
     }
+
+    if (!this._domainEventStore) {
+      this._domainEventStore = this._dbClient
+        ? new PostgresDomainEventStore(this._dbClient)
+        : new InMemoryDomainEventStore();
+      this._domainEventUnsubscribe = registerDomainEventStoreSubscriber(
+        this._eventBus,
+        this._domainEventStore,
+      );
+    }
   }
 
   private initializeRepositories(): void {
@@ -263,6 +275,11 @@ export class Container {
       throw new Error('Outbound webhook dispatcher is not initialized');
     }
     return this._outboundWebhookDispatcher;
+  }
+
+  /** Durable replay log for credit lifecycle domain events. */
+  get domainEventStore(): DomainEventStore {
+    return this._domainEventStore;
   }
 
   /** Undefined when running against in-memory repositories (no Postgres connection). */
