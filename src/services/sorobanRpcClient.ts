@@ -21,6 +21,7 @@
  *
  * See `docs/INDEXER.md` for how reads, writes, and the listener combine.
  */
+import { CircuitBreaker, CircuitOpenError } from './upstreamResilience.js';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -64,6 +65,7 @@ export interface GetCreditLineResult {
 
 class SorobanRpcClient {
   private config: SorobanRpcConfig;
+  private readonly circuit = new CircuitBreaker({ failureThreshold: 3, resetTimeoutMs: 30_000 });
 
   constructor(config: SorobanRpcConfig) {
     this.config = {
@@ -104,7 +106,7 @@ class SorobanRpcClient {
           data: response.result as T,
           ledger: response.ledger,
         };
-      });
+      }, true);
     } catch (error) {
       return {
         success: false,
@@ -138,7 +140,7 @@ class SorobanRpcClient {
           transactionId: response.hash,
           ledger: response.ledger,
         };
-      });
+      }, false);
     } catch (error) {
       return {
         success: false,
@@ -174,17 +176,22 @@ class SorobanRpcClient {
   // ---------------------------------------------------------------------------
 
   private async withRetry<T>(
-    operation: () => Promise<T>
+    operation: () => Promise<T>,
+    safeToRetry = true,
   ): Promise<T> {
+    if (this.circuit.state === 'open') throw new CircuitOpenError('soroban-rpc');
     let lastError: Error;
 
     for (let attempt = 0; attempt <= this.config.maxRetries!; attempt++) {
       try {
-        return await operation();
+        const result = await operation();
+        this.circuit.recordSuccess();
+        return result;
       } catch (error) {
         lastError = error as Error;
 
-        if (!this.isRetryableError(lastError)) {
+        if (!this.isRetryableError(lastError) || !safeToRetry) {
+          this.circuit.recordFailure();
           throw lastError;
         }
         
