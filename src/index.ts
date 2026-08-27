@@ -17,6 +17,7 @@ import { loadCorsPolicy, isAllowedCorsOrigin } from "./config/cors.js";
 import { loadRateLimitConfig } from "./config/rateLimit.js";
 import { Container } from "./container/Container.js";
 import { initializeWebhooks } from "./services/drawWebhookService.js";
+import { createTenantMutationRateLimiter } from "./middleware/tenantRateLimit.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const openapiSpec = yaml.parse(
@@ -50,6 +51,17 @@ const defaultRateLimit = createRateLimitMiddleware({
 const evaluateRateLimit = createRateLimitMiddleware({
   ...appRateLimitConfig.evaluate,
   keyGenerator: createIpKeyGenerator(),
+});
+const tenantMutationRateLimit = createTenantMutationRateLimiter({
+  windowMs: rateLimitConfig.default.windowMs,
+  maxRequests: rateLimitConfig.default.maxRequests,
+  isOverrideAllowed: (req) => {
+    const configured = process.env.RATE_LIMIT_OVERRIDE_TOKEN;
+    return Boolean(configured && req.headers['x-rate-limit-override-token'] === configured);
+  },
+  auditOverride: (entry) => {
+    console.log('[TenantRateLimit] administrative override', JSON.stringify(entry));
+  },
 });
 
 app.use(cors({
@@ -88,7 +100,7 @@ app.get("/docs.json", (_req, res) => {
   res.json(openapiSpec);
 });
 
-app.use("/api/credit", defaultRateLimit, creditRouter);
+app.use("/api/credit", defaultRateLimit, tenantMutationRateLimit, creditRouter);
 app.use("/api/risk/evaluate", evaluateRateLimit);
 app.use("/api/risk/wallet", defaultRateLimit);
 app.use("/api/risk", riskRouter);
