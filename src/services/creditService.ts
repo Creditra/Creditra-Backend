@@ -21,6 +21,7 @@ import { creditLines, type CreditLineStatus as StoredCreditLineStatus } from '..
 import { TransactionType } from '../models/Transaction.js';
 import type { DrawBody, RepayBody } from '../schemas/index.js';
 import { decodeTransactionCursor, encodeTransactionCursor } from '../utils/cursor.js';
+import { auditLedger } from './auditLedger.js';
 
 export { TransactionType };
 
@@ -54,6 +55,14 @@ export function drawFromCreditLine({ id, borrowerId, amount }: DrawRequest) {
   }
 
   line.utilized += amount;
+  auditLedger.recordFinancialMutation({
+    tenantId: borrowerId,
+    actor: borrowerId,
+    action: 'draw',
+    entityType: 'credit_line',
+    entityId: id,
+    after: { utilized: line.utilized, amount },
+  });
   return line;
 }
 
@@ -177,6 +186,14 @@ function recordTransaction(
   const existing = _transactionStore.get(creditLineId) ?? [];
   existing.push(tx);
   _transactionStore.set(creditLineId, existing);
+  auditLedger.recordFinancialMutation({
+    tenantId: creditLineId,
+    actor: 'system',
+    action: type,
+    entityType: 'transaction',
+    entityId: tx.id,
+    after: { creditLineId, amount, currency, metadata },
+  });
 }
 
 export function createCreditLine(
@@ -358,6 +375,14 @@ export async function submitDrawRequest(
   soroban: SorobanClient = noopSorobanClient,
 ): Promise<DrawResult> {
   const txHash = await soroban.submitDraw(body.walletAddress, id, body.amount);
+  auditLedger.recordFinancialMutation({
+    tenantId: body.walletAddress,
+    actor: body.walletAddress,
+    action: 'draw_submitted',
+    entityType: 'credit_line',
+    entityId: id,
+    after: { amount: body.amount, txHash, status: txHash !== null ? 'submitted' : 'pending' },
+  });
   return {
     id,
     walletAddress: body.walletAddress,
@@ -373,6 +398,14 @@ export async function submitRepayRequest(
   soroban: SorobanClient = noopSorobanClient,
 ): Promise<RepayResult> {
   const txHash = await soroban.submitRepay(body.walletAddress, id, body.amount);
+  auditLedger.recordFinancialMutation({
+    tenantId: body.walletAddress,
+    actor: body.walletAddress,
+    action: 'repay_submitted',
+    entityType: 'credit_line',
+    entityId: id,
+    after: { amount: body.amount, txHash, status: txHash !== null ? 'submitted' : 'pending' },
+  });
   return {
     id,
     walletAddress: body.walletAddress,
