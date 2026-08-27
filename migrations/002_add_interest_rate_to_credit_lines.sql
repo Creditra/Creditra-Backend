@@ -1,5 +1,7 @@
 -- Add interest_rate_bps column to credit_lines table
 -- This field stores the interest rate in basis points (e.g., 500 = 5%)
+-- Rollback: IRREVERSIBLE — restore a database backup before this migration;
+-- dropping the column would destroy rates written after deployment.
 
 ALTER TABLE credit_lines 
 ADD COLUMN interest_rate_bps INTEGER NOT NULL DEFAULT 0;
