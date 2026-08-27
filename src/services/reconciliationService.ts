@@ -7,6 +7,7 @@
 
 import type { CreditLineRepository } from '../repositories/interfaces/CreditLineRepository.js';
 import type { JobQueue } from './jobQueue.js';
+import { ReconciliationEventLedger, type ReconciliationEvent, type EventProcessResult } from './reconciliationEventLedger.js';
 
 export interface OnChainCreditRecord {
   /** Contract-level credit line identifier */
@@ -48,11 +49,28 @@ export interface SorobanRpcClient {
 }
 
 export class ReconciliationService {
+  private readonly eventLedger = new ReconciliationEventLedger<OnChainCreditRecord>();
   constructor(
     private creditLineRepository: CreditLineRepository,
     private sorobanClient: SorobanRpcClient,
     private jobQueue: JobQueue,
   ) {}
+
+  /**
+   * Applies one provider event behind the same idempotency boundary used by
+   * reconciliation. The caller supplies the resulting aggregate snapshot;
+   * the ledger records it only after the mutation succeeds.
+   */
+  async processEvent(
+    event: ReconciliationEvent,
+    apply: (current: OnChainCreditRecord | undefined, event: ReconciliationEvent) => OnChainCreditRecord | Promise<OnChainCreditRecord>,
+  ): Promise<EventProcessResult<OnChainCreditRecord>> {
+    return this.eventLedger.process(event, apply);
+  }
+
+  getEventLedgerReport() {
+    return this.eventLedger.report();
+  }
 
   /**
    * Schedule a reconciliation job to run asynchronously.
