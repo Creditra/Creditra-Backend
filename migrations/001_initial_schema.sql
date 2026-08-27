@@ -1,6 +1,8 @@
 -- Creditra Backend — Initial PostgreSQL schema
 -- See docs/data-model.md for full documentation.
 -- Apply in order; track applied migrations (e.g. schema_migrations table) in your deployment.
+-- Rollback: IRREVERSIBLE — restore a backup or remove the schema manually after
+-- reviewing dependent data; this initial migration has no automatic down path.
 
 -- Enable UUID extension if not already enabled
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";

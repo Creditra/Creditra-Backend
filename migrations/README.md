@@ -40,6 +40,62 @@ npm run db:validate
 
 This runs the initial migration (or all pending migrations) and checks for the presence of the core tables. Requires a running PostgreSQL instance and `DATABASE_URL`.
 
+## Verifying migration paths
+
+Run `npm run db:verify` in CI and before applying a release. This static
+verification loads every migration and checks both supported fixtures:
+
+- `fresh-install`: no applied versions; all migrations must form the pending path;
+- `upgrade-from-001`: the previous supported schema is applied; only the next migration may be pending.
+
+The verifier also checks that applied versions form a prefix, rejects unknown
+or out-of-order fixtures, extracts declared tables/indexes/constraints, and
+requires every migration to carry a `-- Rollback:` note. Mark a migration
+`-- Rollback: IRREVERSIBLE — ...` when its changes cannot safely be reversed
+without a backup or manual data review. The verifier is intentionally static;
+CI should pair it with a disposable PostgreSQL job that runs `db:migrate` on a
+fresh database and an upgrade fixture, then runs `db:validate` to inspect the
+resulting tables, columns, and indexes.
+
+The verification report is deterministic: migration versions, pending paths,
+declared schema objects, and validation errors are sorted before they are
+printed. This keeps CI output stable and makes a failed run straightforward to
+compare with the previous release.
+
+### Rollback boundaries
+
+The runner intentionally has no automatic down-migration command. A rollback
+must be chosen with the data owner because a column drop, type narrowing, or
+destructive rewrite may discard production data. Every SQL file therefore
+declares a rollback note, even when the note says that a backup and manual
+review are required. An irreversible marker is documentation and a release
+gate; it does not attempt to make a destructive operation safe.
+
+### CI recommendation
+
+CI should execute the following checks in order:
+
+1. Run `npm run db:verify` without a database to catch filename, ordering,
+   rollback metadata, and expected-object mistakes.
+2. Start a disposable PostgreSQL instance and run `npm run db:migrate` from an
+   empty database.
+3. Run `npm run db:validate` and query `pg_indexes` for critical indexes.
+4. Restore a fixture containing the previous schema version and run the
+   pending migration path.
+5. Run `npm run db:validate` again and retain the migration output as a CI
+   artifact.
+
+The static verifier complements, rather than replaces, database execution.
+SQL syntax, permissions, lock behavior, existing data, and PostgreSQL
+extension availability still need coverage in the disposable database job.
+
+Never edit a migration that has been applied in a shared environment. Add a
+new numbered file, update its rollback note, and extend the representative
+upgrade fixture when introducing another schema change.
+
+The migration version is the filename without `.sql`; keep that identifier
+stable in deployment records and incident reports.
+
 ## Files
 
 | File                     | Description                    |
