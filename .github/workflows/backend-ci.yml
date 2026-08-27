@@ -41,6 +41,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check OpenAPI artifacts and representative contracts
+        run: npm run check:openapi-drift
+
       - name: Run linter
         run: npm run lint
 

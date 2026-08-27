@@ -235,6 +235,63 @@ components:
               type: integer
               description: Total number of pages available
 
+    SuccessResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          type: object
+        error:
+          type: 'null'
+
+    FailureResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          type: 'null'
+        error:
+          type: string
+
+    CreditLinesOffsetResponse:
+      type: object
+      required: [creditLines, pagination]
+      properties:
+        creditLines:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreditLine'
+        pagination:
+          type: object
+          required: [total, offset, limit]
+          properties:
+            total:
+              type: integer
+            offset:
+              type: integer
+            limit:
+              type: integer
+
+    CreditLinesCursorResponse:
+      type: object
+      required: [creditLines, pagination]
+      properties:
+        creditLines:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreditLine'
+        pagination:
+          type: object
+          required: [limit, nextCursor, hasMore]
+          properties:
+            limit:
+              type: integer
+            nextCursor:
+              type: string
+              nullable: true
+            hasMore:
+              type: boolean
+
     # ── Risk Evaluation Schemas ───────────────────────────────────────────────
 
     RiskEvaluateRequest:
@@ -435,11 +492,11 @@ paths:
       summary: Get Credit Lines
       description: |
         Returns all available credit lines with pagination support.
-        
+
         Supports two pagination modes:
         - **Offset-based** (legacy): Use `offset` and `limit` parameters
         - **Cursor-based** (recommended): Use `cursor` and `limit` parameters
-        
+
         Cursor pagination provides stable results for large datasets and is recommended
         for production use. The response includes a `nextCursor` field that can be used
         to fetch the next page of results.
@@ -727,6 +784,12 @@ paths:
             minimum: 1
             default: 1
           description: Page number (1-indexed)
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque snapshot cursor. When present, cursor pagination is used and page is ignored.
         - name: limit
           in: query
           required: false
@@ -974,9 +1037,9 @@ paths:
     post:
       summary: Trigger Credit Reconciliation
       description: |
-        Manually trigger a reconciliation job that compares on-chain Credit contract 
+        Manually trigger a reconciliation job that compares on-chain Credit contract
         records with database credit lines and flags any drift.
-        
+
         Requires admin authentication via X-API-Key header.
       security:
         - ApiKeyAuth: []
@@ -1020,7 +1083,7 @@ paths:
         - Whether the worker is running
         - Number of jobs in the queue
         - Number of failed jobs
-        
+
         Requires admin authentication via X-API-Key header.
       security:
         - ApiKeyAuth: []
@@ -1058,126 +1121,3 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FailureResponse'
-
-components:
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: API key for admin endpoints
-
-  schemas:
-    SuccessResponse:
-      type: object
-      properties:
-        data:
-          description: The payload of the successful response. Varies by endpoint.
-          type: object
-        error:
-          description: Error message. Always null for successful responses.
-          type: "null"
-      required:
-        - data
-        - error
-
-    FailureResponse:
-      type: object
-      properties:
-        data:
-          description: Data payload. Always null for failed responses.
-          type: "null"
-        error:
-          description: The error message detailing what went wrong.
-          type: string
-      required:
-        - data
-        - error
-
-    CreditLine:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Unique identifier for the credit line
-        walletAddress:
-          type: string
-          description: Stellar wallet address
-        creditLimit:
-          type: string
-          description: Maximum credit limit (decimal string)
-        availableCredit:
-          type: string
-          description: Currently available credit (decimal string)
-        interestRateBps:
-          type: integer
-          description: Interest rate in basis points (e.g., 500 = 5%)
-        status:
-          type: string
-          enum: [active, suspended, closed, pending]
-          description: Current status of the credit line
-        createdAt:
-          type: string
-          format: date-time
-          description: Creation timestamp
-        updatedAt:
-          type: string
-          format: date-time
-          description: Last update timestamp
-
-    CreditLinesOffsetResponse:
-      type: object
-      description: Response format for offset-based pagination
-      properties:
-        creditLines:
-          type: array
-          items:
-            $ref: '#/components/schemas/CreditLine'
-        pagination:
-          type: object
-          properties:
-            total:
-              type: integer
-              description: Total number of credit lines
-            offset:
-              type: integer
-              description: Current offset
-            limit:
-              type: integer
-              description: Number of items per page
-          required:
-            - total
-            - offset
-            - limit
-      required:
-        - creditLines
-        - pagination
-
-    CreditLinesCursorResponse:
-      type: object
-      description: Response format for cursor-based pagination
-      properties:
-        creditLines:
-          type: array
-          items:
-            $ref: '#/components/schemas/CreditLine'
-        pagination:
-          type: object
-          properties:
-            limit:
-              type: integer
-              description: Number of items per page
-            nextCursor:
-              type: string
-              nullable: true
-              description: Cursor for the next page (null if no more pages)
-            hasMore:
-              type: boolean
-              description: Whether more results are available
-          required:
-            - limit
-            - nextCursor
-            - hasMore
-      required:
-        - creditLines
-        - pagination
