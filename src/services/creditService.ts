@@ -20,6 +20,7 @@ import { randomUUID } from 'node:crypto';
 import { creditLines, type CreditLineStatus as StoredCreditLineStatus } from '../models/creditLineStore.js';
 import { TransactionType } from '../models/Transaction.js';
 import type { DrawBody, RepayBody } from '../schemas/index.js';
+import { decodeTransactionCursor, encodeTransactionCursor } from '../utils/cursor.js';
 
 export { TransactionType };
 
@@ -110,6 +111,12 @@ export interface PaginatedTransactions {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+export interface CursorPaginatedTransactions {
+  transactions: Transaction[];
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
 /**
@@ -254,6 +261,69 @@ export function getTransactions(
   const transactions = txs.slice(offset, offset + limit);
 
   return { transactions, total, page, limit, totalPages };
+}
+
+/**
+ * Return transaction/audit history using a snapshot cursor. New rows added
+ * after the first page's snapshot cannot shift a later page or duplicate an
+ * entry already seen by the caller.
+ */
+export function getTransactionsWithCursor(
+  id: string,
+  filters: TransactionFilters = {},
+  cursor?: string,
+  limit = 20,
+): CursorPaginatedTransactions {
+  if (!_store.has(id)) throw new CreditLineNotFoundError(id);
+  if (limit < 1 || limit > 100) throw new Error('Limit must be between 1 and 100');
+
+  let txs = [...(_transactionStore.get(id) ?? [])];
+  if (filters.type !== undefined) txs = txs.filter(tx => tx.type === filters.type);
+  if (filters.from !== undefined) {
+    const from = new Date(filters.from).getTime();
+    txs = txs.filter(tx => new Date(tx.timestamp).getTime() >= from);
+  }
+  if (filters.to !== undefined) {
+    const to = new Date(filters.to).getTime();
+    txs = txs.filter(tx => new Date(tx.timestamp).getTime() <= to);
+  }
+
+  txs.sort((a, b) => {
+    const timestampDifference = new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    return timestampDifference !== 0 ? timestampDifference : b.id.localeCompare(a.id);
+  });
+
+  const decoded = cursor ? decodeTransactionCursor(cursor) : null;
+  const snapshotAt = decoded?.snapshotAt ?? Math.max(
+    ...txs.map(tx => new Date(tx.timestamp).getTime()),
+    Date.now(),
+  );
+  const visible = txs.filter(tx => new Date(tx.timestamp).getTime() <= snapshotAt);
+  const start = decoded
+    ? (() => {
+        const index = visible.findIndex(tx => {
+          const timestamp = new Date(tx.timestamp).getTime();
+          return timestamp < decoded.timestamp ||
+            (timestamp === decoded.timestamp && tx.id.localeCompare(decoded.id) < 0);
+        });
+        return index === -1 ? visible.length : index;
+      })()
+    : 0;
+  const items = visible.slice(start, start + limit);
+  const hasMore = start + limit < visible.length;
+  const last = items[items.length - 1];
+  return {
+    transactions: items,
+    hasMore,
+    nextCursor: hasMore && last
+      ? encodeTransactionCursor({
+          version: 1,
+          timestamp: new Date(last.timestamp).getTime(),
+          id: last.id,
+          snapshotAt,
+        })
+      : null,
+  };
 }
 
 export interface SorobanClient {

@@ -417,6 +417,32 @@ describe('InMemoryCreditLineRepository', () => {
       }
     });
 
+    it('should keep rows inserted after page one out of the active traversal', async () => {
+      for (let i = 0; i < 3; i++) {
+        await repository.create({
+          walletAddress: `initial-wallet${i}`,
+          creditLimit: '1000.00',
+          interestRateBps: 500,
+        });
+        await new Promise(resolve => setTimeout(resolve, 2));
+      }
+
+      const firstPage = await repository.findAllWithCursor(undefined, 2);
+      const firstIds = firstPage.items.map(item => item.id);
+      await new Promise(resolve => setTimeout(resolve, 5));
+      const inserted = await repository.create({
+        walletAddress: 'inserted-after-page-one',
+        creditLimit: '1000.00',
+        interestRateBps: 500,
+      });
+
+      const secondPage = await repository.findAllWithCursor(firstPage.nextCursor!, 2);
+      const traversedIds = [...firstIds, ...secondPage.items.map(item => item.id)];
+      expect(traversedIds).not.toContain(inserted.id);
+      expect(secondPage.items).toHaveLength(1);
+      expect(secondPage.hasMore).toBe(false);
+    });
+
     it('should return empty result for empty repository', async () => {
       const result = await repository.findAllWithCursor(undefined, 10);
       
