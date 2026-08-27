@@ -7,6 +7,7 @@ import {
   suspendCreditLine,
   closeCreditLine,
   getTransactions,
+  getTransactionsWithCursor,
   drawFromCreditLine,
   InvalidTransitionError,
   CreditLineNotFoundError,
@@ -638,6 +639,60 @@ describe("getTransactions()", () => {
       const resultA = getTransactions("line-a");
       expect(resultA.total).toBe(1);
       expect(resultA.transactions.every((tx) => tx.creditLineId === "line-a")).toBe(true);
+    });
+  });
+
+  describe("getTransactionsWithCursor()", () => {
+    it("returns stable pages with an opaque cursor", () => {
+      createCreditLine("line-1");
+      suspendCreditLine("line-1");
+      closeCreditLine("line-1");
+      const transactions = _transactionStore.get("line-1")!;
+      transactions.forEach((tx, index) => {
+        tx.timestamp = `2026-01-01T00:00:${String(index).padStart(2, "0")}.000Z`;
+      });
+
+      const first = getTransactionsWithCursor("line-1", {}, undefined, 2);
+      expect(first.transactions).toHaveLength(2);
+      expect(first.hasMore).toBe(true);
+      expect(first.nextCursor).toBeTruthy();
+
+      const second = getTransactionsWithCursor("line-1", {}, first.nextCursor!, 2);
+      expect(second.transactions).toHaveLength(1);
+      expect(second.hasMore).toBe(false);
+      expect(second.transactions[0]!.id).not.toBe(first.transactions[0]!.id);
+    });
+
+    it("excludes transactions inserted after the first page snapshot", () => {
+      createCreditLine("line-1");
+      suspendCreditLine("line-1");
+      closeCreditLine("line-1");
+      const transactions = _transactionStore.get("line-1")!;
+      transactions.forEach((tx, index) => {
+        tx.timestamp = `2026-01-01T00:00:${String(index).padStart(2, "0")}.000Z`;
+      });
+
+      const first = getTransactionsWithCursor("line-1", {}, undefined, 2);
+      transactions.push({
+        id: "inserted-after-snapshot",
+        creditLineId: "line-1",
+        type: TransactionType.STATUS_CHANGE,
+        amount: null,
+        currency: null,
+        timestamp: "2026-01-01T00:01:00.000Z",
+        metadata: { action: "inserted" },
+      });
+
+      const second = getTransactionsWithCursor("line-1", {}, first.nextCursor!, 2);
+      expect(second.transactions.map(tx => tx.id)).not.toContain("inserted-after-snapshot");
+      expect(second.transactions).toHaveLength(1);
+    });
+
+    it("treats malformed cursors as a new traversal", () => {
+      createCreditLine("line-1");
+      const result = getTransactionsWithCursor("line-1", {}, "not-a-cursor", 10);
+      expect(result.transactions).toHaveLength(1);
+      expect(result.hasMore).toBe(false);
     });
   });
 });

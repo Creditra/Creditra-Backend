@@ -1,6 +1,7 @@
 import{ type CreditLine, type CreateCreditLineRequest, type UpdateCreditLineRequest, CreditLineStatus } from '../../models/CreditLine.js';
 import type{ CreditLineRepository, CursorPaginationResult } from '../interfaces/CreditLineRepository.js';
 import { randomUUID } from 'crypto';
+import { decodeCreditLineCursor, encodeCreditLineCursor } from '../../utils/cursor.js';
 
 export class InMemoryCreditLineRepository implements CreditLineRepository {
   private creditLines: Map<string, CreditLine> = new Map();
@@ -55,40 +56,34 @@ export class InMemoryCreditLineRepository implements CreditLineRepository {
         return timeCompare !== 0 ? timeCompare : a.id.localeCompare(b.id);
       });
 
-    let startIndex = 0;
-
-    // If cursor is provided, find the starting position
-    if (cursor) {
-      try {
-        const decodedCursor = Buffer.from(cursor, 'base64').toString('utf-8');
-        const [cursorTime, cursorId] = decodedCursor.split('|');
-        
-        startIndex = all.findIndex(cl => {
-          const clTime = cl.createdAt.getTime().toString();
-          return clTime === cursorTime && cl.id === cursorId;
-        });
-
-        // If cursor not found or invalid, start from beginning
-        if (startIndex === -1) {
-          startIndex = 0;
-        } else {
-          // Start from the next item after the cursor
-          startIndex += 1;
-        }
-      } catch {
-        // Invalid cursor format, start from beginning
-        startIndex = 0;
-      }
-    }
-
-    const items = all.slice(startIndex, startIndex + limit);
-    const hasMore = startIndex + limit < all.length;
+    const decoded = cursor ? decodeCreditLineCursor(cursor) : null;
+    const snapshotAt = decoded?.snapshotAt ?? Math.max(
+      ...all.map(item => item.createdAt.getTime()),
+      Date.now(),
+    );
+    const visible = all.filter(cl => cl.createdAt.getTime() <= snapshotAt);
+    const afterCursor = decoded
+      ? visible.findIndex(cl => {
+          const timestamp = cl.createdAt.getTime();
+          return timestamp > decoded.createdAt ||
+            (timestamp === decoded.createdAt && cl.id > decoded.id);
+        })
+      : 0;
+    const effectiveStart = decoded
+      ? afterCursor === -1 ? visible.length : afterCursor
+      : 0;
+    const items = visible.slice(effectiveStart, effectiveStart + limit);
+    const hasMore = effectiveStart + limit < visible.length;
 
     let nextCursor: string | null = null;
     if (hasMore && items.length > 0) {
       const lastItem = items[items.length - 1];
-      const cursorData = `${lastItem.createdAt.getTime()}|${lastItem.id}`;
-      nextCursor = Buffer.from(cursorData, 'utf-8').toString('base64');
+      nextCursor = encodeCreditLineCursor({
+        version: 1,
+        createdAt: lastItem.createdAt.getTime(),
+        id: lastItem.id,
+        snapshotAt,
+      });
     }
 
     return {

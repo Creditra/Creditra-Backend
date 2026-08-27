@@ -234,6 +234,13 @@ components:
             totalPages:
               type: integer
               description: Total number of pages available
+            nextCursor:
+              type: string
+              nullable: true
+              description: Opaque cursor for the next snapshot page; present in cursor mode only
+            hasMore:
+              type: boolean
+              description: Whether another cursor page is available
 
     # ── Risk Evaluation Schemas ───────────────────────────────────────────────
 
@@ -713,6 +720,12 @@ paths:
             minimum: 1
             default: 1
           description: Page number (1-indexed)
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque snapshot cursor. When present, cursor pagination is used and page is ignored.
         - name: limit
           in: query
           required: false

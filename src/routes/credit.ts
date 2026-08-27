@@ -40,6 +40,7 @@ import {
   suspendCreditLine,
   closeCreditLine,
   getTransactions,
+  getTransactionsWithCursor,
   submitDrawRequest,
   submitRepayRequest,
 } from '../services/creditService.js';
@@ -187,7 +188,7 @@ creditRouter.get(
   '/lines/:id/transactions',
   async (req: Request, res: Response): Promise<void> => {
     const id = req.params.id;
-    const { type, from, to, page: pageParam, limit: limitParam } = req.query;
+    const { type, from, to, page: pageParam, cursor: cursorParam, limit: limitParam } = req.query;
 
     if (type !== undefined && !VALID_TRANSACTION_TYPES.includes(type as TransactionType)) {
       fail(res, `Invalid type filter. Must be one of: ${VALID_TRANSACTION_TYPES.join(', ')}.`, 400);
@@ -202,10 +203,11 @@ creditRouter.get(
       return;
     }
 
-    const page = pageParam !== undefined ? parseInt(pageParam as string, 10) : 1;
+    const cursor = typeof cursorParam === 'string' && cursorParam.length > 0 ? cursorParam : undefined;
     const limit = limitParam !== undefined ? parseInt(limitParam as string, 10) : 20;
 
-    if (isNaN(page) || page < 1) {
+    const page = pageParam !== undefined ? parseInt(pageParam as string, 10) : 1;
+    if (!cursor && (isNaN(page) || page < 1)) {
       fail(res, "Invalid 'page'. Must be a positive integer.", 400);
       return;
     }
@@ -215,6 +217,16 @@ creditRouter.get(
     }
 
     try {
+      if (cursor) {
+        const result = getTransactionsWithCursor(
+          id,
+          { type: type as TransactionType | undefined, from: from as string | undefined, to: to as string | undefined },
+          cursor,
+          limit,
+        );
+        ok(res, result);
+        return;
+      }
       const result = getTransactions(
         id,
         { type: type as TransactionType | undefined, from: from as string | undefined, to: to as string | undefined },

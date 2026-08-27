@@ -1,5 +1,6 @@
 import type { CreditLine, CreateCreditLineRequest, UpdateCreditLineRequest, CreditLineStatus } from '../../models/CreditLine.js';
 import type { CreditLineRepository, CursorPaginationResult } from '../interfaces/CreditLineRepository.js';
+import { decodeCreditLineCursor, encodeCreditLineCursor } from '../../utils/cursor.js';
 import type { DbClient } from '../../db/client.js';
 
 interface CreditLineRow {
@@ -149,30 +150,14 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
   }
 
   async findAllWithCursor(cursor?: string, limit = 100): Promise<CursorPaginationResult> {
-    let cursorTime: Date | null = null;
-    let cursorId: string | null = null;
-
-    if (cursor) {
-      try {
-        const decodedCursor = Buffer.from(cursor, 'base64').toString('utf-8');
-        const [timestamp, id] = decodedCursor.split('|');
-        const parsedTime = new Date(Number(timestamp));
-        if (!Number.isNaN(parsedTime.getTime()) && id) {
-          cursorTime = parsedTime;
-          cursorId = id;
-        }
-      } catch {
-        cursorTime = null;
-        cursorId = null;
-      }
-    }
-
-    const whereClause = cursorTime && cursorId
-      ? 'WHERE (cl.created_at > $2 OR (cl.created_at = $2 AND cl.id > $3))'
-      : '';
-    const values = cursorTime && cursorId
-      ? [limit + 1, cursorTime, cursorId]
-      : [limit + 1];
+    const decoded = cursor ? decodeCreditLineCursor(cursor) : null;
+    const snapshotAt = decoded ? new Date(decoded.snapshotAt) : new Date();
+    const whereClause = decoded
+      ? 'WHERE cl.created_at <= $2 AND (cl.created_at > $3 OR (cl.created_at = $3 AND cl.id > $4))'
+      : 'WHERE cl.created_at <= $2';
+    const values = decoded
+      ? [limit + 1, snapshotAt, new Date(decoded.createdAt), decoded.id]
+      : [limit + 1, snapshotAt];
 
     const query = `
       SELECT
@@ -208,7 +193,12 @@ export class PostgresCreditLineRepository implements CreditLineRepository {
       items,
       hasMore,
       nextCursor: hasMore && lastItem
-        ? Buffer.from(`${lastItem.createdAt.getTime()}|${lastItem.id}`, 'utf-8').toString('base64')
+        ? encodeCreditLineCursor({
+            version: 1,
+            createdAt: lastItem.createdAt.getTime(),
+            id: lastItem.id,
+            snapshotAt: snapshotAt.getTime(),
+          })
         : null,
     };
   }
