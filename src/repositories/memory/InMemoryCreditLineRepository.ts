@@ -2,6 +2,7 @@ import{ type CreditLine, type CreateCreditLineRequest, type UpdateCreditLineRequ
 import type{ CreditLineRepository, CursorPaginationResult } from '../interfaces/CreditLineRepository.js';
 import { randomUUID } from 'crypto';
 import { decodeCreditLineCursor, encodeCreditLineCursor } from '../../utils/cursor.js';
+import { VersionConflictError } from '../../services/creditLineConcurrency.js';
 
 export class InMemoryCreditLineRepository implements CreditLineRepository {
   private creditLines: Map<string, CreditLine> = new Map();
@@ -26,6 +27,7 @@ export class InMemoryCreditLineRepository implements CreditLineRepository {
       utilized: '0',
       interestRateBps: request.interestRateBps,
       status: CreditLineStatus.ACTIVE,
+      version: 1,
       createdAt: now,
       updatedAt: now
     };
@@ -99,9 +101,18 @@ export class InMemoryCreditLineRepository implements CreditLineRepository {
       return null;
     }
 
+    const expectedVersion = request.expectedVersion;
+    const currentVersion = existing.version ?? 1;
+    if (expectedVersion !== undefined && currentVersion !== expectedVersion) {
+      throw new VersionConflictError(id, expectedVersion, currentVersion);
+    }
+
+    const { expectedVersion: _ignoredVersion, ...fields } = request;
+
     const updated: CreditLine = {
       ...existing,
-      ...request,
+      ...fields,
+      version: currentVersion + 1,
       updatedAt: new Date()
     };
 

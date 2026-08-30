@@ -1,5 +1,6 @@
 import { type CreditLine, type CreateCreditLineRequest, type UpdateCreditLineRequest, CreditLineStatus } from '../models/CreditLine.js';
 import type { CreditLineRepository, CursorPaginationResult } from '../repositories/interfaces/CreditLineRepository.js';
+import { normalizeExpectedVersion } from './creditLineConcurrency.js';
 
 /**
  * Domain service for credit-line CRUD plus the `draw` / `repay` operations.
@@ -100,17 +101,21 @@ export class CreditLineService {
    * `null` if `id` does not exist — the route layer maps that to `404`.
    */
   async updateCreditLine(id: string, request: UpdateCreditLineRequest): Promise<CreditLine | null> {
+    const guardedRequest = request.expectedVersion === undefined
+      ? request
+      : { ...request, expectedVersion: normalizeExpectedVersion(request.expectedVersion) };
+
     // Validate update request
-    if (request.creditLimit && parseFloat(request.creditLimit) <= 0) {
+    if (guardedRequest.creditLimit && parseFloat(guardedRequest.creditLimit) <= 0) {
       throw new Error('Credit limit must be greater than 0');
     }
 
-    if (request.interestRateBps !== undefined && 
-        (request.interestRateBps < 0 || request.interestRateBps > 10000)) {
+    if (guardedRequest.interestRateBps !== undefined &&
+        (guardedRequest.interestRateBps < 0 || guardedRequest.interestRateBps > 10000)) {
       throw new Error('Interest rate must be between 0 and 10000 basis points');
     }
 
-    return await this.creditLineRepository.update(id, request);
+    return await this.creditLineRepository.update(id, guardedRequest);
   }
 
   /** Hard-delete a credit line. Returns `false` if `id` did not exist. */

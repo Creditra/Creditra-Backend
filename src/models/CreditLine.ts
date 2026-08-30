@@ -6,6 +6,8 @@ export interface CreditLine {
   utilized: string;
   interestRateBps: number; // Basis points (e.g., 500 = 5%)
   status: CreditLineStatus;
+  /** Monotonic optimistic-concurrency version, initialized to 1. */
+  version?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,4 +30,6 @@ export interface UpdateCreditLineRequest {
   interestRateBps?: number;
   status?: CreditLineStatus;
   utilized?: string;
+  /** Only update when the persisted version still equals this value. */
+  expectedVersion?: number;
 }

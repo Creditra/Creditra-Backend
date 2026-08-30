@@ -26,10 +26,11 @@ import { Router, type Request, type Response } from 'express';
 import { validateBody } from '../middleware/validate.js';
 import {
   createCreditLineSchema,
+  updateCreditLineSchema,
   drawSchema,
   repaySchema,
 } from '../schemas/index.js';
-import type { DrawBody, RepayBody } from '../schemas/index.js';
+import type { DrawBody, RepayBody, UpdateCreditLineBody } from '../schemas/index.js';
 import { Container } from '../container/Container.js';
 import { adminAuth } from '../middleware/adminAuth.js';
 import { ok, fail } from '../utils/response.js';
@@ -44,6 +45,7 @@ import {
   submitDrawRequest,
   submitRepayRequest,
 } from '../services/creditService.js';
+import { VersionConflictError, versionConflictDetails } from '../services/creditLineConcurrency.js';
 
 export const creditRouter = Router();
 const container = Container.getInstance();
@@ -68,6 +70,16 @@ function handleServiceError(err: unknown, res: Response): void {
   }
   if (err instanceof InvalidTransitionError) {
     fail(res, err.message, 409);
+    return;
+  }
+  if (err instanceof VersionConflictError) {
+    res.status(409).json({
+      data: null,
+      error: err.message,
+      code: err.code,
+      resource: 'credit_line',
+      details: versionConflictDetails(err.expectedVersion, err.actualVersion),
+    });
     return;
   }
   const message = err instanceof Error ? err.message : 'Internal server error';
@@ -142,20 +154,21 @@ creditRouter.post('/lines', validateBody(createCreditLineSchema), async (req, re
   }
 });
 
-creditRouter.put('/lines/:id', async (req, res) => {
+creditRouter.put('/lines/:id', validateBody(updateCreditLineSchema), async (req, res) => {
   try {
-    const { creditLimit, interestRateBps, status } = req.body;
+    const { creditLimit, interestRateBps, status, expectedVersion } = req.body as UpdateCreditLineBody;
     const creditLine = await container.creditLineService.updateCreditLine(req.params.id, {
       creditLimit,
       interestRateBps,
       status,
+      expectedVersion,
     });
     if (!creditLine) {
       return fail(res, 'Credit line not found', 404);
     }
     return ok(res, creditLine);
   } catch (error) {
-    return fail(res, error instanceof Error ? error : undefined, 400);
+    return handleServiceError(error, res);
   }
 });
 

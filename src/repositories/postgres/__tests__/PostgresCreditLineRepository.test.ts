@@ -63,6 +63,7 @@ describe('PostgresCreditLineRepository', () => {
         utilized: '0',
         interestRateBps: 500,
         status: CreditLineStatus.ACTIVE,
+        version: 1,
         createdAt: now,
         updatedAt: now
       });
@@ -136,6 +137,7 @@ describe('PostgresCreditLineRepository', () => {
         utilized: '0',
         interestRateBps: 600,
         status: CreditLineStatus.ACTIVE,
+        version: 1,
         createdAt: now,
         updatedAt: now
       });

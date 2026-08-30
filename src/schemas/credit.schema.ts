@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { TransactionType } from '../models/Transaction.js';
+import { CreditLineStatus } from '../models/CreditLine.js';
 import { isValidStellarAddress } from '../utils/stellarAddress.js';
 
 const numericString = /^\d+(\.\d+)?$/;
@@ -35,6 +36,18 @@ export const creditLinesQuerySchema = z.object({
 }).strict();
 
 export type CreditLinesQuery = z.infer<typeof creditLinesQuerySchema>;
+
+export const updateCreditLineSchema = z.object({
+  creditLimit: z.string().regex(numericString, 'creditLimit must be a numeric string').optional(),
+  interestRateBps: nonNegativeIntString.optional(),
+  status: z.nativeEnum(CreditLineStatus).optional(),
+  expectedVersion: positiveIntString,
+}).strict().refine(
+  (data) => data.creditLimit !== undefined || data.interestRateBps !== undefined || data.status !== undefined,
+  { message: 'At least one updatable field is required', path: ['creditLimit'] },
+);
+
+export type UpdateCreditLineBody = z.infer<typeof updateCreditLineSchema>;
 
 export const drawSchema = z.object({
   walletAddress: stellarAddressField,

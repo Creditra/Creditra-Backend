@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { InMemoryCreditLineRepository } from '../InMemoryCreditLineRepository.js';
 import { CreditLineStatus } from '../../../models/CreditLine.js';
+import { VersionConflictError } from '../../../services/creditLineConcurrency.js';
 
 describe('InMemoryCreditLineRepository', () => {
   let repository: InMemoryCreditLineRepository;
@@ -212,6 +213,40 @@ describe('InMemoryCreditLineRepository', () => {
     it('should return null when credit line not found', async () => {
       const updated = await repository.update('nonexistent', { creditLimit: '2000.00' });
       expect(updated).toBeNull();
+    });
+
+    it('initializes version one and advances it once per successful update', async () => {
+      const created = await repository.create({
+        walletAddress: 'version-wallet',
+        creditLimit: '1000.00',
+        interestRateBps: 500,
+      });
+
+      expect(created.version).toBe(1);
+      const updated = await repository.update(created.id, {
+        creditLimit: '1200.00',
+        expectedVersion: 1,
+      });
+
+      expect(updated?.version).toBe(2);
+    });
+
+    it('rejects a stale writer without changing the stored row', async () => {
+      const created = await repository.create({
+        walletAddress: 'stale-wallet',
+        creditLimit: '1000.00',
+        interestRateBps: 500,
+      });
+      await repository.update(created.id, { creditLimit: '1100.00', expectedVersion: 1 });
+
+      await expect(repository.update(created.id, {
+        creditLimit: '1300.00',
+        expectedVersion: 1,
+      })).rejects.toBeInstanceOf(VersionConflictError);
+
+      const current = await repository.findById(created.id);
+      expect(current?.creditLimit).toBe('1100.00');
+      expect(current?.version).toBe(2);
     });
   });
 

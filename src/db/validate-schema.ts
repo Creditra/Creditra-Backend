@@ -24,7 +24,7 @@ export class SchemaValidationError extends Error {
  */
 const REQUIRED_COLUMNS: Record<string, string[]> = {
   borrowers: ['id', 'wallet_address', 'created_at'],
-  credit_lines: ['id', 'borrower_id', 'credit_limit', 'currency', 'status', 'created_at'],
+  credit_lines: ['id', 'borrower_id', 'credit_limit', 'currency', 'status', 'created_at', 'version'],
   risk_evaluations: ['id', 'borrower_id', 'risk_score', 'suggested_limit', 'interest_rate_bps', 'evaluated_at'],
   transactions: ['id', 'credit_line_id', 'type', 'amount', 'currency', 'created_at'],
   events: ['id', 'event_type', 'created_at'],

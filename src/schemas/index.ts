@@ -6,6 +6,7 @@ export type { RiskEvaluateBody, RiskHistoryQuery } from './risk.schema.js';
 export {
   createCreditLineSchema,
   creditLinesQuerySchema,
+  updateCreditLineSchema,
   drawSchema,
   repaySchema,
   transactionHistoryQuerySchema,
@@ -13,6 +14,7 @@ export {
 export type {
   CreateCreditLineBody,
   CreditLinesQuery,
+  UpdateCreditLineBody,
   DrawBody,
   RepayBody,
   TransactionHistoryQuery,
