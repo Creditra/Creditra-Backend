@@ -25,3 +25,5 @@ CREATE TABLE IF NOT EXISTS reconciliation_event_audits (
 
 CREATE INDEX IF NOT EXISTS reconciliation_event_audits_event_idx
   ON reconciliation_event_audits (event_id, created_at);
+
+-- Rollback: IRREVERSIBLE - remove the ledger tables only after taking a backup.

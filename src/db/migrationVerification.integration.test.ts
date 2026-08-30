@@ -17,8 +17,14 @@ describe('migration verification integration', () => {
     expect(reports[0]?.pending).toEqual([
       '001_initial_schema',
       '002_add_interest_rate_to_credit_lines',
+      '003_add_reconciliation_event_ledger',
+      '004_add_credit_line_version',
     ]);
-    expect(reports[1]?.pending).toEqual(['002_add_interest_rate_to_credit_lines']);
+    expect(reports[1]?.pending).toEqual([
+      '002_add_interest_rate_to_credit_lines',
+      '003_add_reconciliation_event_ledger',
+      '004_add_credit_line_version',
+    ]);
   });
 
   it('proves the upgrade declares the new index without changing the base table set', async () => {
