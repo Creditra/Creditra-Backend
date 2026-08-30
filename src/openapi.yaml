@@ -234,13 +234,6 @@ components:
             totalPages:
               type: integer
               description: Total number of pages available
-            nextCursor:
-              type: string
-              nullable: true
-              description: Opaque cursor for the next snapshot page; present in cursor mode only
-            hasMore:
-              type: boolean
-              description: Whether another cursor page is available
 
     SuccessResponse:
       type: object

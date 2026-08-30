@@ -23,8 +23,10 @@ describe('credit-line version policy', () => {
     expect(normalizeExpectedVersion(value)).toBe(Number(value));
   });
 
-  it.each([undefined, null, '', '   ', 0, -1, 1.5, '1.5', Number.MAX_SAFE_INTEGER + 1, 'nope'])
-    ('rejects malformed version %s', (value) => {
+  it.each([
+    undefined, null, '', '   ', 0, -1, 1.5, '1.5',
+    Number.MAX_SAFE_INTEGER + 1, 'nope',
+  ])('rejects malformed version %s', (value) => {
       expect(() => normalizeExpectedVersion(value)).toThrow(InvalidExpectedVersionError);
     });
 
