@@ -168,7 +168,11 @@ creditRouter.put('/lines/:id', validateBody(updateCreditLineSchema), async (req,
     }
     return ok(res, creditLine);
   } catch (error) {
-    return handleServiceError(error, res);
+    if (error instanceof VersionConflictError) {
+      handleServiceError(error, res);
+      return;
+    }
+    return fail(res, error instanceof Error ? error : undefined, 400);
   }
 });
 

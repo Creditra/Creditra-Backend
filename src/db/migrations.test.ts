@@ -94,7 +94,12 @@ describe('runPendingMigrations', () => {
     const client = createMockClient();
     vi.mocked(client.query)
       .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ version: '001_initial_schema' }, { version: '002_add_interest_rate_to_credit_lines' }] });
+      .mockResolvedValueOnce({ rows: [
+        { version: '001_initial_schema' },
+        { version: '002_add_interest_rate_to_credit_lines' },
+        { version: '003_add_reconciliation_event_ledger' },
+        { version: '004_add_credit_line_version' },
+      ] });
     const migrationsDir = await import('path').then((p) =>
       p.join(process.cwd(), 'migrations')
     );

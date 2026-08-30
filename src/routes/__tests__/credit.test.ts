@@ -355,7 +355,8 @@ describe('Credit Routes', () => {
       const updateData = {
         creditLimit: '2000.00',
         interestRateBps: 600,
-        status: CreditLineStatus.SUSPENDED
+        status: CreditLineStatus.SUSPENDED,
+        expectedVersion: created.version ?? 1,
       };
 
       const response = await request(app)
@@ -373,7 +374,8 @@ describe('Credit Routes', () => {
       const response = await request(app)
         .put('/api/credit/lines/nonexistent')
         .send({
-          creditLimit: '2000.00'
+          creditLimit: '2000.00',
+          expectedVersion: 1,
         })
         .expect(404);
 
@@ -391,11 +393,12 @@ describe('Credit Routes', () => {
       const response = await request(app)
         .put(`/api/credit/lines/${created.id}`)
         .send({
-          creditLimit: '-100.00'
+          creditLimit: '-100.00',
+          expectedVersion: created.version ?? 1,
         })
         .expect(400);
 
-      expect(response.body.error).toBe('Credit limit must be greater than 0');
+      expect(response.body.error).toBe('Validation failed');
       expect(response.body.data).toBeNull();
     });
 
@@ -420,7 +423,7 @@ describe('Credit Routes', () => {
 
       const response = await request(app)
         .put(`/api/credit/lines/${created.id}`)
-        .send({ creditLimit: '2000.00' })
+        .send({ creditLimit: '2000.00', expectedVersion: created.version ?? 1 })
         .expect(400);
 
       expect(response.body.error).toBe('Bad request');

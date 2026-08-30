@@ -210,6 +210,7 @@ describe('validateSchema', () => {
             { column_name: 'amount' },
             { column_name: 'event_type' },
             { column_name: 'created_at' },
+            { column_name: 'version' },
           ],
         };
       }
@@ -330,6 +331,7 @@ describe('validateSchema', () => {
             { column_name: 'amount' },
             { column_name: 'event_type' },
             { column_name: 'created_at' },
+            { column_name: 'version' },
           ],
         };
       }
@@ -426,6 +428,7 @@ describe('validateSchema', () => {
             { column_name: 'amount' },
             { column_name: 'event_type' },
             { column_name: 'created_at' },
+            { column_name: 'version' },
           ],
         };
       }
