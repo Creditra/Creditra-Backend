@@ -6,4 +6,4 @@ ALTER TABLE credit_lines
 COMMENT ON COLUMN credit_lines.version IS
   'Monotonic optimistic-concurrency version; incremented with every successful update';
 
--- Rollback boundary: dropping this column removes OCC guarantees for credit lines.
+-- Rollback: IRREVERSIBLE - dropping this column removes OCC guarantees for credit lines.
